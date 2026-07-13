@@ -18,33 +18,28 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCH4ajVSpH7tX98TF-y7-2QtILDaj9AOlc",
+      authDomain: "rekaption.firebaseapp.com",
+      projectId: "rekaption",
+      storageBucket: "rekaption.firebasestorage.app",
+      messagingSenderId: "4330429815",
+      appId: "1:4330429815:web:d8d4dfeb087b4dbeb21572",
+      measurementId: "G-T6RGVWC00F"
+    };
+
     let firebaseAnalytics = null;
     let firebaseAuth = null;
     let firebaseDb = null;
-    let onAuthStateChangedCallback = null;
-
-    async function initFirebase() {
-      try {
-        const backendUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-          ? 'https://ahmedyehia-rekaption.hf.space'
-          : (window.location.origin.includes('hf.space') || window.location.origin.includes('railway.app') ? window.location.origin : 'https://ahmedyehia-rekaption.hf.space');
-        const res = await fetch(`${backendUrl}/api/firebase-config`);
-        if (!res.ok) throw new Error("Failed to fetch Firebase config from backend");
-        const firebaseConfig = await res.json();
-
-        const app = firebase.initializeApp(firebaseConfig);
-        firebaseAnalytics = firebase.analytics(app);
-        firebaseAuth = firebase.auth(app);
-        firebaseDb = firebase.firestore(app);
-        window.firebaseDb = firebaseDb;
-        console.log("Firebase initialized dynamically.");
-
-        if (onAuthStateChangedCallback) {
-          firebaseAuth.onAuthStateChanged(onAuthStateChangedCallback);
-        }
-      } catch (e) {
-        console.error("Firebase dynamic initialization failed:", e);
-      }
+    try {
+      const app = firebase.initializeApp(firebaseConfig);
+      firebaseAnalytics = firebase.analytics(app);
+      firebaseAuth = firebase.auth(app);
+      firebaseDb = firebase.firestore(app);
+      window.firebaseDb = firebaseDb;
+      console.log("Firebase initialized.");
+    } catch (e) {
+      console.error("Firebase Init Error:", e);
     }
 
     window.logFirebaseEvent = function(eventName, eventParams) {
@@ -60,7 +55,7 @@
     window.signInWithGoogle = function() {
       return new Promise((resolve, reject) => {
         if (!firebaseAuth) {
-          reject(new Error("جاري تهيئة خدمات جوجل، يرجى المحاولة بعد قليل..."));
+          reject(new Error("Firebase Auth is not initialized."));
           return;
         }
         const provider = new firebase.auth.GoogleAuthProvider();
@@ -82,13 +77,10 @@
     };
     
     window.onAuthStateChanged = function(callback) {
-      onAuthStateChangedCallback = callback;
       if (firebaseAuth) {
         return firebaseAuth.onAuthStateChanged(callback);
       }
     };
-
-    initFirebase();
   </script>
 </head>
 <body>
