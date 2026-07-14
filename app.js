@@ -1655,6 +1655,7 @@ window.switchMainTab = function(tab) {
 
 window.startAudioDownloadOnly = async function() {
   const urlInput = document.getElementById('gemini-yt-url');
+  const keyInput = document.getElementById('gemini-key-input');
   const startBtn = document.getElementById('gemini-start-btn');
   const loadingDiv = document.getElementById('gemini-loading');
   const statusText = document.getElementById('gemini-status-text');
@@ -1665,11 +1666,21 @@ window.startAudioDownloadOnly = async function() {
   const audioPlayer = document.getElementById('downloaded-audio-player');
   const audioLink = document.getElementById('downloaded-audio-link');
 
+  const transcriptionContainer = document.getElementById('transcription-container');
+  const transcriptionText = document.getElementById('transcription-text');
+  const txtLink = document.getElementById('downloaded-txt-link');
+
   const youtubeUrl = urlInput.value.trim();
+  const geminiApiKey = keyInput ? keyInput.value.trim() : '';
 
   if (!youtubeUrl) {
     alert('الرجاء إدخال رابط فيديو يوتيوب صالح!');
     return;
+  }
+
+  // Save key if provided
+  if (geminiApiKey) {
+    localStorage.setItem('gemini_api_key', geminiApiKey);
   }
 
   // Disable UI
@@ -1677,16 +1688,17 @@ window.startAudioDownloadOnly = async function() {
   startBtn.style.opacity = '0.5';
   loadingDiv.classList.remove('hidden');
   
-  // Hide previous player/link if any
+  // Hide previous player/link/transcription if any
   audioPlayer.style.display = 'none';
   audioPlayer.src = '';
   audioLink.style.display = 'none';
+  if (transcriptionContainer) transcriptionContainer.style.display = 'none';
   placeholderText.style.display = 'block';
-  placeholderText.textContent = 'جاري التحميل ومعالجة الصوت...';
+  placeholderText.textContent = 'جاري التحميل ومعالجة الصوت والذكاء الاصطناعي...';
 
   // Reset Progress Bar
   progressBarFill.style.width = '0%';
-  progressText.textContent = 'الخطوة 1 / 2: جاري بدء التحميل...';
+  progressText.textContent = 'الخطوة 1 / 2: جاري التحميل ومعالجة الصوت...';
 
   // Start simulated progress
   let currentProgress = 5;
@@ -1703,12 +1715,14 @@ window.startAudioDownloadOnly = async function() {
     }, speed);
   };
 
-  // Phase 1: Downloading (from 5% to 90%)
+  // Phase 1: Downloading & Transcription (from 5% to 90%)
+  const hasKey = geminiApiKey && geminiApiKey.toLowerCase() !== 'none';
+  const processMsg = hasKey ? 'جاري تحميل الصوت وتقسيمه وتفريغه بالذكاء الاصطناعي (قد يستغرق ذلك دقيقة أو دقيقتين)...' : 'جاري تحميل الصوت من يوتيوب وتحويله لصيغة MP3...';
   let progressInterval = updateProgress(
-    90, 
-    600, 
-    'جاري تحميل الصوت من يوتيوب وتحويله لصيغة MP3 (قد يستغرق ذلك دقيقة)...',
-    'الخطوة 1 / 2: تحميل المقطع وتحويله'
+    92, 
+    800, 
+    processMsg,
+    'جاري المعالجة والتحويل'
   );
 
   try {
@@ -1719,7 +1733,7 @@ window.startAudioDownloadOnly = async function() {
       },
       body: JSON.stringify({
         youtubeUrl: youtubeUrl,
-        geminiApiKey: "none"
+        geminiApiKey: geminiApiKey || "none"
       })
     });
 
@@ -1735,8 +1749,8 @@ window.startAudioDownloadOnly = async function() {
     // Complete
     currentProgress = 100;
     progressBarFill.style.width = '100%';
-    progressText.textContent = 'الخطوة 2 / 2: اكتمل التحميل!';
-    statusText.textContent = '✅ تم تحميل الصوت بنجاح!';
+    progressText.textContent = 'الخطوة 2 / 2: اكتمل المعالجة!';
+    statusText.textContent = '✅ تمت العملية بنجاح!';
     
     // Display player
     const fullAudioUrl = resData.audioUrl.startsWith('http') ? resData.audioUrl : (audioApiUrl + '/' + resData.audioUrl);
@@ -1745,13 +1759,21 @@ window.startAudioDownloadOnly = async function() {
     audioLink.href = fullAudioUrl;
     audioLink.style.display = 'flex';
     placeholderText.style.display = 'none';
+
+    // Display transcription if available
+    if (resData.transcription && transcriptionContainer && transcriptionText && txtLink) {
+      transcriptionText.value = resData.transcription;
+      transcriptionContainer.style.display = 'flex';
+      const fullTxtUrl = resData.transcriptionUrl.startsWith('http') ? resData.transcriptionUrl : (audioApiUrl + '/' + resData.transcriptionUrl);
+      txtLink.href = fullTxtUrl;
+    }
   } catch (err) {
     clearInterval(progressInterval);
     progressBarFill.style.width = '0%';
     progressText.textContent = '❌ فشلت العملية.';
-    alert('حدث خطأ أثناء التحميل: ' + err.message);
+    alert('حدث خطأ أثناء المعالجة: ' + err.message);
     statusText.textContent = '❌ فشلت العملية.';
-    placeholderText.textContent = 'فشل تحميل الصوت. يرجى التحقق من الرابط والمحاولة مجدداً.';
+    placeholderText.textContent = 'فشلت العملية. يرجى التحقق من الرابط ومفتاح الـ API والمحاولة مجدداً.';
   } finally {
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
