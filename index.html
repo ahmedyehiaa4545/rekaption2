@@ -334,17 +334,12 @@
         <!-- Left: Input controls -->
         <div class="panel-inner" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
           <div class="control-field">
-            <span class="control-label">مفتاح Gemini API Key 🔑 (اختياري للتفريغ)</span>
-            <input type="password" id="gemini-key-input" placeholder="AIzaSy..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
-          </div>
-
-          <div class="control-field">
             <span class="control-label">رابط فيديو اليوتيوب (YouTube URL)</span>
             <input type="text" id="gemini-yt-url" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
           </div>
 
           <button type="button" id="gemini-start-btn" onclick="startAudioDownloadOnly()" class="btn-primary" style="margin-top: 10px; width: 100%; justify-content: center;">
-            <span>📥</span> تحميل الصوت والتفريغ بالذكاء الاصطناعي 🚀
+            <span>📥</span> تحميل الصوت وتشغيله
           </button>
           
           <!-- Loading state inside controls -->
@@ -370,15 +365,6 @@
             <a id="downloaded-audio-link" href="#" class="btn-secondary" style="display: none; width: 100%; justify-content: center; text-decoration: none;" download="youtube_audio.mp3">
               <span>⬇️</span> تحميل ملف الصوت MP3
             </a>
-
-            <!-- Transcription section -->
-            <div id="transcription-container" style="display: none; width: 100%; flex-direction: column; gap: 10px; margin-top: 10px;">
-              <span class="control-label" style="align-self: flex-start;">التفريغ النصي الناتج (Gemini):</span>
-              <textarea id="transcription-text" readonly style="width: 100%; height: 200px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: #fff; font-size: 14px; resize: vertical; text-align: right; direction: rtl;"></textarea>
-              <a id="downloaded-txt-link" href="#" class="btn-primary" style="width: 100%; justify-content: center; text-decoration: none; display: flex; align-items: center; gap: 8px;" download="transcription.txt">
-                <span>⬇️</span> تحميل ملف التفريغ TXT 📄
-              </a>
-            </div>
           </div>
         </div>
       </div>
