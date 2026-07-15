@@ -334,12 +334,17 @@
         <!-- Left: Input controls -->
         <div class="panel-inner" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
           <div class="control-field">
+            <span class="control-label">مفتاح Gemini API Key (سيتم حفظه محلياً في متصفحك)</span>
+            <input type="password" id="gemini-key-input" placeholder="AIzaSy..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
+          </div>
+
+          <div class="control-field">
             <span class="control-label">رابط فيديو اليوتيوب (YouTube URL)</span>
             <input type="text" id="gemini-yt-url" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
           </div>
 
           <button type="button" id="gemini-start-btn" onclick="startAudioDownloadOnly()" class="btn-primary" style="margin-top: 10px; width: 100%; justify-content: center;">
-            <span>📥</span> تحميل الصوت وتشغيله
+            <span>📥</span> تحميل وتفريغ الصوت بالذكاء الاصطناعي
           </button>
           
           <!-- Loading state inside controls -->
@@ -355,16 +360,25 @@
 
         <!-- Right: Results area -->
         <div class="panel-inner" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px; align-items: center; justify-content: center; min-height: 250px;">
-          <span class="control-label" style="align-self: flex-start;">مشغل الصوت الناتج:</span>
+          <span class="control-label" style="align-self: flex-start;">النتائج والملف الصوتي:</span>
           
           <div id="audio-player-container" style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; flex: 1;">
             <div style="font-size: 48px;">🎵</div>
-            <p style="color: var(--text-muted); font-size: 14px; text-align: center;" id="audio-placeholder-text">سيظهر هنا مشغل الصوت فور انتهاء التحميل من يوتيوب...</p>
+            <p style="color: var(--text-muted); font-size: 14px; text-align: center;" id="audio-placeholder-text">سيظهر هنا مشغل الصوت والتفريغ النصي فور انتهاء العملية...</p>
             <audio id="downloaded-audio-player" controls style="width: 100%; display: none; margin-top: 10px;"></audio>
             
             <a id="downloaded-audio-link" href="#" class="btn-secondary" style="display: none; width: 100%; justify-content: center; text-decoration: none;" download="youtube_audio.mp3">
               <span>⬇️</span> تحميل ملف الصوت MP3
             </a>
+            
+            <!-- Transcription text box -->
+            <div id="transcription-container" style="width: 100%; display: none; flex-direction: column; gap: 10px; margin-top: 15px; text-align: right; direction: rtl;">
+              <span class="control-label" style="align-self: flex-start;">التفريغ النصي الناتج من Gemini:</span>
+              <textarea id="transcription-text" readonly style="width: 100%; height: 200px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-family: inherit; font-size: 14px; resize: vertical; line-height: 1.6;"></textarea>
+              <button onclick="copyTranscription()" class="btn-secondary" style="width: 100%; justify-content: center;">
+                <span>📋</span> نسخ النص كامل
+              </button>
+            </div>
           </div>
         </div>
       </div>

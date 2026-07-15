@@ -1703,12 +1703,27 @@ window.startAudioDownloadOnly = async function() {
     }, speed);
   };
 
-  // Phase 1: Downloading (from 5% to 90%)
+  // Get Gemini API Key
+  const geminiKeyInput = document.getElementById('gemini-key-input');
+  const geminiApiKey = geminiKeyInput ? geminiKeyInput.value.trim() : "";
+
+  if (!geminiApiKey) {
+    alert('الرجاء إدخال مفتاح Gemini API Key لتتمكن من تفريغ الصوت!');
+    startBtn.disabled = false;
+    startBtn.style.opacity = '1';
+    loadingDiv.classList.add('hidden');
+    return;
+  }
+
+  // Save to localStorage
+  localStorage.setItem('gemini_api_key', geminiApiKey);
+
+  // Phase 1: Processing (from 5% to 95%)
   let progressInterval = updateProgress(
-    90, 
-    600, 
-    'جاري تحميل الصوت من يوتيوب وتحويله لصيغة MP3 (قد يستغرق ذلك دقيقة)...',
-    'الخطوة 1 / 2: تحميل المقطع وتحويله'
+    95, 
+    800, 
+    'جاري تحميل الصوت وتجزئته ثم تفريغه بالذكاء الاصطناعي (قد يستغرق ذلك دقيقة أو دقيقتين)...',
+    'جاري المعالجة والتفريغ'
   );
 
   try {
@@ -1719,7 +1734,7 @@ window.startAudioDownloadOnly = async function() {
       },
       body: JSON.stringify({
         youtubeUrl: youtubeUrl,
-        geminiApiKey: "none"
+        geminiApiKey: geminiApiKey
       })
     });
 
@@ -1735,8 +1750,8 @@ window.startAudioDownloadOnly = async function() {
     // Complete
     currentProgress = 100;
     progressBarFill.style.width = '100%';
-    progressText.textContent = 'الخطوة 2 / 2: اكتمل التحميل!';
-    statusText.textContent = '✅ تم تحميل الصوت بنجاح!';
+    progressText.textContent = 'الخطوة 2 / 2: اكتمل بنجاح!';
+    statusText.textContent = '✅ تم تحميل وتفريغ الصوت بنجاح!';
     
     // Display player
     const fullAudioUrl = resData.audioUrl.startsWith('http') ? resData.audioUrl : (audioApiUrl + '/' + resData.audioUrl);
@@ -1745,16 +1760,36 @@ window.startAudioDownloadOnly = async function() {
     audioLink.href = fullAudioUrl;
     audioLink.style.display = 'flex';
     placeholderText.style.display = 'none';
+
+    // Display transcription
+    const transcriptionContainer = document.getElementById('transcription-container');
+    const transcriptionText = document.getElementById('transcription-text');
+    if (resData.transcription) {
+      transcriptionContainer.style.display = 'flex';
+      transcriptionText.value = resData.transcription;
+    } else {
+      transcriptionContainer.style.display = 'none';
+    }
   } catch (err) {
     clearInterval(progressInterval);
     progressBarFill.style.width = '0%';
     progressText.textContent = '❌ فشلت العملية.';
-    alert('حدث خطأ أثناء التحميل: ' + err.message);
+    alert('حدث خطأ: ' + err.message);
     statusText.textContent = '❌ فشلت العملية.';
-    placeholderText.textContent = 'فشل تحميل الصوت. يرجى التحقق من الرابط والمحاولة مجدداً.';
+    placeholderText.textContent = 'فشلت معالجة وتفريغ الصوت. يرجى التحقق من مفتاح API والرابط والمحاولة مجدداً.';
   } finally {
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
   }
+};
+
+window.copyTranscription = function() {
+  const text = document.getElementById('transcription-text').value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('تم نسخ النص المفرغ بنجاح إلى الحافظة! 📋');
+  }).catch(err => {
+    console.error('Failed to copy text: ', err);
+  });
 };
 
