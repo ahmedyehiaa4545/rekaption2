@@ -1804,6 +1804,9 @@ window.fetchShortsSuggestions = async function() {
   const loadingDiv = document.getElementById('shorts-loading');
   const container = document.getElementById('suggested-shorts-container');
   const listContainer = document.getElementById('shorts-cards-list');
+  
+  const numShorts = parseInt(document.getElementById('gemini-shorts-count').value) || 3;
+  const ytUrl = document.getElementById('gemini-yt-url').value.trim();
 
   if (!transcriptionText || transcriptionText.trim() === "") {
     alert("لا يوجد نص مفرغ لتحليله واقتراح مقاطع Shorts منه!");
@@ -1830,7 +1833,8 @@ window.fetchShortsSuggestions = async function() {
       },
       body: JSON.stringify({
         transcription: transcriptionText,
-        geminiApiKey: geminiApiKey
+        geminiApiKey: geminiApiKey,
+        numShorts: numShorts
       })
     });
 
@@ -1842,6 +1846,8 @@ window.fetchShortsSuggestions = async function() {
     const resData = await response.json();
     if (resData.shorts && resData.shorts.length > 0) {
       let cardsHtml = '';
+      const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+      
       resData.shorts.forEach((short, idx) => {
         // Safe string escaping for click handler
         const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
@@ -1940,18 +1946,38 @@ window.fetchShortsSuggestions = async function() {
               ">${short.script}</textarea>
             </div>
 
-            <!-- Copy Button for Script -->
-            <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
-              margin-top: 5px;
-              padding: 8px 16px;
-              font-size: 12px;
-              font-weight: 700;
-              width: 100%;
-              justify-content: center;
-              border-radius: 8px;
-            ">
-              <span>📋</span> نسخ تفاصيل المقطع كاملة
-            </button>
+            <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-top: 5px;">
+              <!-- Copy Button for Script -->
+              <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
+                padding: 8px 12px;
+                font-size: 12px;
+                font-weight: 700;
+                justify-content: center;
+                border-radius: 8px;
+                margin: 0;
+              ">
+                <span>📋</span> نسخ التفاصيل
+              </button>
+
+              <!-- Cut & Download Button -->
+              <button type="button" onclick="cutVideoSegment('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
+                padding: 8px 12px;
+                font-size: 12px;
+                font-weight: 700;
+                justify-content: center;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #10b981, #059669);
+                border: none;
+                color: #fff;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                margin: 0;
+              ">
+                <span>✂️</span> قص وتحميل الفيديو
+              </button>
+            </div>
           </div>
         `;
       });
@@ -1976,5 +2002,58 @@ window.copyShortsText = function(text, index) {
   }).catch(err => {
     console.error('Failed to copy: ', err);
   });
+};
+
+window.cutVideoSegment = async function(youtubeUrl, startTime, endTime, idx, btn) {
+  if (!youtubeUrl) {
+    alert("رابط اليوتيوب غير متوفر لقص المقطع!");
+    return;
+  }
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.style.pointerEvents = 'none';
+  btn.innerHTML = '<span>⏳</span> جاري القص...';
+
+  try {
+    const response = await fetch(audioApiUrl + '/api/cut', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: youtubeUrl,
+        start_time: startTime,
+        end_time: endTime,
+        quality: 720
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ detail: 'فشل السيرفر في قص المقطع. قد يكون رابط اليوتيوب محمي أو التوقيتات خارج المدى.' }));
+      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `short_clip_${idx}.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+    
+    alert(`تم تحميل مقطع الـ Shorts المقصوص #${idx} بنجاح! 🎉`);
+  } catch (err) {
+    console.error(err);
+    alert('حدث خطأ أثناء قص المقطع: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+    btn.innerHTML = originalHtml;
+  }
 };
 
