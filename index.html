@@ -378,6 +378,27 @@
               <button onclick="copyTranscription()" class="btn-secondary" style="width: 100%; justify-content: center;">
                 <span>📋</span> نسخ النص كامل
               </button>
+
+              <!-- AI Shorts suggestions trigger button -->
+              <button id="gemini-shorts-btn" onclick="fetchShortsSuggestions()" class="btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #8b5cf6, #ec4899); border: none; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4); color: #fff; font-weight: bold; margin-top: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span>✨</span> استخراج 3 مقاطع Shorts مميزة
+              </button>
+
+              <!-- Loading spinner for shorts -->
+              <div id="shorts-loading" class="hidden" style="text-align: center; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.1); margin-top: 10px; direction: rtl;">
+                <div class="spinner" style="margin: 0 auto 10px auto; width: 20px; height: 20px; border-left-color: #fff; border-top-color: transparent; border-right-color: transparent; border-bottom-color: transparent; border-style: solid; border-width: 2px; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <span style="color: var(--text-main); font-size: 13px; font-weight: bold;">جاري تحليل النص بالذكاء الاصطناعي...</span>
+              </div>
+
+              <!-- Suggested Shorts Container -->
+              <div id="suggested-shorts-container" style="display: none; width: 100%; flex-direction: column; gap: 20px; margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px; direction: rtl; text-align: right;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; margin: 0 0 10px 0;">
+                  <span style="font-size: 20px;">💡</span> أفكار مقاطع Shorts المقترحة بالذكاء الاصطناعي:
+                </h3>
+                <div id="shorts-cards-list" style="display: flex; flex-direction: column; gap: 15px;">
+                  <!-- Shorts cards will be injected here dynamically -->
+                </div>
+              </div>
             </div>
           </div>
         </div>

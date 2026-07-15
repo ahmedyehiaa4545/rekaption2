@@ -1683,6 +1683,10 @@ window.startAudioDownloadOnly = async function() {
   audioLink.style.display = 'none';
   placeholderText.style.display = 'block';
   placeholderText.textContent = 'جاري التحميل ومعالجة الصوت...';
+  
+  // Reset suggested shorts UI
+  document.getElementById('suggested-shorts-container').style.display = 'none';
+  document.getElementById('shorts-cards-list').innerHTML = '';
 
   // Reset Progress Bar
   progressBarFill.style.width = '0%';
@@ -1790,6 +1794,187 @@ window.copyTranscription = function() {
     alert('تم نسخ النص المفرغ بنجاح إلى الحافظة! 📋');
   }).catch(err => {
     console.error('Failed to copy text: ', err);
+  });
+};
+
+window.fetchShortsSuggestions = async function() {
+  const transcriptionText = document.getElementById('transcription-text').value;
+  const geminiApiKey = document.getElementById('gemini-key-input').value.trim();
+  const shortsBtn = document.getElementById('gemini-shorts-btn');
+  const loadingDiv = document.getElementById('shorts-loading');
+  const container = document.getElementById('suggested-shorts-container');
+  const listContainer = document.getElementById('shorts-cards-list');
+
+  if (!transcriptionText || transcriptionText.trim() === "") {
+    alert("لا يوجد نص مفرغ لتحليله واقتراح مقاطع Shorts منه!");
+    return;
+  }
+
+  if (!geminiApiKey) {
+    alert("الرجاء إدخال مفتاح Gemini API Key لتتمكن من تحليل النص!");
+    return;
+  }
+
+  // Show loading, disable button
+  shortsBtn.disabled = true;
+  shortsBtn.style.opacity = '0.5';
+  loadingDiv.classList.remove('hidden');
+  container.style.display = 'none';
+  listContainer.innerHTML = '';
+
+  try {
+    const response = await fetch(audioApiUrl + '/api/suggest-shorts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        transcription: transcriptionText,
+        geminiApiKey: geminiApiKey
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ detail: 'حدث خطأ في السيرفر أثناء تحليل الـ Shorts' }));
+      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
+    }
+
+    const resData = await response.json();
+    if (resData.shorts && resData.shorts.length > 0) {
+      let cardsHtml = '';
+      resData.shorts.forEach((short, idx) => {
+        // Safe string escaping for click handler
+        const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
+        const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        
+        cardsHtml += `
+          <div class="short-card" style="
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(139, 92, 246, 0.25);
+            border-radius: 16px;
+            padding: 20px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          ">
+            <!-- Badge: Short Number -->
+            <div style="
+              position: absolute;
+              top: -10px;
+              right: 20px;
+              background: linear-gradient(135deg, #8b5cf6, #ec4899);
+              color: #fff;
+              font-size: 11px;
+              font-weight: 800;
+              padding: 4px 12px;
+              border-radius: 20px;
+              box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+            ">
+              مقطع مقترح #${idx + 1}
+            </div>
+
+            <!-- Time Chip -->
+            <div style="
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 12px;
+              font-weight: 700;
+              color: var(--purple-accent);
+              margin-top: 5px;
+            ">
+              <span>⏱️ التوقيت:</span>
+              <span style="
+                background: rgba(139, 92, 246, 0.1);
+                border: 1px solid rgba(139, 92, 246, 0.3);
+                padding: 2px 8px;
+                border-radius: 6px;
+                font-family: monospace;
+                font-size: 13px;
+              ">
+                ${short.start_time} - ${short.end_time}
+              </span>
+            </div>
+
+            <!-- Title -->
+            <h4 style="
+              margin: 5px 0;
+              font-size: 14px;
+              font-weight: 800;
+              color: #fff;
+            ">
+              🎥 العنوان المقترح: ${short.title}
+            </h4>
+
+            <!-- Hook -->
+            <div style="
+              background: rgba(236, 72, 153, 0.05);
+              border-right: 3px solid #ec4899;
+              padding: 8px 12px;
+              border-radius: 0 8px 8px 0;
+              font-size: 13px;
+              color: #f472b6;
+              line-height: 1.5;
+            ">
+              <span style="font-weight: 800;">⚡ الخطاف (أول 3 ثوانٍ):</span> ${short.hook}
+            </div>
+
+            <!-- Script Text -->
+            <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;">
+              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">📝 سكريبت المقطع القصير:</span>
+              <textarea readonly style="
+                width: 100%;
+                height: 80px;
+                padding: 10px;
+                border-radius: 8px;
+                border: 1px solid rgba(255,255,255,0.08);
+                background: rgba(0,0,0,0.2);
+                color: #fff;
+                font-size: 13px;
+                line-height: 1.6;
+                resize: none;
+                font-family: inherit;
+              ">${short.script}</textarea>
+            </div>
+
+            <!-- Copy Button for Script -->
+            <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
+              margin-top: 5px;
+              padding: 8px 16px;
+              font-size: 12px;
+              font-weight: 700;
+              width: 100%;
+              justify-content: center;
+              border-radius: 8px;
+            ">
+              <span>📋</span> نسخ تفاصيل المقطع كاملة
+            </button>
+          </div>
+        `;
+      });
+      listContainer.innerHTML = cardsHtml;
+      container.style.display = 'flex';
+    } else {
+      throw new Error('الاستجابة لا تحتوي على مقاطع مقترحة.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('حدث خطأ أثناء اقتراح مقاطع الـ Shorts: ' + err.message);
+  } finally {
+    shortsBtn.disabled = false;
+    shortsBtn.style.opacity = '1';
+    loadingDiv.classList.add('hidden');
+  }
+};
+
+window.copyShortsText = function(text, index) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert('تم نسخ تفاصيل المقطع المقترح #' + index + ' بنجاح! 📋');
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
   });
 };
 
