@@ -1749,7 +1749,57 @@ window.startAudioDownloadOnly = async function() {
       throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
     }
 
-    const resData = await response.json();
+    const startData = await response.json();
+    const taskId = startData.taskId;
+
+    // Start polling the backend status every 3 seconds
+    let pollInterval = null;
+    const pollPromise = new Promise((resolve, reject) => {
+      pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
+          if (!statusRes.ok) {
+            clearInterval(pollInterval);
+            reject(new Error('فشل جلب حالة المهمة من السيرفر.'));
+            return;
+          }
+          const task = await statusRes.json();
+          if (task.status === 'success') {
+            clearInterval(pollInterval);
+            resolve(task);
+          } else if (task.status === 'failed') {
+            clearInterval(pollInterval);
+            reject(new Error(task.error || 'فشلت عملية التحميل والتفريغ.'));
+          } else {
+            // Update UI with real progress message from backend
+            statusText.textContent = task.progress || 'جاري المعالجة...';
+            
+            // Extract parts progress e.g. "معالجة الجزء 3/13"
+            if (task.progress.includes('معالجة الجزء')) {
+              const match = task.progress.match(/(\d+)\/(\d+)/);
+              if (match) {
+                const current = parseInt(match[1]);
+                const total = parseInt(match[2]);
+                const pct = 15 + Math.round((current / total) * 80);
+                progressBarFill.style.width = `${pct}%`;
+                progressText.textContent = `جاري التفريغ بالذكاء الاصطناعي (${current}/${total})`;
+              }
+            } else if (task.progress.includes('تقسيم') || task.progress.includes('أجزاء')) {
+              progressBarFill.style.width = '12%';
+              progressText.textContent = task.progress;
+            } else if (task.progress.includes('تحميل')) {
+              progressBarFill.style.width = '7%';
+              progressText.textContent = 'جاري تحميل الصوت من يوتيوب...';
+            }
+          }
+        } catch (e) {
+          clearInterval(pollInterval);
+          reject(e);
+        }
+      }, 3000);
+    });
+
+    const resData = await pollPromise;
     
     // Complete
     currentProgress = 100;
@@ -1780,7 +1830,7 @@ window.startAudioDownloadOnly = async function() {
     progressText.textContent = '❌ فشلت العملية.';
     alert('حدث خطأ: ' + err.message);
     statusText.textContent = '❌ فشلت العملية.';
-    placeholderText.textContent = 'فشلت معالجة وتفريغ الصوت. يرجى التحقق من مفتاح API والرابط والمحاولة مجدداً.';
+    placeholderText.textContent = 'فشلت معالجة وتفريغ الصوت: ' + err.message;
   } finally {
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
