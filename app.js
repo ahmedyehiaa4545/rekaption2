@@ -368,41 +368,50 @@ window.switchUploadTab = function(tab) {
   const youtubeContent = document.getElementById('tab-content-youtube');
   
   if (tab === 'local') {
-    localBtn.style.background = 'rgba(255,255,255,0.05)';
-    localBtn.style.borderColor = 'rgba(255,255,255,0.1)';
-    localBtn.style.color = '#fff';
-    
-    youtubeBtn.style.background = 'transparent';
-    youtubeBtn.style.borderColor = 'transparent';
-    youtubeBtn.style.color = 'rgba(255,255,255,0.6)';
-    
-    localContent.style.display = 'block';
-    youtubeContent.style.display = 'none';
+    if (localBtn) {
+      localBtn.style.background = 'rgba(255,255,255,0.05)';
+      localBtn.style.borderColor = 'rgba(255,255,255,0.1)';
+      localBtn.style.color = '#fff';
+    }
+    if (youtubeBtn) {
+      youtubeBtn.style.background = 'transparent';
+      youtubeBtn.style.borderColor = 'transparent';
+      youtubeBtn.style.color = 'rgba(255,255,255,0.6)';
+    }
+    if (localContent) localContent.style.display = 'block';
+    if (youtubeContent) youtubeContent.style.display = 'none';
     currentUploadSource = 'local';
     
-    if (audioFile) {
-      submitBtn.disabled = false;
-    } else {
-      submitBtn.disabled = true;
+    if (submitBtn) {
+      if (audioFile) {
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.disabled = true;
+      }
     }
   } else {
-    youtubeBtn.style.background = 'rgba(255,255,255,0.05)';
-    youtubeBtn.style.borderColor = 'rgba(255,255,255,0.1)';
-    youtubeBtn.style.color = '#fff';
-    
-    localBtn.style.background = 'transparent';
-    localBtn.style.borderColor = 'transparent';
-    localBtn.style.color = 'rgba(255,255,255,0.6)';
-    
-    localContent.style.display = 'none';
-    youtubeContent.style.display = 'block';
+    if (youtubeBtn) {
+      youtubeBtn.style.background = 'rgba(255,255,255,0.05)';
+      youtubeBtn.style.borderColor = 'rgba(255,255,255,0.1)';
+      youtubeBtn.style.color = '#fff';
+    }
+    if (localBtn) {
+      localBtn.style.background = 'transparent';
+      localBtn.style.borderColor = 'transparent';
+      localBtn.style.color = 'rgba(255,255,255,0.6)';
+    }
+    if (localContent) localContent.style.display = 'none';
+    if (youtubeContent) youtubeContent.style.display = 'block';
     currentUploadSource = 'youtube';
     
-    const ytUrl = document.getElementById('youtube-url-input').value.trim();
-    if (ytUrl) {
-      submitBtn.disabled = false;
-    } else {
-      submitBtn.disabled = true;
+    const ytInput = document.getElementById('youtube-url-input');
+    const ytUrl = ytInput ? ytInput.value.trim() : '';
+    if (submitBtn) {
+      if (ytUrl) {
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.disabled = true;
+      }
     }
   }
 };
@@ -1618,37 +1627,46 @@ window.switchMainTab = function(tab) {
   const editorState = document.getElementById('editor-state');
 
   if (tab === 'editor') {
-    editorBtn.classList.add('active');
-    editorBtn.style.background = 'rgba(139, 92, 246, 0.15)';
-    editorBtn.style.borderColor = 'var(--purple-accent)';
-    editorBtn.style.color = '#fff';
+    if (editorBtn) {
+      editorBtn.classList.add('active');
+      editorBtn.style.background = 'rgba(139, 92, 246, 0.15)';
+      editorBtn.style.borderColor = 'var(--purple-accent)';
+      editorBtn.style.color = '#fff';
+    }
 
-    geminiBtn.classList.remove('active');
-    geminiBtn.style.background = 'transparent';
-    geminiBtn.style.borderColor = 'transparent';
-    geminiBtn.style.color = 'rgba(255,255,255,0.6)';
+    if (geminiBtn) {
+      geminiBtn.classList.remove('active');
+      geminiBtn.style.background = 'transparent';
+      geminiBtn.style.borderColor = 'transparent';
+      geminiBtn.style.color = 'rgba(255,255,255,0.6)';
+    }
 
-    dashboard.classList.remove('hidden');
-    geminiPanel.classList.add('hidden');
+    if (dashboard) dashboard.classList.remove('hidden');
+    if (geminiPanel) geminiPanel.classList.add('hidden');
   } else {
-    geminiBtn.classList.add('active');
-    geminiBtn.style.background = 'rgba(139, 92, 246, 0.15)';
-    geminiBtn.style.borderColor = 'var(--purple-accent)';
-    geminiBtn.style.color = '#fff';
+    if (geminiBtn) {
+      geminiBtn.classList.add('active');
+      geminiBtn.style.background = 'rgba(139, 92, 246, 0.15)';
+      geminiBtn.style.borderColor = 'var(--purple-accent)';
+      geminiBtn.style.color = '#fff';
+    }
 
-    editorBtn.classList.remove('active');
-    editorBtn.style.background = 'transparent';
-    editorBtn.style.borderColor = 'transparent';
-    editorBtn.style.color = 'rgba(255,255,255,0.6)';
+    if (editorBtn) {
+      editorBtn.classList.remove('active');
+      editorBtn.style.background = 'transparent';
+      editorBtn.style.borderColor = 'transparent';
+      editorBtn.style.color = 'rgba(255,255,255,0.6)';
+    }
 
-    dashboard.classList.add('hidden');
-    editorState.classList.add('hidden'); // hide editor if open
-    geminiPanel.classList.remove('hidden');
+    if (dashboard) dashboard.classList.add('hidden');
+    if (editorState) editorState.classList.add('hidden'); // hide editor if open
+    if (geminiPanel) geminiPanel.classList.remove('hidden');
 
     // Load Gemini API Key from localStorage
     const savedKey = localStorage.getItem('gemini_api_key');
-    if (savedKey) {
-      document.getElementById('gemini-key-input').value = savedKey;
+    const keyInput = document.getElementById('gemini-key-input');
+    if (savedKey && keyInput) {
+      keyInput.value = savedKey;
     }
   }
 };
@@ -1676,6 +1694,9 @@ window.startAudioDownloadOnly = async function() {
   startBtn.disabled = true;
   startBtn.style.opacity = '0.5';
   loadingDiv.classList.remove('hidden');
+
+  const geminiSpinner = loadingDiv.querySelector('.spinner');
+  if (geminiSpinner) geminiSpinner.style.display = 'block';
   
   // Hide previous player/link if any
   audioPlayer.style.display = 'none';
@@ -1716,6 +1737,7 @@ window.startAudioDownloadOnly = async function() {
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
     loadingDiv.classList.add('hidden');
+    if (geminiSpinner) geminiSpinner.style.display = 'none';
     return;
   }
 
@@ -1806,6 +1828,7 @@ window.startAudioDownloadOnly = async function() {
     progressBarFill.style.width = '100%';
     progressText.textContent = 'الخطوة 2 / 2: اكتمل بنجاح!';
     statusText.textContent = '✅ تم تحميل وتفريغ الصوت بنجاح!';
+    if (geminiSpinner) geminiSpinner.style.display = 'none';
     
     // Display player
     const fullAudioUrl = resData.audioUrl.startsWith('http') ? resData.audioUrl : (audioApiUrl + '/' + resData.audioUrl);
@@ -1831,6 +1854,7 @@ window.startAudioDownloadOnly = async function() {
     alert('حدث خطأ: ' + err.message);
     statusText.textContent = '❌ فشلت العملية.';
     placeholderText.textContent = 'فشلت معالجة وتفريغ الصوت: ' + err.message;
+    if (geminiSpinner) geminiSpinner.style.display = 'none';
   } finally {
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
@@ -1996,57 +2020,63 @@ window.fetchShortsSuggestions = async function() {
               ">${short.script}</textarea>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 5px;">
-              <!-- Send to Captions Phase Button -->
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+              <!-- Send to Captions Phase Button (Full Width Primary) -->
               <button type="button" onclick="cutAndSendToCaptions('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
-                padding: 8px 10px;
-                font-size: 12px;
-                font-weight: 700;
+                width: 100%;
+                padding: 10px 14px;
+                font-size: 13px;
+                font-weight: 800;
                 justify-content: center;
-                border-radius: 8px;
+                border-radius: 10px;
                 background: linear-gradient(135deg, #8b5cf6, #ec4899);
                 border: none;
                 color: #fff;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
-                gap: 4px;
+                gap: 6px;
+                box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
                 margin: 0;
-                box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
               ">
                 <span>🎬</span> قص وتوليد الكابشن
               </button>
 
-              <!-- Cut & Download Button -->
-              <button type="button" onclick="cutVideoSegment('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
-                padding: 8px 10px;
-                font-size: 12px;
-                font-weight: 700;
-                justify-content: center;
-                border-radius: 8px;
-                background: linear-gradient(135deg, #10b981, #059669);
-                border: none;
-                color: #fff;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                margin: 0;
-              ">
-                <span>✂️</span> قص وتحميل الفيديو
-              </button>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <!-- Cut & Download Button -->
+                <button type="button" onclick="cutVideoSegment('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
+                  padding: 8px 10px;
+                  font-size: 12px;
+                  font-weight: 700;
+                  justify-content: center;
+                  border-radius: 8px;
+                  background: linear-gradient(135deg, #10b981, #059669);
+                  border: none;
+                  color: #fff;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  gap: 4px;
+                  margin: 0;
+                ">
+                  <span>✂️</span> قص وتحميل الفيديو
+                </button>
 
-              <!-- Copy Button for Script -->
-              <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
-                padding: 8px 10px;
-                font-size: 12px;
-                font-weight: 700;
-                justify-content: center;
-                border-radius: 8px;
-                margin: 0;
-              ">
-                <span>📋</span> نسخ التفاصيل
-              </button>
+                <!-- Copy Button for Script -->
+                <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
+                  padding: 8px 10px;
+                  font-size: 12px;
+                  font-weight: 700;
+                  justify-content: center;
+                  border-radius: 8px;
+                  margin: 0;
+                  display: flex;
+                  align-items: center;
+                  gap: 4px;
+                ">
+                  <span>📋</span> نسخ التفاصيل
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -2110,10 +2140,17 @@ window.cutAndSendToCaptions = async function(youtubeUrl, startTime, endTime, idx
 
     // Set cut video file as active in dropzone
     handleAudioSelect(clipFile);
+
+    // Switch upload tab if tab elements exist
     switchUploadTab('local');
 
-    // Switch main tab to Editor
+    // Switch main tab to Video Creator / Editor
     switchMainTab('editor');
+
+    // Make sure upload-state is visible
+    if (typeof showState === 'function' && uploadState) {
+      showState(uploadState);
+    }
 
     // Scroll to top of form
     const formElement = document.getElementById('form-controls');
@@ -2121,9 +2158,10 @@ window.cutAndSendToCaptions = async function(youtubeUrl, startTime, endTime, idx
       formElement.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Automatically trigger captioning & transcription process
+    // Enable submitBtn explicitly and trigger form submission
     const submitBtn = document.getElementById('submit-btn');
     if (submitBtn) {
+      submitBtn.disabled = false;
       submitBtn.click();
     }
 
