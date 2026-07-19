@@ -2164,6 +2164,8 @@ window.copyShortsText = function(text, index) {
 };
 
 async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgress) {
+  const convertVertical = document.getElementById('convert-vertical-checkbox') ? document.getElementById('convert-vertical-checkbox').checked : false;
+
   let response;
   try {
     response = await fetch(audioApiUrl + '/api/cut-async', {
@@ -2173,7 +2175,8 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
         url: youtubeUrl,
         start_time: startTime,
         end_time: endTime,
-        quality: quality || 720
+        quality: quality || 720,
+        convert_vertical: convertVertical
       })
     });
   } catch (netErr) {
@@ -2230,7 +2233,8 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
         url: youtubeUrl,
         start_time: startTime,
         end_time: endTime,
-        quality: quality || 720
+        quality: quality || 720,
+        convert_vertical: convertVertical
       })
     });
 

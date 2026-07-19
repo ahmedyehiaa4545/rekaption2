@@ -398,9 +398,16 @@
 
               <!-- Suggested Shorts Container -->
               <div id="suggested-shorts-container" style="display: none; width: 100%; flex-direction: column; gap: 20px; margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px; direction: rtl; text-align: right;">
-                <h3 style="font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; margin: 0 0 10px 0;">
-                  <span style="font-size: 20px;">💡</span> أفكار مقاطع Shorts المقترحة بالذكاء الاصطناعي:
-                </h3>
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                  <h3 style="font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; margin: 0;">
+                    <span style="font-size: 20px;">💡</span> أفكار مقاطع Shorts المقترحة بالذكاء الاصطناعي:
+                  </h3>
+                  <!-- 9:16 Vertical Crop Toggle -->
+                  <label for="convert-vertical-checkbox" style="font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 8px 14px; border-radius: 10px;">
+                    <input type="checkbox" id="convert-vertical-checkbox" checked style="width: 18px; height: 18px; accent-color: var(--purple-accent); cursor: pointer;" />
+                    📱 تحويل المقطع إلى طولي (9:16) بتتبع الوجوه
+                  </label>
+                </div>
                 <div id="shorts-cards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; width: 100%;">
                   <!-- Shorts cards will be injected here dynamically -->
                 </div>
