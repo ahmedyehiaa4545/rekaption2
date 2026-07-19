@@ -1291,7 +1291,10 @@ formControls.addEventListener('submit', async function(e) {
 });
 
 // ==================== Render final video from edits ====================
+let isRendering = false;
+
 window.renderVideo = async function() {
+  if (isRendering) return;
   if (!transcribeData) return;
 
   if (isSuspended) {
@@ -1305,12 +1308,15 @@ window.renderVideo = async function() {
     return;
   }
   
+  isRendering = true;
+
   const renderBtn = document.getElementById('render-btn');
-  const originalRenderText = renderBtn ? renderBtn.innerHTML : '';
+  const originalRenderText = renderBtn ? renderBtn.innerHTML : '<span>🚀</span> توليد الفيديو النهائي';
   if (renderBtn) {
     renderBtn.disabled = true;
     renderBtn.style.opacity = '0.5';
     renderBtn.style.pointerEvents = 'none';
+    renderBtn.style.cursor = 'not-allowed';
     renderBtn.innerHTML = '<span>⏳</span> جاري رندرة وتوليد الفيديو...';
   }
 
@@ -1417,22 +1423,17 @@ window.renderVideo = async function() {
       }
     } catch (_) {}
 
-    if (renderBtn) {
-      renderBtn.disabled = false;
-      renderBtn.style.opacity = '';
-      renderBtn.style.pointerEvents = '';
-      renderBtn.innerHTML = originalRenderText;
-    }
-    
   } catch (err) {
-    clearInterval(renderIntervalId);
+    if (typeof renderIntervalId !== 'undefined') clearInterval(renderIntervalId);
     showState(errorState);
     errorMsg.textContent = err.message || 'فشل رندرة الفيديو. يرجى المحاولة مرة أخرى.';
-
+  } finally {
+    isRendering = false;
     if (renderBtn) {
       renderBtn.disabled = false;
       renderBtn.style.opacity = '';
       renderBtn.style.pointerEvents = '';
+      renderBtn.style.cursor = '';
       renderBtn.innerHTML = originalRenderText;
     }
   }
