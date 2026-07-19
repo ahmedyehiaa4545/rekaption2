@@ -1996,22 +1996,30 @@ window.fetchShortsSuggestions = async function() {
               ">${short.script}</textarea>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-top: 5px;">
-              <!-- Copy Button for Script -->
-              <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
-                padding: 8px 12px;
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 5px;">
+              <!-- Send to Captions Phase Button -->
+              <button type="button" onclick="cutAndSendToCaptions('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
+                padding: 8px 10px;
                 font-size: 12px;
                 font-weight: 700;
                 justify-content: center;
                 border-radius: 8px;
+                background: linear-gradient(135deg, #8b5cf6, #ec4899);
+                border: none;
+                color: #fff;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 4px;
                 margin: 0;
+                box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
               ">
-                <span>📋</span> نسخ التفاصيل
+                <span>🎬</span> قص وتوليد الكابشن
               </button>
 
               <!-- Cut & Download Button -->
               <button type="button" onclick="cutVideoSegment('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
-                padding: 8px 12px;
+                padding: 8px 10px;
                 font-size: 12px;
                 font-weight: 700;
                 justify-content: center;
@@ -2026,6 +2034,18 @@ window.fetchShortsSuggestions = async function() {
                 margin: 0;
               ">
                 <span>✂️</span> قص وتحميل الفيديو
+              </button>
+
+              <!-- Copy Button for Script -->
+              <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
+                padding: 8px 10px;
+                font-size: 12px;
+                font-weight: 700;
+                justify-content: center;
+                border-radius: 8px;
+                margin: 0;
+              ">
+                <span>📋</span> نسخ التفاصيل
               </button>
             </div>
           </div>
@@ -2052,6 +2072,70 @@ window.copyShortsText = function(text, index) {
   }).catch(err => {
     console.error('Failed to copy: ', err);
   });
+};
+
+window.cutAndSendToCaptions = async function(youtubeUrl, startTime, endTime, idx, btn) {
+  if (!youtubeUrl) {
+    alert("رابط اليوتيوب غير متوفر لقص المقطع!");
+    return;
+  }
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.style.pointerEvents = 'none';
+  btn.innerHTML = '<span>⏳</span> جاري القص والنقل...';
+
+  try {
+    const response = await fetch(audioApiUrl + '/api/cut', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: youtubeUrl,
+        start_time: startTime,
+        end_time: endTime,
+        quality: 720
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ detail: 'فشل السيرفر في قص المقطع. قد يكون رابط اليوتيوب محمي أو التوقيتات خارج المدى.' }));
+      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
+    }
+
+    const blob = await response.blob();
+    const clipFile = new File([blob], `short_clip_${idx}.mp4`, { type: 'video/mp4' });
+
+    // Set cut video file as active in dropzone
+    handleAudioSelect(clipFile);
+    switchUploadTab('local');
+
+    // Switch main tab to Editor
+    switchMainTab('editor');
+
+    // Scroll to top of form
+    const formElement = document.getElementById('form-controls');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Automatically trigger captioning & transcription process
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+      submitBtn.click();
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert('حدث خطأ أثناء قص ونقل المقطع لمرحلة الكابشن: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+    btn.innerHTML = originalHtml;
+  }
 };
 
 window.cutVideoSegment = async function(youtubeUrl, startTime, endTime, idx, btn) {
