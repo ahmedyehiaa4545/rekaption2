@@ -2104,6 +2104,85 @@ window.copyShortsText = function(text, index) {
   });
 };
 
+async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgress) {
+  let response;
+  try {
+    response = await fetch(audioApiUrl + '/api/cut-async', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: youtubeUrl,
+        start_time: startTime,
+        end_time: endTime,
+        quality: quality || 720
+      })
+    });
+  } catch (netErr) {
+    console.warn('cut-async network error, fallback to sync cut:', netErr);
+  }
+
+  if (response && response.ok) {
+    const startData = await response.json();
+    const taskId = startData.taskId;
+
+    let pollInterval = null;
+    const pollPromise = new Promise((resolve, reject) => {
+      pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
+          if (!statusRes.ok) {
+            clearInterval(pollInterval);
+            reject(new Error('فشل جلب حالة القص من السيرفر.'));
+            return;
+          }
+          const task = await statusRes.json();
+          if (task.status === 'success') {
+            clearInterval(pollInterval);
+            resolve(task);
+          } else if (task.status === 'failed') {
+            clearInterval(pollInterval);
+            reject(new Error(task.error || 'فشلت عملية قص المقطع.'));
+          } else {
+            if (typeof onProgress === 'function' && task.progress) {
+              onProgress(task.progress);
+            }
+          }
+        } catch (e) {
+          clearInterval(pollInterval);
+          reject(e);
+        }
+      }, 2000);
+    });
+
+    const resData = await pollPromise;
+    const videoUrl = resData.videoUrl.startsWith('http') ? resData.videoUrl : (audioApiUrl + '/' + resData.videoUrl);
+    
+    const fileRes = await fetch(videoUrl);
+    if (!fileRes.ok) {
+      throw new Error('فشل تحميل ملف المقطع المقصوص من السيرفر.');
+    }
+    return await fileRes.blob();
+  } else {
+    // Fallback sync /api/cut
+    const syncRes = await fetch(audioApiUrl + '/api/cut', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: youtubeUrl,
+        start_time: startTime,
+        end_time: endTime,
+        quality: quality || 720
+      })
+    });
+
+    if (!syncRes.ok) {
+      const errData = await syncRes.json().catch(() => ({ detail: 'فشل السيرفر في قص المقطع. قد يكون رابط اليوتيوب محمي أو التوقيتات خارج المدى.' }));
+      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
+    }
+    return await syncRes.blob();
+  }
+}
+
 window.cutAndSendToCaptions = async function(youtubeUrl, startTime, endTime, idx, btn) {
   if (!youtubeUrl) {
     alert("رابط اليوتيوب غير متوفر لقص المقطع!");
@@ -2114,28 +2193,14 @@ window.cutAndSendToCaptions = async function(youtubeUrl, startTime, endTime, idx
   btn.disabled = true;
   btn.style.opacity = '0.6';
   btn.style.pointerEvents = 'none';
-  btn.innerHTML = '<span>⏳</span> جاري القص والنقل...';
+  btn.innerHTML = '<span>⏳</span> جاري القص والتحضير...';
 
   try {
-    const response = await fetch(audioApiUrl + '/api/cut', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: youtubeUrl,
-        start_time: startTime,
-        end_time: endTime,
-        quality: 720
-      })
+    const blob = await performAsyncCut(youtubeUrl, startTime, endTime, 720, (progText) => {
+      btn.innerHTML = `<span>⏳</span> ${progText}`;
     });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({ detail: 'فشل السيرفر في قص المقطع. قد يكون رابط اليوتيوب محمي أو التوقيتات خارج المدى.' }));
-      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
-    }
-
-    const blob = await response.blob();
+    btn.innerHTML = '<span>🚀</span> جاري فتح المحرر...';
     const clipFile = new File([blob], `short_clip_${idx}.mp4`, { type: 'video/mp4' });
 
     // Set cut video file as active in dropzone
@@ -2189,25 +2254,10 @@ window.cutVideoSegment = async function(youtubeUrl, startTime, endTime, idx, btn
   btn.innerHTML = '<span>⏳</span> جاري القص...';
 
   try {
-    const response = await fetch(audioApiUrl + '/api/cut', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: youtubeUrl,
-        start_time: startTime,
-        end_time: endTime,
-        quality: 720
-      })
+    const blob = await performAsyncCut(youtubeUrl, startTime, endTime, 720, (progText) => {
+      btn.innerHTML = `<span>⏳</span> ${progText}`;
     });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({ detail: 'فشل السيرفر في قص المقطع. قد يكون رابط اليوتيوب محمي أو التوقيتات خارج المدى.' }));
-      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
-    }
-
-    const blob = await response.blob();
     const downloadUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = downloadUrl;
