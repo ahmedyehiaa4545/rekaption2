@@ -1876,6 +1876,7 @@ window.fetchShortsSuggestions = async function() {
   const geminiApiKey = document.getElementById('gemini-key-input').value.trim();
   const shortsBtn = document.getElementById('gemini-shorts-btn');
   const loadingDiv = document.getElementById('shorts-loading');
+  const statusSpan = loadingDiv ? loadingDiv.querySelector('span') : null;
   const container = document.getElementById('suggested-shorts-container');
   const listContainer = document.getElementById('shorts-cards-list');
   
@@ -1896,33 +1897,90 @@ window.fetchShortsSuggestions = async function() {
   shortsBtn.disabled = true;
   shortsBtn.style.opacity = '0.5';
   loadingDiv.classList.remove('hidden');
+  if (statusSpan) statusSpan.textContent = `جاري تحليل النص واستخراج ${numShorts} مقاطع Shorts بالذكاء الاصطناعي...`;
   container.style.display = 'none';
   listContainer.innerHTML = '';
 
   try {
-    const response = await fetch(audioApiUrl + '/api/suggest-shorts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        transcription: transcriptionText,
-        geminiApiKey: geminiApiKey,
-        numShorts: numShorts
-      })
-    });
+    let shortsList = [];
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({ detail: 'حدث خطأ في السيرفر أثناء تحليل الـ Shorts' }));
-      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
+    // Try async endpoint first to bypass 30s HTTP timeouts
+    let asyncResponse;
+    try {
+      asyncResponse = await fetch(audioApiUrl + '/api/suggest-shorts-async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcription: transcriptionText,
+          geminiApiKey: geminiApiKey,
+          numShorts: numShorts
+        })
+      });
+    } catch (e) {
+      console.warn('Async suggest-shorts failed, falling back to sync:', e);
     }
 
-    const resData = await response.json();
-    if (resData.shorts && resData.shorts.length > 0) {
+    if (asyncResponse && asyncResponse.ok) {
+      const startData = await asyncResponse.json();
+      const taskId = startData.taskId;
+
+      let pollInterval = null;
+      const pollPromise = new Promise((resolve, reject) => {
+        pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
+            if (!statusRes.ok) {
+              clearInterval(pollInterval);
+              reject(new Error('فشل جلب حالة اقتراح المقاطع من السيرفر.'));
+              return;
+            }
+            const task = await statusRes.json();
+            if (task.status === 'success') {
+              clearInterval(pollInterval);
+              resolve(task);
+            } else if (task.status === 'failed') {
+              clearInterval(pollInterval);
+              reject(new Error(task.error || 'فشلت عملية اقتراح المقاطع.'));
+            } else {
+              if (statusSpan && task.progress) {
+                statusSpan.textContent = task.progress;
+              }
+            }
+          } catch (e) {
+            clearInterval(pollInterval);
+            reject(e);
+          }
+        }, 2000);
+      });
+
+      const resData = await pollPromise;
+      shortsList = resData.shorts || [];
+    } else {
+      // Fallback to sync endpoint
+      const response = await fetch(audioApiUrl + '/api/suggest-shorts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcription: transcriptionText,
+          geminiApiKey: geminiApiKey,
+          numShorts: numShorts
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ detail: 'حدث خطأ في السيرفر أثناء تحليل الـ Shorts' }));
+        throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
+      }
+
+      const resData = await response.json();
+      shortsList = resData.shorts || [];
+    }
+
+    if (shortsList && shortsList.length > 0) {
       let cardsHtml = '';
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
-      resData.shorts.forEach((short, idx) => {
+      shortsList.forEach((short, idx) => {
         // Safe string escaping for click handler
         const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
