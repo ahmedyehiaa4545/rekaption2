@@ -1778,19 +1778,14 @@ window.startAudioDownloadOnly = async function() {
     // Start polling the backend status every 3 seconds
     let pollInterval = null;
     const pollPromise = new Promise((resolve, reject) => {
-      let pollErrors = 0;
       pollInterval = setInterval(async () => {
         try {
           const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
           if (!statusRes.ok) {
-            pollErrors++;
-            if (pollErrors >= 5) {
-              clearInterval(pollInterval);
-              reject(new Error('فشل جلب حالة المهمة من السيرفر.'));
-            }
+            clearInterval(pollInterval);
+            reject(new Error('فشل جلب حالة المهمة من السيرفر.'));
             return;
           }
-          pollErrors = 0;
           const task = await statusRes.json();
           if (task.status === 'success') {
             clearInterval(pollInterval);
@@ -1821,12 +1816,8 @@ window.startAudioDownloadOnly = async function() {
             }
           }
         } catch (e) {
-          pollErrors++;
-          console.warn(`Task polling network hiccup (attempt ${pollErrors}/5):`, e);
-          if (pollErrors >= 5) {
-            clearInterval(pollInterval);
-            reject(e);
-          }
+          clearInterval(pollInterval);
+          reject(e);
         }
       }, 3000);
     });
@@ -1935,20 +1926,15 @@ window.fetchShortsSuggestions = async function() {
       const taskId = startData.taskId;
 
       let pollInterval = null;
-      let pollErrors = 0;
       const pollPromise = new Promise((resolve, reject) => {
         pollInterval = setInterval(async () => {
           try {
             const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
             if (!statusRes.ok) {
-              pollErrors++;
-              if (pollErrors >= 5) {
-                clearInterval(pollInterval);
-                reject(new Error('فشل جلب حالة اقتراح المقاطع من السيرفر.'));
-              }
+              clearInterval(pollInterval);
+              reject(new Error('فشل جلب حالة اقتراح المقاطع من السيرفر.'));
               return;
             }
-            pollErrors = 0;
             const task = await statusRes.json();
             if (task.status === 'success') {
               clearInterval(pollInterval);
@@ -1962,12 +1948,8 @@ window.fetchShortsSuggestions = async function() {
               }
             }
           } catch (e) {
-            pollErrors++;
-            console.warn(`Task polling network hiccup (attempt ${pollErrors}/5):`, e);
-            if (pollErrors >= 5) {
-              clearInterval(pollInterval);
-              reject(e);
-            }
+            clearInterval(pollInterval);
+            reject(e);
           }
         }, 2000);
       });
@@ -1996,15 +1978,14 @@ window.fetchShortsSuggestions = async function() {
     }
 
     if (shortsList && shortsList.length > 0) {
-      window.lastSuggestedShorts = shortsList;
-      window.lastYtUrl = ytUrl;
       let cardsHtml = '';
+      const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
       shortsList.forEach((short, idx) => {
-        const safeScript = (short.script || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const safeTitle = (short.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const safeHook = (short.hook || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
+        // Safe string escaping for click handler
+        const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
+        const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        
         cardsHtml += `
           <div class="short-card" style="
             background: rgba(255, 255, 255, 0.02);
@@ -2064,7 +2045,7 @@ window.fetchShortsSuggestions = async function() {
               font-weight: 800;
               color: #fff;
             ">
-              🎥 العنوان المقترح: ${safeTitle}
+              🎥 العنوان المقترح: ${short.title}
             </h4>
 
             <!-- Hook -->
@@ -2077,7 +2058,7 @@ window.fetchShortsSuggestions = async function() {
               color: #f472b6;
               line-height: 1.5;
             ">
-              <span style="font-weight: 800;">⚡ الخطاف (أول 3 ثوانٍ):</span> ${safeHook}
+              <span style="font-weight: 800;">⚡ الخطاف (أول 3 ثوانٍ):</span> ${short.hook}
             </div>
 
             <!-- Script Text -->
@@ -2095,12 +2076,12 @@ window.fetchShortsSuggestions = async function() {
                 line-height: 1.6;
                 resize: none;
                 font-family: inherit;
-              ">${safeScript}</textarea>
+              ">${short.script}</textarea>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
               <!-- Send to Captions Phase Button (Full Width Primary) -->
-              <button type="button" onclick="cutAndSendToCaptionsByIndex(${idx + 1}, this)" class="btn-primary" style="
+              <button type="button" onclick="cutAndSendToCaptions('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
                 width: 100%;
                 padding: 10px 14px;
                 font-size: 13px;
@@ -2122,7 +2103,7 @@ window.fetchShortsSuggestions = async function() {
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <!-- Cut & Download Button -->
-                <button type="button" onclick="cutVideoSegmentByIndex(${idx + 1}, this)" class="btn-primary" style="
+                <button type="button" onclick="cutVideoSegment('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
                   padding: 8px 10px;
                   font-size: 12px;
                   font-weight: 700;
@@ -2141,7 +2122,7 @@ window.fetchShortsSuggestions = async function() {
                 </button>
 
                 <!-- Copy Button for Script -->
-                <button type="button" onclick="copyShortsTextByIndex(${idx + 1})" class="btn-secondary" style="
+                <button type="button" onclick="copyShortsText('${escapedCopyText}', ${idx + 1})" class="btn-secondary" style="
                   padding: 8px 10px;
                   font-size: 12px;
                   font-weight: 700;
@@ -2174,34 +2155,15 @@ window.fetchShortsSuggestions = async function() {
   }
 };
 
-window.copyShortsTextByIndex = function(index) {
-  const short = window.lastSuggestedShorts ? window.lastSuggestedShorts[index - 1] : null;
-  if (!short) return;
-  const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
-  navigator.clipboard.writeText(copyText).then(() => {
+window.copyShortsText = function(text, index) {
+  navigator.clipboard.writeText(text).then(() => {
     alert('تم نسخ تفاصيل المقطع المقترح #' + index + ' بنجاح! 📋');
   }).catch(err => {
-    console.error('Failed to copy text: ', err);
+    console.error('Failed to copy: ', err);
   });
 };
 
-window.cutAndSendToCaptionsByIndex = function(index, btn) {
-  const short = window.lastSuggestedShorts ? window.lastSuggestedShorts[index - 1] : null;
-  const ytUrl = window.lastYtUrl || '';
-  if (!short) return;
-  window.cutAndSendToCaptions(ytUrl, short.start_time, short.end_time, index, btn);
-};
-
-window.cutVideoSegmentByIndex = function(index, btn) {
-  const short = window.lastSuggestedShorts ? window.lastSuggestedShorts[index - 1] : null;
-  const ytUrl = window.lastYtUrl || '';
-  if (!short) return;
-  window.cutVideoSegment(ytUrl, short.start_time, short.end_time, index, btn);
-};
-
 async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgress) {
-  const convertVertical = document.getElementById('convert-vertical-checkbox') ? document.getElementById('convert-vertical-checkbox').checked : false;
-
   let response;
   try {
     response = await fetch(audioApiUrl + '/api/cut-async', {
@@ -2211,8 +2173,7 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
         url: youtubeUrl,
         start_time: startTime,
         end_time: endTime,
-        quality: quality || 720,
-        convert_vertical: convertVertical
+        quality: quality || 720
       })
     });
   } catch (netErr) {
@@ -2224,20 +2185,15 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
     const taskId = startData.taskId;
 
     let pollInterval = null;
-    let pollErrors = 0;
     const pollPromise = new Promise((resolve, reject) => {
       pollInterval = setInterval(async () => {
         try {
           const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
           if (!statusRes.ok) {
-            pollErrors++;
-            if (pollErrors >= 5) {
-              clearInterval(pollInterval);
-              reject(new Error('فشل جلب حالة القص من السيرفر.'));
-            }
+            clearInterval(pollInterval);
+            reject(new Error('فشل جلب حالة القص من السيرفر.'));
             return;
           }
-          pollErrors = 0;
           const task = await statusRes.json();
           if (task.status === 'success') {
             clearInterval(pollInterval);
@@ -2251,12 +2207,8 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
             }
           }
         } catch (e) {
-          pollErrors++;
-          console.warn(`Task polling network hiccup (attempt ${pollErrors}/5):`, e);
-          if (pollErrors >= 5) {
-            clearInterval(pollInterval);
-            reject(e);
-          }
+          clearInterval(pollInterval);
+          reject(e);
         }
       }, 2000);
     });
@@ -2278,8 +2230,7 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
         url: youtubeUrl,
         start_time: startTime,
         end_time: endTime,
-        quality: quality || 720,
-        convert_vertical: convertVertical
+        quality: quality || 720
       })
     });
 
