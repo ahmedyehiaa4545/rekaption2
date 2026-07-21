@@ -106,6 +106,9 @@
       <button type="button" id="main-nav-gemini" class="nav-tab" onclick="switchMainTab('gemini')" style="padding: 10px 20px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; transition: all 0.3s;">
         ✨ تحميل صوت يوتيوب
       </button>
+      <button type="button" id="main-nav-convert" class="nav-tab" onclick="switchMainTab('convert')" style="padding: 10px 20px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; transition: all 0.3s;">
+        📱 تحويل إلى طولي (9:16)
+      </button>
     </div>
 
     <!-- Main Dashboard Grid -->
@@ -407,6 +410,74 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Horizontal to Vertical Conversion Panel -->
+    <div id="convert-video-panel" class="panel hidden" style="margin-top: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px;">
+        <h2 class="panel-title" style="margin-bottom: 0;">تحويل الفيديو من عرضي لطولي (16:9 ➔ 9:16) 📱</h2>
+        <span style="font-size: 12px; color: var(--text-muted);">تحويل ذكي للـ Shorts و TikTok بتقنيات كشف الوجوه والمشاهد (KIM Algorithm)</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+        <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--border-subtle);">
+          
+          <!-- Source Selection Tabs -->
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button type="button" id="convert-tab-local" class="btn-secondary active" onclick="switchConvertSource('local')" style="padding: 8px 16px; font-size: 13px;">
+              📁 رفع فيديو محلي
+            </button>
+            <button type="button" id="convert-tab-yt" class="btn-secondary" onclick="switchConvertSource('youtube')" style="padding: 8px 16px; font-size: 13px;">
+              🔗 رابط يوتيوب
+            </button>
+          </div>
+
+          <!-- Local File Input Box -->
+          <div id="convert-local-box" class="file-upload-box" onclick="document.getElementById('convert-file-input').click()" style="margin-bottom: 20px; padding: 30px; border: 2px dashed var(--border-subtle); text-align: center; border-radius: 12px; cursor: pointer;">
+            <input type="file" id="convert-file-input" accept="video/*" style="display:none" onchange="handleConvertFileSelect(this.files[0])" />
+            <div id="convert-file-label" class="file-box-content">
+              <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎥</span>
+              <span style="font-size: 14px; color: #fff; font-weight: 600;">قم بسحب فيديو محلي هنا أو انقر للاختيار</span>
+            </div>
+          </div>
+
+          <!-- YouTube Input Box -->
+          <div id="convert-yt-box" class="hidden" style="margin-bottom: 20px;">
+            <label class="control-label" style="font-size: 13px; color: var(--text-main); font-weight: bold; margin-bottom: 8px; display: block;">رابط فيديو يوتيوب الأصلي (16:9):</label>
+            <input type="text" id="convert-yt-url" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; font-size: 14px;" />
+          </div>
+
+          <!-- Start Convert Button -->
+          <button id="convert-start-btn" onclick="startVerticalConversion()" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px; font-size: 15px; font-weight: bold;">
+            <span>📱</span> بدء تحويل الفيديو إلى طولي (9:16)
+          </button>
+
+          <!-- Loading & Progress Indicator -->
+          <div id="convert-loading" class="hidden" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--border-subtle); text-align: center;">
+            <div class="progress-bar-container" style="height: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; overflow: hidden; margin-bottom: 12px;">
+              <div id="convert-progress-bar" style="width: 10%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #ec4899); transition: width 0.3s ease;"></div>
+            </div>
+            <span id="convert-status-text" style="font-size: 14px; font-weight: bold; color: #fff;">جاري تحضير معالجة الفيديو...</span>
+          </div>
+
+          <!-- Conversion Result Section -->
+          <div id="convert-result-container" class="hidden" style="margin-top: 25px; border-top: 1px solid var(--border-subtle); padding-top: 20px; text-align: center;">
+            <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 15px;">🎉 تم تحويل الفيديو إلى طولي بنجاح!</h3>
+            <div style="max-width: 320px; margin: 0 auto 20px auto; border-radius: 16px; overflow: hidden; border: 2px solid var(--purple-accent); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+              <video id="convert-video-player" controls style="width: 100%; height: auto; display: block; background: #000;"></video>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+              <a id="convert-download-btn" download="vertical_tiktok.mp4" class="btn-primary" style="padding: 12px 20px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                <span>📥</span> تحميل الفيديو الطولي (MP4)
+              </a>
+              <button type="button" onclick="transferConvertedToEditor()" class="btn-secondary" style="padding: 12px 20px; font-weight: bold; background: linear-gradient(135deg, #10b981, #059669); color: #fff; border: none; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                <span>🎬</span> نقل لصانع الفيديو لإضافة كابشن
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

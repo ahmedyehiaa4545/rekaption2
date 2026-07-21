@@ -1619,51 +1619,47 @@ setTimeout(() => {
   }
 }, 500);
 
-// ==================== Gemini Transcribe Logic ====================
+// ==================== Gemini Transcribe & Tab Logic ====================
 window.switchMainTab = function(tab) {
   const editorBtn = document.getElementById('main-nav-editor');
   const geminiBtn = document.getElementById('main-nav-gemini');
+  const convertBtn = document.getElementById('main-nav-convert');
   const dashboard = document.getElementById('main-dashboard');
   const geminiPanel = document.getElementById('gemini-transcribe-panel');
+  const convertPanel = document.getElementById('convert-video-panel');
   const editorState = document.getElementById('editor-state');
 
-  if (tab === 'editor') {
-    if (editorBtn) {
-      editorBtn.classList.add('active');
-      editorBtn.style.background = 'rgba(139, 92, 246, 0.15)';
-      editorBtn.style.borderColor = 'var(--purple-accent)';
-      editorBtn.style.color = '#fff';
+  const tabs = [
+    { name: 'editor', btn: editorBtn, el: dashboard },
+    { name: 'gemini', btn: geminiBtn, el: geminiPanel },
+    { name: 'convert', btn: convertBtn, el: convertPanel }
+  ];
+
+  tabs.forEach(t => {
+    if (t.name === tab) {
+      if (t.btn) {
+        t.btn.classList.add('active');
+        t.btn.style.background = 'rgba(139, 92, 246, 0.15)';
+        t.btn.style.borderColor = 'var(--purple-accent)';
+        t.btn.style.color = '#fff';
+      }
+      if (t.el) t.el.classList.remove('hidden');
+    } else {
+      if (t.btn) {
+        t.btn.classList.remove('active');
+        t.btn.style.background = 'transparent';
+        t.btn.style.borderColor = 'transparent';
+        t.btn.style.color = 'rgba(255,255,255,0.6)';
+      }
+      if (t.el) t.el.classList.add('hidden');
     }
+  });
 
-    if (geminiBtn) {
-      geminiBtn.classList.remove('active');
-      geminiBtn.style.background = 'transparent';
-      geminiBtn.style.borderColor = 'transparent';
-      geminiBtn.style.color = 'rgba(255,255,255,0.6)';
-    }
+  if (tab !== 'editor' && editorState) {
+    editorState.classList.add('hidden');
+  }
 
-    if (dashboard) dashboard.classList.remove('hidden');
-    if (geminiPanel) geminiPanel.classList.add('hidden');
-  } else {
-    if (geminiBtn) {
-      geminiBtn.classList.add('active');
-      geminiBtn.style.background = 'rgba(139, 92, 246, 0.15)';
-      geminiBtn.style.borderColor = 'var(--purple-accent)';
-      geminiBtn.style.color = '#fff';
-    }
-
-    if (editorBtn) {
-      editorBtn.classList.remove('active');
-      editorBtn.style.background = 'transparent';
-      editorBtn.style.borderColor = 'transparent';
-      editorBtn.style.color = 'rgba(255,255,255,0.6)';
-    }
-
-    if (dashboard) dashboard.classList.add('hidden');
-    if (editorState) editorState.classList.add('hidden'); // hide editor if open
-    if (geminiPanel) geminiPanel.classList.remove('hidden');
-
-    // Load Gemini API Key from localStorage
+  if (tab === 'gemini') {
     const savedKey = localStorage.getItem('gemini_api_key');
     const keyInput = document.getElementById('gemini-key-input');
     if (savedKey && keyInput) {
@@ -1671,6 +1667,182 @@ window.switchMainTab = function(tab) {
     }
   }
 };
+
+// ==================== Vertical Video Conversion (KIM Algorithm) ====================
+let currentConvertSource = 'local';
+let convertFile = null;
+let lastConvertedBlob = null;
+
+window.switchConvertSource = function(source) {
+  currentConvertSource = source;
+  const localBtn = document.getElementById('convert-tab-local');
+  const ytBtn = document.getElementById('convert-tab-yt');
+  const localBox = document.getElementById('convert-local-box');
+  const ytBox = document.getElementById('convert-yt-box');
+
+  if (source === 'local') {
+    if (localBtn) localBtn.classList.add('active');
+    if (ytBtn) ytBtn.classList.remove('active');
+    if (localBox) localBox.classList.remove('hidden');
+    if (ytBox) ytBox.classList.add('hidden');
+  } else {
+    if (ytBtn) ytBtn.classList.add('active');
+    if (localBtn) localBtn.classList.remove('active');
+    if (ytBox) ytBox.classList.remove('hidden');
+    if (localBox) localBox.classList.add('hidden');
+  }
+};
+
+window.handleConvertFileSelect = function(file) {
+  if (!file) return;
+  convertFile = file;
+  const label = document.getElementById('convert-file-label');
+  if (label) {
+    label.innerHTML = `
+      <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎬</span>
+      <span style="font-size: 14px; color: #fff; font-weight: 600;">${file.name}</span>
+    `;
+  }
+};
+
+window.startVerticalConversion = async function() {
+  const startBtn = document.getElementById('convert-start-btn');
+  const loadingDiv = document.getElementById('convert-loading');
+  const statusText = document.getElementById('convert-status-text');
+  const progressBar = document.getElementById('convert-progress-bar');
+  const resultContainer = document.getElementById('convert-result-container');
+  const videoPlayer = document.getElementById('convert-video-player');
+  const downloadBtn = document.getElementById('convert-download-btn');
+  const ytUrlInput = document.getElementById('convert-yt-url');
+
+  if (currentConvertSource === 'local' && !convertFile) {
+    alert('يرجى اختيار ملف فيديو أولاً للتحويل إلى طولي!');
+    return;
+  }
+  if (currentConvertSource === 'youtube' && (!ytUrlInput || !ytUrlInput.value.trim())) {
+    alert('يرجى إدخال رابط فيديو يوتيوب أصلي (16:9)!');
+    return;
+  }
+
+  startBtn.disabled = true;
+  startBtn.style.opacity = '0.5';
+  startBtn.style.pointerEvents = 'none';
+  loadingDiv.classList.remove('hidden');
+  resultContainer.classList.add('hidden');
+  progressBar.style.width = '10%';
+  statusText.textContent = 'جاري رفع الملف وتهيئة المعالجة...';
+
+  try {
+    const fd = new FormData();
+    if (currentConvertSource === 'local') {
+      fd.append('file', convertFile);
+    } else {
+      fd.append('youtubeUrl', ytUrlInput.value.trim());
+    }
+
+    const res = await fetch(audioApiUrl + '/api/convert-vertical-async', {
+      method: 'POST',
+      body: fd
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ detail: 'فشل بدء معالجة تحويل الفيديو.' }));
+      throw new Error(errData.detail || 'فشلت معالجة الطلب على السيرفر.');
+    }
+
+    const startData = await res.json();
+    const taskId = startData.taskId;
+
+    let pollInterval = null;
+    const task = await new Promise((resolve, reject) => {
+      pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
+          if (!statusRes.ok) {
+            clearInterval(pollInterval);
+            reject(new Error('فشل متابعة حالة التحويل من السيرفر.'));
+            return;
+          }
+          const t = await statusRes.json();
+          if (t.status === 'success') {
+            clearInterval(pollInterval);
+            resolve(t);
+          } else if (t.status === 'failed') {
+            clearInterval(pollInterval);
+            reject(new Error(t.error || 'فشلت عملية تحويل الفيديو إلى طولي.'));
+          } else {
+            if (t.progress) {
+              statusText.textContent = t.progress;
+              if (t.progress.includes('100%')) {
+                progressBar.style.width = '95%';
+              } else if (t.progress.includes('المشاهد')) {
+                progressBar.style.width = '30%';
+              } else if (t.progress.includes('الوجوه')) {
+                progressBar.style.width = '55%';
+              } else if (t.progress.includes('الإطارات')) {
+                progressBar.style.width = '80%';
+              }
+            }
+          }
+        } catch (e) {
+          clearInterval(pollInterval);
+          reject(e);
+        }
+      }, 2000);
+    });
+
+    progressBar.style.width = '100%';
+    statusText.textContent = '✅ اكتمل التحويل بنجاح!';
+
+    const videoUrl = task.videoUrl.startsWith('http') ? task.videoUrl : (audioApiUrl + '/' + task.videoUrl);
+    const videoBlobRes = await fetch(videoUrl);
+    if (!videoBlobRes.ok) {
+      throw new Error('فشل جلب ملف الفيديو الطولي الناتج من السيرفر.');
+    }
+
+    lastConvertedBlob = await videoBlobRes.blob();
+    const localVideoUrl = URL.createObjectURL(lastConvertedBlob);
+
+    videoPlayer.src = localVideoUrl;
+    downloadBtn.href = localVideoUrl;
+    resultContainer.classList.remove('hidden');
+
+  } catch (err) {
+    console.error(err);
+    alert('حدث خطأ أثناء تحويل الفيديو إلى طولي: ' + err.message);
+  } finally {
+    startBtn.disabled = false;
+    startBtn.style.opacity = '1';
+    startBtn.style.pointerEvents = 'auto';
+  }
+};
+
+window.transferConvertedToEditor = function() {
+  if (!lastConvertedBlob) {
+    alert('لا يوجد فيديو طولي جاهز للنقل!');
+    return;
+  }
+
+  const verticalFile = new File([lastConvertedBlob], 'vertical_tiktok.mp4', { type: 'video/mp4' });
+
+  if (typeof handleAudioSelect === 'function') {
+    handleAudioSelect(verticalFile);
+  }
+
+  if (typeof switchUploadTab === 'function') {
+    switchUploadTab('local');
+  }
+
+  switchMainTab('editor');
+
+  const formElement = document.getElementById('form-controls');
+  if (formElement) {
+    formElement.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  alert('تم نقل الفيديو الطولي بنجاح إلى صانع الكابشن! اضغط الآن على "توليد الفيديو النهائي" لتفريغ المقطع وإضافة كابشن عليه 🚀');
+};
+
 
 window.startAudioDownloadOnly = async function() {
   const urlInput = document.getElementById('gemini-yt-url');
