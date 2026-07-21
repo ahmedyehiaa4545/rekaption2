@@ -394,9 +394,10 @@
               </button>
 
               <!-- Loading spinner for shorts -->
-              <div id="shorts-loading" class="hidden" style="text-align: center; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.1); margin-top: 10px; direction: rtl;">
-                <div class="spinner" style="margin: 0 auto 10px auto; width: 20px; height: 20px; border-left-color: #fff; border-top-color: transparent; border-right-color: transparent; border-bottom-color: transparent; border-style: solid; border-width: 2px; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <span style="color: var(--text-main); font-size: 13px; font-weight: bold;">جاري تحليل النص بالذكاء الاصطناعي...</span>
+              <div id="shorts-loading" class="hidden" style="text-align: center; padding: 14px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15); margin-top: 10px; direction: rtl;">
+                <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px; border-left-color: #8b5cf6; border-top-color: transparent; border-right-color: transparent; border-bottom-color: transparent; border-style: solid; border-width: 3px; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <span id="shorts-status-text" style="color: var(--text-main); font-size: 13px; font-weight: bold; display: block;">جاري تحليل النص بالذكاء الاصطناعي...</span>
+                <span id="shorts-timer" style="display: block; font-size: 11px; color: var(--purple-accent); margin-top: 6px; font-weight: 600;">⏱️ جارٍ التحليل والمعالجة (0 ثانية)...</span>
               </div>
 
               <!-- Suggested Shorts Container -->

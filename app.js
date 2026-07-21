@@ -2071,7 +2071,8 @@ window.fetchShortsSuggestions = async function() {
   const geminiApiKey = document.getElementById('gemini-key-input').value.trim();
   const shortsBtn = document.getElementById('gemini-shorts-btn');
   const loadingDiv = document.getElementById('shorts-loading');
-  const statusSpan = loadingDiv ? loadingDiv.querySelector('span') : null;
+  const statusSpan = document.getElementById('shorts-status-text') || (loadingDiv ? loadingDiv.querySelector('span') : null);
+  const timerSpan = document.getElementById('shorts-timer');
   const container = document.getElementById('suggested-shorts-container');
   const listContainer = document.getElementById('shorts-cards-list');
   
@@ -2095,6 +2096,21 @@ window.fetchShortsSuggestions = async function() {
   if (statusSpan) statusSpan.textContent = `جاري تحليل النص واستخراج ${numShorts} مقاطع Shorts بالذكاء الاصطناعي...`;
   container.style.display = 'none';
   listContainer.innerHTML = '';
+
+  let secondsElapsed = 0;
+  if (timerSpan) timerSpan.textContent = `⏱️ جارٍ التحليل والمعالجة (0 ثانية)...`;
+  const timerInterval = setInterval(() => {
+    secondsElapsed++;
+    if (timerSpan) {
+      if (secondsElapsed < 12) {
+        timerSpan.textContent = `⏱️ جارٍ التحليل واستخراج الأفكار (${secondsElapsed} ثانية)...`;
+      } else if (secondsElapsed < 25) {
+        timerSpan.textContent = `⏱️ جارٍ صياغة السكريبت والخطافات (${secondsElapsed} ثانية)...`;
+      } else {
+        timerSpan.textContent = `⏱️ جارٍ المزامنة وتنسيق التوقيتات (${secondsElapsed} ثانية)...`;
+      }
+    }
+  }, 1000);
 
   try {
     let shortsList = [];
@@ -2170,6 +2186,8 @@ window.fetchShortsSuggestions = async function() {
       const resData = await response.json();
       shortsList = resData.shorts || [];
     }
+
+    clearInterval(timerInterval);
 
     if (shortsList && shortsList.length > 0) {
       let cardsHtml = '';
