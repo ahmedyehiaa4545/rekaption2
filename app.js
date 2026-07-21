@@ -1844,6 +1844,10 @@ window.transferConvertedToEditor = function() {
 };
 
 
+let lastGeminiYtUrl = null;
+let lastGeminiTranscription = null;
+let lastGeminiAudioUrl = null;
+
 window.startAudioDownloadOnly = async function() {
   const urlInput = document.getElementById('gemini-yt-url');
   const startBtn = document.getElementById('gemini-start-btn');
@@ -1855,11 +1859,26 @@ window.startAudioDownloadOnly = async function() {
   const placeholderText = document.getElementById('audio-placeholder-text');
   const audioPlayer = document.getElementById('downloaded-audio-player');
   const audioLink = document.getElementById('downloaded-audio-link');
+  const transcriptionContainer = document.getElementById('transcription-container');
+  const transcriptionText = document.getElementById('transcription-text');
 
   const youtubeUrl = urlInput.value.trim();
 
   if (!youtubeUrl) {
     alert('الرجاء إدخال رابط فيديو يوتيوب صالح!');
+    return;
+  }
+
+  // Check client-side cache first!
+  if (lastGeminiYtUrl === youtubeUrl && lastGeminiTranscription && lastGeminiAudioUrl) {
+    audioPlayer.src = lastGeminiAudioUrl;
+    audioPlayer.style.display = 'block';
+    audioLink.href = lastGeminiAudioUrl;
+    audioLink.style.display = 'flex';
+    placeholderText.style.display = 'none';
+    transcriptionContainer.style.display = 'flex';
+    transcriptionText.value = lastGeminiTranscription;
+    statusText.textContent = '✅ تم تحميل وتفريغ الصوت مسبقاً (من التخزين المؤقت)!';
     return;
   }
 
@@ -1970,14 +1989,14 @@ window.startAudioDownloadOnly = async function() {
             statusText.textContent = task.progress || 'جاري المعالجة...';
             
             // Extract parts progress e.g. "معالجة الجزء 3/13"
-            if (task.progress.includes('معالجة الجزء')) {
+            if (task.progress.includes('معالجة') || task.progress.includes('الجزء')) {
               const match = task.progress.match(/(\d+)\/(\d+)/);
               if (match) {
                 const current = parseInt(match[1]);
                 const total = parseInt(match[2]);
                 const pct = 15 + Math.round((current / total) * 80);
                 progressBarFill.style.width = `${pct}%`;
-                progressText.textContent = `جاري التفريغ بالذكاء الاصطناعي (${current}/${total})`;
+                progressText.textContent = `جاري التفريغ بالتوازي (${current}/${total})`;
               }
             } else if (task.progress.includes('تقسيم') || task.progress.includes('أجزاء')) {
               progressBarFill.style.width = '12%';
@@ -1991,7 +2010,7 @@ window.startAudioDownloadOnly = async function() {
           clearInterval(pollInterval);
           reject(e);
         }
-      }, 3000);
+      }, 2000);
     });
 
     const resData = await pollPromise;
@@ -2012,11 +2031,14 @@ window.startAudioDownloadOnly = async function() {
     placeholderText.style.display = 'none';
 
     // Display transcription
-    const transcriptionContainer = document.getElementById('transcription-container');
-    const transcriptionText = document.getElementById('transcription-text');
     if (resData.transcription) {
       transcriptionContainer.style.display = 'flex';
       transcriptionText.value = resData.transcription;
+
+      // Update Client Cache
+      lastGeminiYtUrl = youtubeUrl;
+      lastGeminiTranscription = resData.transcription;
+      lastGeminiAudioUrl = fullAudioUrl;
     } else {
       transcriptionContainer.style.display = 'none';
     }
