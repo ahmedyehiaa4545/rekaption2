@@ -2454,28 +2454,148 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
   }
 }
 
-window.cutAndSendToCaptions = async function(youtubeUrl, startTime, endTime, idx, btn) {
+let selectedShortChoice = 'vertical';
+let rememberedShortChoice = null;
+let pendingShortArgs = null;
+
+window.selectShortOption = function(choice) {
+  selectedShortChoice = choice;
+  const vertCard = document.getElementById('option-card-vertical');
+  const origCard = document.getElementById('option-card-original');
+
+  if (choice === 'vertical') {
+    if (vertCard) {
+      vertCard.style.background = 'rgba(139, 92, 246, 0.12)';
+      vertCard.style.border = '2px solid var(--purple-accent)';
+    }
+    if (origCard) {
+      origCard.style.background = 'rgba(255, 255, 255, 0.02)';
+      origCard.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+    }
+  } else {
+    if (origCard) {
+      origCard.style.background = 'rgba(139, 92, 246, 0.12)';
+      origCard.style.border = '2px solid var(--purple-accent)';
+    }
+    if (vertCard) {
+      vertCard.style.background = 'rgba(255, 255, 255, 0.02)';
+      vertCard.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+    }
+  }
+};
+
+window.closeShortOptionsModal = function() {
+  const modal = document.getElementById('short-options-modal');
+  if (modal) modal.style.display = 'none';
+  pendingShortArgs = null;
+};
+
+window.confirmShortOptionChoice = function() {
+  const rememberCheckbox = document.getElementById('remember-short-option');
+  if (rememberCheckbox && rememberCheckbox.checked) {
+    rememberedShortChoice = selectedShortChoice;
+  }
+  const args = pendingShortArgs;
+  closeShortOptionsModal();
+  if (args) {
+    executeCutAndSendToCaptions(args.youtubeUrl, args.startTime, args.endTime, args.idx, args.btn, selectedShortChoice);
+  }
+};
+
+window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn) {
   if (!youtubeUrl) {
     alert("رابط اليوتيوب غير متوفر لقص المقطع!");
     return;
   }
 
+  if (rememberedShortChoice) {
+    executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, btn, rememberedShortChoice);
+    return;
+  }
+
+  pendingShortArgs = { youtubeUrl, startTime, endTime, idx, btn };
+  selectShortOption('vertical');
+  const modal = document.getElementById('short-options-modal');
+  if (modal) modal.style.display = 'flex';
+};
+
+async function executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, btn, convertChoice) {
   const originalHtml = btn.innerHTML;
   btn.disabled = true;
   btn.style.opacity = '0.6';
   btn.style.pointerEvents = 'none';
-  btn.innerHTML = '<span>⏳</span> جاري القص والتحضير...';
+  btn.innerHTML = '<span>⏳</span> جاري قص المقطع...';
 
   try {
-    const blob = await performAsyncCut(youtubeUrl, startTime, endTime, 720, (progText) => {
+    // Step 1: Perform Async Cut from YouTube
+    let blob = await performAsyncCut(youtubeUrl, startTime, endTime, 720, (progText) => {
       btn.innerHTML = `<span>⏳</span> ${progText}`;
     });
 
-    btn.innerHTML = '<span>🚀</span> جاري فتح المحرر...';
-    const clipFile = new File([blob], `short_clip_${idx}.mp4`, { type: 'video/mp4' });
+    // Step 2: If user chose 'vertical', pass cut clip blob through KIM algorithm (/api/convert-vertical-async)
+    if (convertChoice === 'vertical') {
+      btn.innerHTML = '<span>📱</span> جاري تحويل المقطع إلى طولي (9:16)...';
+      
+      const rawCutFile = new File([blob], `cut_clip_${idx}.mp4`, { type: 'video/mp4' });
+      const fd = new FormData();
+      fd.append('file', rawCutFile);
 
-    // Set cut video file as active in dropzone
-    handleAudioSelect(clipFile);
+      const convertRes = await fetch(audioApiUrl + '/api/convert-vertical-async', {
+        method: 'POST',
+        body: fd
+      });
+
+      if (!convertRes.ok) {
+        const errData = await convertRes.json().catch(() => ({ detail: 'فشل بدء معالجة تحويل المقطع إلى طولي.' }));
+        throw new Error(errData.detail || 'فشلت معالجة التحويل على السيرفر.');
+      }
+
+      const startData = await convertRes.json();
+      const taskId = startData.taskId;
+
+      let pollInterval = null;
+      const convertTask = await new Promise((resolve, reject) => {
+        pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`${audioApiUrl}/api/task-status/${taskId}`);
+            if (!statusRes.ok) {
+              clearInterval(pollInterval);
+              reject(new Error('فشل متابعة حالة التحويل من السيرفر.'));
+              return;
+            }
+            const t = await statusRes.json();
+            if (t.status === 'success') {
+              clearInterval(pollInterval);
+              resolve(t);
+            } else if (t.status === 'failed') {
+              clearInterval(pollInterval);
+              reject(new Error(t.error || 'فشلت عملية تحويل المقطع إلى طولي.'));
+            } else {
+              if (t.progress) {
+                btn.innerHTML = `<span>📱</span> ${t.progress}`;
+              }
+            }
+          } catch (e) {
+            clearInterval(pollInterval);
+            reject(e);
+          }
+        }, 2000);
+      });
+
+      const verticalVideoUrl = convertTask.videoUrl.startsWith('http') ? convertTask.videoUrl : (audioApiUrl + '/' + convertTask.videoUrl);
+      const verticalRes = await fetch(verticalVideoUrl);
+      if (!verticalRes.ok) {
+        throw new Error('فشل جلب ملف المقطع الطولي من السيرفر.');
+      }
+
+      blob = await verticalRes.blob();
+    }
+
+    btn.innerHTML = '<span>🚀</span> جاري فتح المحرر...';
+    const finalFile = new File([blob], `short_clip_${idx}_${convertChoice}.mp4`, { type: 'video/mp4' });
+
+    // Set cut/converted video file as active in dropzone
+    handleAudioSelect(finalFile);
 
     // Switch upload tab if tab elements exist
     switchUploadTab('local');
@@ -2503,7 +2623,7 @@ window.cutAndSendToCaptions = async function(youtubeUrl, startTime, endTime, idx
 
   } catch (err) {
     console.error(err);
-    alert('حدث خطأ أثناء قص ونقل المقطع لمرحلة الكابشن: ' + err.message);
+    alert('حدث خطأ أثناء معالجة ونقل المقطع لمرحلة الكابشن: ' + err.message);
   } finally {
     btn.disabled = false;
     btn.style.opacity = '1';
