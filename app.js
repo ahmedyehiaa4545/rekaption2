@@ -2079,6 +2079,10 @@ window.fetchShortsSuggestions = async function() {
   const numShorts = parseInt(document.getElementById('gemini-shorts-count').value) || 3;
   const openrouterModelInput = document.getElementById('openrouter-model-input');
   const openrouterModel = openrouterModelInput ? openrouterModelInput.value.trim() : "google/gemini-3.1-flash-lite";
+  const customPromptInput = document.getElementById('gemini-custom-prompt');
+  const customPrompt = customPromptInput ? customPromptInput.value.trim() : "";
+  const titleStyleSelect = document.getElementById('gemini-title-style');
+  const titleStyle = titleStyleSelect ? titleStyleSelect.value : "auto";
   const ytUrl = document.getElementById('gemini-yt-url').value.trim();
 
   if (!transcriptionText || transcriptionText.trim() === "") {
@@ -2127,6 +2131,8 @@ window.fetchShortsSuggestions = async function() {
           transcription: transcriptionText,
           geminiApiKey: geminiApiKey,
           openrouterModel: openrouterModel,
+          customPrompt: customPrompt,
+          titleStyle: titleStyle,
           numShorts: numShorts
         })
       });
@@ -2178,6 +2184,8 @@ window.fetchShortsSuggestions = async function() {
           transcription: transcriptionText,
           geminiApiKey: geminiApiKey,
           openrouterModel: openrouterModel,
+          customPrompt: customPrompt,
+          titleStyle: titleStyle,
           numShorts: numShorts
         })
       });
