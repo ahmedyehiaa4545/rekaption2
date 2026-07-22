@@ -388,6 +388,12 @@
                 <input type="number" id="gemini-shorts-count" value="3" min="1" max="10" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; font-size: 13px;" />
               </div>
 
+              <!-- OpenRouter model selection input -->
+              <div class="control-field" style="margin-top: 10px; margin-bottom: 5px; text-align: right; direction: rtl;">
+                <span class="control-label" style="font-size: 12px; color: var(--purple-accent); font-weight: bold; margin-bottom: 6px; display: block;">🤖 نموذج OpenRouter لتحليل الـ Shorts (لتجربة النماذج):</span>
+                <input type="text" id="openrouter-model-input" value="google/gemini-3.1-flash-lite" placeholder="مثال: google/gemini-3.1-flash-lite" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #8b5cf6; font-size: 13px; direction: ltr; font-family: monospace; font-weight: bold;" />
+              </div>
+
               <!-- AI Shorts suggestions trigger button -->
               <button id="gemini-shorts-btn" onclick="fetchShortsSuggestions()" class="btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #8b5cf6, #ec4899); border: none; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4); color: #fff; font-weight: bold; margin-top: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <span>✨</span> استخراج مقاطع Shorts مميزة

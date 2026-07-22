@@ -2077,6 +2077,8 @@ window.fetchShortsSuggestions = async function() {
   const listContainer = document.getElementById('shorts-cards-list');
   
   const numShorts = parseInt(document.getElementById('gemini-shorts-count').value) || 3;
+  const openrouterModelInput = document.getElementById('openrouter-model-input');
+  const openrouterModel = openrouterModelInput ? openrouterModelInput.value.trim() : "google/gemini-3.1-flash-lite";
   const ytUrl = document.getElementById('gemini-yt-url').value.trim();
 
   if (!transcriptionText || transcriptionText.trim() === "") {
@@ -2124,6 +2126,7 @@ window.fetchShortsSuggestions = async function() {
         body: JSON.stringify({
           transcription: transcriptionText,
           geminiApiKey: geminiApiKey,
+          openrouterModel: openrouterModel,
           numShorts: numShorts
         })
       });
@@ -2174,6 +2177,7 @@ window.fetchShortsSuggestions = async function() {
         body: JSON.stringify({
           transcription: transcriptionText,
           geminiApiKey: geminiApiKey,
+          openrouterModel: openrouterModel,
           numShorts: numShorts
         })
       });
