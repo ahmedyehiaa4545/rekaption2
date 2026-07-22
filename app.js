@@ -850,17 +850,25 @@ function updateLiveCaptionOverlay(time) {
   const inactiveColor = document.getElementById('inactive-color').value;
   
   // Read dynamic style customizations
-  const fontSize = parseFloat(document.getElementById('font-size').value) || 50;
+  const fontSize = parseFloat(document.getElementById('font-size').value) || 48;
+  const fontWeight = document.getElementById('font-weight')?.value || 400;
+  const strokeSize = parseFloat(document.getElementById('stroke-size')?.value) ?? 2;
+  const strokeColor = document.getElementById('stroke-color')?.value || '#000000';
+  const shadowSize = parseFloat(document.getElementById('shadow-size')?.value) ?? 4;
+  const shadowOpacity = (parseFloat(document.getElementById('shadow-opacity')?.value) ?? 80) / 100;
+
   const bgColor = document.getElementById('bg-color').value;
-  const bgOpacity = parseFloat(document.getElementById('bg-opacity').value) || 86;
-  const wordSpacing = parseFloat(document.getElementById('word-spacing').value) || 31;
-  const bgPadding = parseFloat(document.getElementById('bg-padding').value) || 8;
+  const bgOpacity = parseFloat(document.getElementById('bg-opacity').value) || 75;
+  const wordSpacing = parseFloat(document.getElementById('word-spacing').value) || 25;
+  const bgPadding = parseFloat(document.getElementById('bg-padding').value) || 10;
   const removeBg = document.getElementById('show-bg').checked;
   const isBgVisible = !removeBg && bgOpacity > 0;
   
   // Apply styles to overlay container dynamically
   overlayContainer.style.top = `${captionTop}%`;
   overlayContainer.style.fontSize = `${fontSize / 4.5}px`;
+  overlayContainer.style.fontFamily = "'ThmanyahSans', 'Cairo', sans-serif";
+  overlayContainer.style.fontWeight = fontWeight;
   overlayContainer.style.flexWrap = 'nowrap';
   overlayContainer.style.whiteSpace = 'nowrap';
   overlayContainer.style.columnGap = `${wordSpacing / 100}em`;
@@ -870,10 +878,10 @@ function updateLiveCaptionOverlay(time) {
     overlayContainer.style.background = `rgba(${hexToRgb(bgColor)}, ${bgOpacity / 100})`;
     overlayContainer.style.backdropFilter = 'none';
     overlayContainer.style.webkitBackdropFilter = 'none';
-    overlayContainer.style.border = 'none'; // Clean sharp rectangular edge
+    overlayContainer.style.border = 'none';
     overlayContainer.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
     overlayContainer.style.padding = `${bgPadding / 4.5}px ${(bgPadding * 2) / 4.5}px`;
-    overlayContainer.style.borderRadius = `${4 / 4.5}px`; // tight corners scaled by 4.5
+    overlayContainer.style.borderRadius = `${4 / 4.5}px`;
   } else {
     overlayContainer.style.background = 'none';
     overlayContainer.style.backdropFilter = 'none';
@@ -884,12 +892,28 @@ function updateLiveCaptionOverlay(time) {
     overlayContainer.style.borderRadius = '0';
   }
   
-  const outlineStroke = isBgVisible 
-    ? 'text-shadow: 2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 2px 0px 0px #000000, -2px 0px 0px #000000, 0px 2px 0px #000000, 0px -2px 0px #000000, 0px 4px 10px rgba(0, 0, 0, 0.95);'
-    : 'text-shadow: 2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 4px 6px rgba(0, 0, 0, 0.8);';
+  // Dynamic text shadow / outline computation scaled for web preview
+  const sSize = strokeSize / 2.5;
+  const shSize = shadowSize / 2.5;
+  let shadowParts = [];
+  if (sSize > 0) {
+    shadowParts.push(
+      `${sSize}px ${sSize}px 0px ${strokeColor}`,
+      `-${sSize}px -${sSize}px 0px ${strokeColor}`,
+      `${sSize}px -${sSize}px 0px ${strokeColor}`,
+      `-${sSize}px ${sSize}px 0px ${strokeColor}`,
+      `${sSize}px 0px 0px ${strokeColor}`,
+      `-${sSize}px 0px 0px ${strokeColor}`,
+      `0px ${sSize}px 0px ${strokeColor}`,
+      `0px -${sSize}px 0px ${strokeColor}`
+    );
+  }
+  if (shSize > 0) {
+    shadowParts.push(`0px ${shSize}px ${shSize * 1.5}px rgba(0, 0, 0, ${shadowOpacity})`);
+  }
+  const outlineStroke = shadowParts.length > 0 ? `text-shadow: ${shadowParts.join(', ')};` : 'text-shadow: none;';
 
-  // React-style state key to avoid destroying the DOM and breaking slide-up transitions
-  const styleKey = `${activeSegmentIndex}_${selectedAnimation}_${fontSize}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}`;
+  const styleKey = `${activeSegmentIndex}_${selectedAnimation}_${fontSize}_${fontWeight}_${strokeSize}_${strokeColor}_${shadowSize}_${shadowOpacity}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}`;
   const isNewSegment = overlayContainer.getAttribute('data-rendered-key') !== styleKey;
 
   if (selectedAnimation === 'slide') {
