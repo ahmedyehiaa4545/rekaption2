@@ -606,11 +606,11 @@
             <div class="control-field" style="margin-bottom: 15px;">
               <span class="control-label" style="font-size: 11px;">حركة الكابشن</span>
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
-                <div class="anim-card" data-anim="classic" onclick="selectAnimation(this)" style="padding: 8px; font-size: 11px;">
+                <div class="anim-card selected" data-anim="classic" onclick="selectAnimation(this)" style="padding: 8px; font-size: 11px;">
                   <span style="font-size: 14px;">📝</span>
                   <span style="display:block; font-weight:600; margin-top:4px;">بدون حركة</span>
                 </div>
-                <div class="anim-card selected" data-anim="reveal" onclick="selectAnimation(this)" style="padding: 8px; font-size: 11px;">
+                <div class="anim-card" data-anim="reveal" onclick="selectAnimation(this)" style="padding: 8px; font-size: 11px;">
                   <span style="font-size: 14px;">✨</span>
                   <span style="display:block; font-weight:600; margin-top:4px;">كلمة كلمة</span>
                 </div>
@@ -645,9 +645,9 @@
                 <span class="control-label" style="font-size: 11px;">لون الخلفية</span>
                 <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
                   <div class="color-circle-preview" style="width: 20px; height: 20px;">
-                    <input type="color" id="bg-color" value="#000000" />
+                    <input type="color" id="bg-color" value="#525252" />
                   </div>
-                  <span id="bg-color-hex" class="color-hex-text" style="font-size: 10px;">#000000</span>
+                  <span id="bg-color-hex" class="color-hex-text" style="font-size: 10px;">#525252</span>
                 </div>
               </div>
             </div>
@@ -669,11 +669,11 @@
             <div class="grid-3" style="gap: 10px; margin-bottom: 10px;">
               <div class="control-field">
                 <span class="control-label" style="font-size: 11px;">حجم الخط</span>
-                <input type="number" id="font-size" value="50" min="20" max="150" style="height: 34px; font-size: 12px; padding: 5px 8px;" />
+                <input type="number" id="font-size" value="48" min="20" max="150" style="height: 34px; font-size: 12px; padding: 5px 8px;" />
               </div>
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">شفافية الخلفية: <span id="bg-opacity-val">86</span>%</span>
-                <input type="range" id="bg-opacity" value="86" min="0" max="100" style="width: 100%; margin-top: 8px;" />
+                <span class="control-label" style="font-size: 11px;">شفافية الخلفية: <span id="bg-opacity-val">75</span>%</span>
+                <input type="range" id="bg-opacity" value="75" min="0" max="100" style="width: 100%; margin-top: 8px;" />
               </div>
               <div class="control-field">
                 <span class="control-label" style="font-size: 11px;">المزامنة (+/- ث)</span>
@@ -683,12 +683,12 @@
 
             <div class="grid-2" style="gap: 10px;">
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">المسافة بين الكلمات: <span id="word-spacing-val">31</span></span>
-                <input type="range" id="word-spacing" value="31" min="0" max="80" style="width: 100%; margin-top: 8px;" />
+                <span class="control-label" style="font-size: 11px;">المسافة بين الكلمات: <span id="word-spacing-val">25</span></span>
+                <input type="range" id="word-spacing" value="25" min="0" max="80" style="width: 100%; margin-top: 8px;" />
               </div>
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">هوامش الخلفية: <span id="bg-padding-val">8</span>px</span>
-                <input type="range" id="bg-padding" value="8" min="2" max="30" style="width: 100%; margin-top: 8px;" />
+                <span class="control-label" style="font-size: 11px;">هوامش الخلفية: <span id="bg-padding-val">10</span>px</span>
+                <input type="range" id="bg-padding" value="10" min="2" max="30" style="width: 100%; margin-top: 8px;" />
               </div>
             </div>
           </div>

@@ -34,8 +34,8 @@ function playSuccessSound() {
 let audioFile = null;
 let leftLogoFile = null;
 let rightLogoFile = null;
-let selectedAnimation = 'reveal';
-let captionTop = 65;
+let selectedAnimation = 'classic';
+let captionTop = 68;
 
 let transcribeData = null; // Holds the JSON returned from /api/transcribe
 let activeSegmentIndex = -1;
@@ -1408,11 +1408,12 @@ window.renderVideo = async function() {
     showState(successState);
     playSuccessSound();
 
-    // Auto-save to 48-Hour Video Archive
+    // Auto-save to 48-Hour Video Archive (Persistent IndexedDB + LocalStorage)
     if (typeof saveHistoryEntry === 'function') {
       saveHistoryEntry({
         title: 'فيديو كابشن نهائي (' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ')',
-        videoUrl: url
+        videoUrl: url,
+        blob: blob
       });
     }
 
@@ -2709,9 +2710,71 @@ window.cutVideoSegment = async function(youtubeUrl, startTime, endTime, idx, btn
   }
 };
 
-// ==================== 48-Hour Captioned Video History Manager ====================
+// ==================== 48-Hour Captioned Video History Manager (IndexedDB Persistent) ====================
 const HISTORY_STORAGE_KEY = 'rekaption_video_history_v1';
 const EXPIRE_DURATION_MS = 48 * 60 * 60 * 1000; // 48 Hours
+const ARCHIVE_DB_NAME = 'ReKaptionArchiveDB_v1';
+const ARCHIVE_STORE = 'video_blobs';
+
+function openArchiveDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(ARCHIVE_DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(ARCHIVE_STORE)) {
+        db.createObjectStore(ARCHIVE_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function saveVideoBlobToIDB(id, blob) {
+  try {
+    const db = await openArchiveDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ARCHIVE_STORE, 'readwrite');
+      const store = tx.objectStore(ARCHIVE_STORE);
+      store.put({ id: id, blob: blob });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  } catch (e) {
+    console.warn("IDB save error:", e);
+  }
+}
+
+async function getVideoBlobFromIDB(id) {
+  try {
+    const db = await openArchiveDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ARCHIVE_STORE, 'readonly');
+      const store = tx.objectStore(ARCHIVE_STORE);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch (e) {
+    console.warn("IDB get error:", e);
+    return null;
+  }
+}
+
+async function deleteVideoBlobFromIDB(id) {
+  try {
+    const db = await openArchiveDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ARCHIVE_STORE, 'readwrite');
+      const store = tx.objectStore(ARCHIVE_STORE);
+      store.delete(id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  } catch (e) {
+    console.warn("IDB delete error:", e);
+  }
+}
 
 window.getHistoryEntries = function() {
   try {
@@ -2730,14 +2793,20 @@ window.getHistoryEntries = function() {
   }
 };
 
-window.saveHistoryEntry = function(entry) {
+window.saveHistoryEntry = async function(entry) {
   try {
+    const id = entry.id || ('vid_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+    
+    if (entry.blob) {
+      await saveVideoBlobToIDB(id, entry.blob);
+    }
+    
     const entries = getHistoryEntries();
     const now = Date.now();
     const newEntry = {
-      id: entry.id || ('vid_' + Math.random().toString(36).substr(2, 9)),
+      id: id,
       title: entry.title || 'فيديو كابشن مجهز',
-      videoUrl: entry.videoUrl,
+      serverUrl: entry.serverUrl || '',
       timestamp: now,
       expiryTime: now + EXPIRE_DURATION_MS,
       duration: entry.duration || ''
@@ -2752,11 +2821,12 @@ window.saveHistoryEntry = function(entry) {
   }
 };
 
-window.deleteHistoryEntry = function(id) {
+window.deleteHistoryEntry = async function(id) {
   try {
     let entries = getHistoryEntries();
     entries = entries.filter(item => item.id !== id);
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries));
+    await deleteVideoBlobFromIDB(id);
     updateHistoryBadge();
     renderHistoryModal();
   } catch (e) {
@@ -2788,7 +2858,7 @@ function formatCountdown(expiryTime) {
   return `⏳ متبقي ${hours} ساعة و ${mins} دقيقة`;
 }
 
-window.renderHistoryModal = function() {
+window.renderHistoryModal = async function() {
   const grid = document.getElementById('history-cards-grid');
   const emptyView = document.getElementById('history-empty-view');
   if (!grid) return;
@@ -2801,25 +2871,69 @@ window.renderHistoryModal = function() {
   }
 
   if (emptyView) emptyView.classList.add('hidden');
+
+  // Render initial card frames
   grid.innerHTML = entries.map(item => `
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; position: relative;">
-      <div style="width: 100%; border-radius: 10px; overflow: hidden; background: #000; position: relative;">
-        <video src="${item.videoUrl}" controls style="width: 100%; height: 210px; object-fit: contain; display: block;"></video>
+    <div id="hist-card-${item.id}" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; position: relative;">
+      <div class="video-container" style="width: 100%; height: 210px; border-radius: 10px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; position: relative;">
+        <div class="spinner" style="width: 24px; height: 24px; border-left-color: #8b5cf6;"></div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${item.title}</h4>
         <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
       </div>
       <div style="display: flex; gap: 8px; margin-top: 4px;">
-        <a href="${item.videoUrl}" download="${item.title.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_')}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none;">
+        <button disabled class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; opacity: 0.5;">
           <span>📥</span> تنزيل
-        </a>
+        </button>
         <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
           <span>🗑️</span>
         </button>
       </div>
     </div>
   `).join('');
+
+  // Retrieve Blobs asynchronously from IndexedDB and bind active URLs
+  for (const item of entries) {
+    const cardEl = document.getElementById(`hist-card-${item.id}`);
+    if (!cardEl) continue;
+
+    let activeUrl = item.serverUrl || '';
+    const storedBlob = await getVideoBlobFromIDB(item.id);
+
+    if (storedBlob) {
+      activeUrl = URL.createObjectURL(storedBlob);
+    }
+
+    if (!activeUrl) {
+      cardEl.querySelector('.video-container').innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 6px; color: #f87171; font-size: 12px;">
+          <span>⚠️ الملف انتهت صلاحيته أو غير متوفر</span>
+        </div>
+      `;
+      continue;
+    }
+
+    const safeTitle = item.title.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
+
+    cardEl.innerHTML = `
+      <div style="width: 100%; border-radius: 10px; overflow: hidden; background: #000; position: relative;">
+        <video src="${activeUrl}" controls style="width: 100%; height: 210px; object-fit: contain; display: block;"></video>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${item.title}</h4>
+        <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 4px;">
+        <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+          <span>📥</span> تنزيل
+        </a>
+        <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
+          <span>🗑️</span>
+        </button>
+      </div>
+    `;
+  }
 };
 
 // Initialize history badge on page load
@@ -2964,11 +3078,12 @@ window.startBatchCaptionProcess = async function() {
         }
       }
 
-      // Save rendered clip to 48-hour history archive!
+      // Save rendered clip to 48-hour history archive (Persistent IndexedDB)
       const clipUrl = URL.createObjectURL(blob);
-      saveHistoryEntry({
+      await saveHistoryEntry({
         title: `مقطع Shorts #${idx+1}: ${shortItem.title}`,
-        videoUrl: clipUrl
+        videoUrl: clipUrl,
+        blob: blob
       });
 
       successCount++;
