@@ -1408,6 +1408,14 @@ window.renderVideo = async function() {
     showState(successState);
     playSuccessSound();
 
+    // Auto-save to 48-Hour Video Archive
+    if (typeof saveHistoryEntry === 'function') {
+      saveHistoryEntry({
+        title: 'فيديو كابشن نهائي (' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ')',
+        videoUrl: url
+      });
+    }
+
     // Track render event
     try {
       trackAction('render');
@@ -1624,15 +1632,18 @@ window.switchMainTab = function(tab) {
   const editorBtn = document.getElementById('main-nav-editor');
   const geminiBtn = document.getElementById('main-nav-gemini');
   const convertBtn = document.getElementById('main-nav-convert');
+  const historyBtn = document.getElementById('main-nav-history');
   const dashboard = document.getElementById('main-dashboard');
   const geminiPanel = document.getElementById('gemini-transcribe-panel');
   const convertPanel = document.getElementById('convert-video-panel');
+  const historyPanel = document.getElementById('history-archive-panel');
   const editorState = document.getElementById('editor-state');
 
   const tabs = [
     { name: 'editor', btn: editorBtn, el: dashboard },
     { name: 'gemini', btn: geminiBtn, el: geminiPanel },
-    { name: 'convert', btn: convertBtn, el: convertPanel }
+    { name: 'convert', btn: convertBtn, el: convertPanel },
+    { name: 'history', btn: historyBtn, el: historyPanel }
   ];
 
   tabs.forEach(t => {
@@ -1665,6 +1676,10 @@ window.switchMainTab = function(tab) {
     if (savedKey && keyInput) {
       keyInput.value = savedKey;
     }
+  }
+
+  if (tab === 'history') {
+    renderHistoryModal();
   }
 };
 
@@ -2201,6 +2216,12 @@ window.fetchShortsSuggestions = async function() {
 
     clearInterval(timerInterval);
 
+    currentSuggestedShorts = shortsList || [];
+    selectedShortsIndices.clear();
+    const selectAllChk = document.getElementById('select-all-shorts-chk');
+    if (selectAllChk) selectAllChk.checked = false;
+    updateBatchToolbar();
+
     if (shortsList && shortsList.length > 0) {
       let cardsHtml = '';
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
@@ -2238,6 +2259,12 @@ window.fetchShortsSuggestions = async function() {
             ">
               مقطع مقترح #${idx + 1}
             </div>
+
+            <!-- Badge: Select Checkbox -->
+            <label style="position: absolute; top: -10px; left: 15px; display: flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #fff; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; cursor: pointer; user-select: none;">
+              <input type="checkbox" class="short-card-chk" data-index="${idx}" onchange="toggleShortSelection(${idx}, this.checked)" style="width: 14px; height: 14px; accent-color: #10b981; cursor: pointer;" />
+              <span>تحديد</span>
+            </label>
 
             <!-- Time Chip -->
             <div style="
@@ -2680,5 +2707,281 @@ window.cutVideoSegment = async function(youtubeUrl, startTime, endTime, idx, btn
     btn.style.pointerEvents = 'auto';
     btn.innerHTML = originalHtml;
   }
+};
+
+// ==================== 48-Hour Captioned Video History Manager ====================
+const HISTORY_STORAGE_KEY = 'rekaption_video_history_v1';
+const EXPIRE_DURATION_MS = 48 * 60 * 60 * 1000; // 48 Hours
+
+window.getHistoryEntries = function() {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    if (!raw) return [];
+    const entries = JSON.parse(raw);
+    const now = Date.now();
+    const validEntries = entries.filter(item => now < item.expiryTime);
+    if (validEntries.length !== entries.length) {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(validEntries));
+    }
+    return validEntries;
+  } catch (e) {
+    console.warn("Error reading history storage:", e);
+    return [];
+  }
+};
+
+window.saveHistoryEntry = function(entry) {
+  try {
+    const entries = getHistoryEntries();
+    const now = Date.now();
+    const newEntry = {
+      id: entry.id || ('vid_' + Math.random().toString(36).substr(2, 9)),
+      title: entry.title || 'فيديو كابشن مجهز',
+      videoUrl: entry.videoUrl,
+      timestamp: now,
+      expiryTime: now + EXPIRE_DURATION_MS,
+      duration: entry.duration || ''
+    };
+    entries.unshift(newEntry);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries));
+    updateHistoryBadge();
+    renderHistoryModal();
+    return newEntry;
+  } catch (e) {
+    console.warn("Error saving history entry:", e);
+  }
+};
+
+window.deleteHistoryEntry = function(id) {
+  try {
+    let entries = getHistoryEntries();
+    entries = entries.filter(item => item.id !== id);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries));
+    updateHistoryBadge();
+    renderHistoryModal();
+  } catch (e) {
+    console.warn("Error deleting history entry:", e);
+  }
+};
+
+window.clearExpiredHistoryEntries = function() {
+  getHistoryEntries();
+  updateHistoryBadge();
+  renderHistoryModal();
+  alert("تم تنظيف الأرشيف وتحديث الفيديوهات الصالحة بنجاح! 🧹");
+};
+
+window.updateHistoryBadge = function() {
+  const badge = document.getElementById('history-badge');
+  if (badge) {
+    const entries = getHistoryEntries();
+    badge.textContent = entries.length;
+  }
+};
+
+function formatCountdown(expiryTime) {
+  const diffMs = expiryTime - Date.now();
+  if (diffMs <= 0) return "منتهي الصلاحية";
+  const totalSecs = Math.floor(diffMs / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  return `⏳ متبقي ${hours} ساعة و ${mins} دقيقة`;
+}
+
+window.renderHistoryModal = function() {
+  const grid = document.getElementById('history-cards-grid');
+  const emptyView = document.getElementById('history-empty-view');
+  if (!grid) return;
+
+  const entries = getHistoryEntries();
+  if (!entries || entries.length === 0) {
+    grid.innerHTML = '';
+    if (emptyView) emptyView.classList.remove('hidden');
+    return;
+  }
+
+  if (emptyView) emptyView.classList.add('hidden');
+  grid.innerHTML = entries.map(item => `
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; position: relative;">
+      <div style="width: 100%; border-radius: 10px; overflow: hidden; background: #000; position: relative;">
+        <video src="${item.videoUrl}" controls style="width: 100%; height: 210px; object-fit: contain; display: block;"></video>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${item.title}</h4>
+        <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 4px;">
+        <a href="${item.videoUrl}" download="${item.title.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_')}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none;">
+          <span>📥</span> تنزيل
+        </a>
+        <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
+          <span>🗑️</span>
+        </button>
+      </div>
+    </div>
+  `).join('');
+};
+
+// Initialize history badge on page load
+document.addEventListener('DOMContentLoaded', () => {
+  updateHistoryBadge();
+});
+
+// ==================== Batch Caption Processing Queue ====================
+let currentSuggestedShorts = [];
+let selectedShortsIndices = new Set();
+
+window.toggleShortSelection = function(index, isChecked) {
+  if (isChecked) {
+    selectedShortsIndices.add(index);
+  } else {
+    selectedShortsIndices.delete(index);
+  }
+  updateBatchToolbar();
+};
+
+window.toggleSelectAllShorts = function(isChecked) {
+  selectedShortsIndices.clear();
+  if (isChecked && currentSuggestedShorts.length > 0) {
+    currentSuggestedShorts.forEach((_, idx) => selectedShortsIndices.add(idx));
+  }
+  
+  document.querySelectorAll('.short-card-chk').forEach(chk => {
+    chk.checked = isChecked;
+  });
+  
+  updateBatchToolbar();
+};
+
+function updateBatchToolbar() {
+  const btn = document.getElementById('batch-caption-btn');
+  const badge = document.getElementById('batch-selected-count-badge');
+  const count = selectedShortsIndices.size;
+  
+  if (badge) badge.textContent = `(${count})`;
+  if (btn) {
+    if (count > 0) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+    }
+  }
+}
+
+window.startBatchCaptionProcess = async function() {
+  if (selectedShortsIndices.size === 0) {
+    alert("يرجى تحديد مقطع شورت واحد على الأقل للمعالجة الدُفعية!");
+    return;
+  }
+
+  const youtubeUrl = document.getElementById('gemini-yt-url').value.trim();
+  if (!youtubeUrl) {
+    alert("رابط اليوتيوب الأصلي غير متوفر!");
+    return;
+  }
+
+  const indicesToProcess = Array.from(selectedShortsIndices).sort((a, b) => a - b);
+  const total = indicesToProcess.length;
+
+  const modal = document.getElementById('batch-progress-modal');
+  const modalStep = document.getElementById('batch-modal-step');
+  const modalBarFill = document.getElementById('batch-modal-bar-fill');
+  const modalStatusDesc = document.getElementById('batch-modal-status-desc');
+
+  if (modal) modal.style.display = 'flex';
+
+  let successCount = 0;
+
+  for (let i = 0; i < total; i++) {
+    const idx = indicesToProcess[i];
+    const shortItem = currentSuggestedShorts[idx];
+    if (!shortItem) continue;
+
+    const currentNum = i + 1;
+    const percent = Math.round((currentNum / total) * 100);
+
+    if (modalStep) modalStep.textContent = `المقطع ${currentNum} من ${total}`;
+    if (modalBarFill) modalBarFill.style.width = `${percent}%`;
+    if (modalStatusDesc) modalStatusDesc.textContent = `جارٍ قص المقطع #${idx+1} (${shortItem.title}) وتحليله بالذكاء الاصطناعي...`;
+
+    try {
+      // 1. Perform Async Cut
+      let blob = await performAsyncCut(youtubeUrl, shortItem.start_time, shortItem.end_time, 720, (progMsg) => {
+        if (modalStatusDesc) modalStatusDesc.textContent = `المقطع #${idx+1}: ${progMsg}`;
+      });
+
+      // 2. Perform Vertical Conversion if selected
+      if (selectedShortChoice === 'vertical') {
+        if (modalStatusDesc) modalStatusDesc.textContent = `المقطع #${idx+1}: جارٍ التحويل إلى طولي (9:16)...`;
+        const fd = new FormData();
+        const rawFile = new File([blob], `short_${idx+1}.mp4`, { type: 'video/mp4' });
+        fd.append('file', rawFile);
+
+        const convRes = await fetch(audioApiUrl + '/api/convert-vertical-async', {
+          method: 'POST',
+          body: fd
+        });
+
+        if (convRes.ok) {
+          const convTaskData = await convRes.json();
+          const convTaskId = convTaskData.taskId;
+
+          let pollInterval = null;
+          const pollPromise = new Promise((resolve, reject) => {
+            pollInterval = setInterval(async () => {
+              try {
+                const statusRes = await fetch(`${audioApiUrl}/api/task-status/${convTaskId}`);
+                if (!statusRes.ok) {
+                  clearInterval(pollInterval);
+                  reject(new Error('فشل متابعة حالة التحويل للطولي'));
+                  return;
+                }
+                const task = await statusRes.json();
+                if (task.status === 'success') {
+                  clearInterval(pollInterval);
+                  resolve(task);
+                } else if (task.status === 'failed') {
+                  clearInterval(pollInterval);
+                  reject(new Error(task.error || 'فشلت عملية التحويل للطولي'));
+                }
+              } catch (err) {
+                clearInterval(pollInterval);
+                reject(err);
+              }
+            }, 2000);
+          });
+
+          const vertTaskRes = await pollPromise;
+          const vertUrl = vertTaskRes.videoUrl.startsWith('http') ? vertTaskRes.videoUrl : (audioApiUrl + '/' + vertTaskRes.videoUrl);
+          const vertFileRes = await fetch(vertUrl);
+          if (vertFileRes.ok) {
+            blob = await vertFileRes.blob();
+          }
+        }
+      }
+
+      // Save rendered clip to 48-hour history archive!
+      const clipUrl = URL.createObjectURL(blob);
+      saveHistoryEntry({
+        title: `مقطع Shorts #${idx+1}: ${shortItem.title}`,
+        videoUrl: clipUrl
+      });
+
+      successCount++;
+    } catch (err) {
+      console.error(`Error processing batch short #${idx+1}:`, err);
+    }
+  }
+
+  if (modal) modal.style.display = 'none';
+
+  alert(`🎉 اكتملت المعالجة الجماعية بنجاح! تم حفظ ${successCount} من أصل ${total} مقاطع في أرشيف الـ 48 ساعة.`);
+
+  // Switch to History Tab to let user preview & download all!
+  switchMainTab('history');
 };
 

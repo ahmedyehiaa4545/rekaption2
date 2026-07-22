@@ -99,7 +99,7 @@
     </header>
 
     <!-- Main Navigation Tabs -->
-    <div class="main-navigation" style="display: flex; gap: 15px; margin: 20px 0; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+    <div class="main-navigation" style="display: flex; gap: 15px; margin: 20px 0; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; flex-wrap: wrap;">
       <button type="button" id="main-nav-editor" class="nav-tab active" onclick="switchMainTab('editor')" style="padding: 10px 20px; background: rgba(139, 92, 246, 0.15); border: 1px solid var(--purple-accent); border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s;">
         🎬 صانع الفيديو (Video Creator)
       </button>
@@ -108,6 +108,10 @@
       </button>
       <button type="button" id="main-nav-convert" class="nav-tab" onclick="switchMainTab('convert')" style="padding: 10px 20px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; transition: all 0.3s;">
         📱 تحويل إلى طولي (9:16)
+      </button>
+      <button type="button" id="main-nav-history" class="nav-tab" onclick="switchMainTab('history')" style="padding: 10px 20px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+        <span>📁</span> أرشيف الفيديوهات (48h)
+        <span id="history-badge" style="background: #8b5cf6; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 20px;">0</span>
       </button>
     </div>
 
@@ -432,10 +436,25 @@
               </div>
 
               <!-- Suggested Shorts Container -->
-              <div id="suggested-shorts-container" style="display: none; width: 100%; flex-direction: column; gap: 20px; margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px; direction: rtl; text-align: right;">
-                <h3 style="font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; margin: 0 0 10px 0;">
+              <div id="suggested-shorts-container" style="display: none; width: 100%; flex-direction: column; gap: 15px; margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px; direction: rtl; text-align: right;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; margin: 0 0 5px 0;">
                   <span style="font-size: 20px;">💡</span> أفكار مقاطع Shorts المقترحة بالذكاء الاصطناعي:
                 </h3>
+
+                <!-- Batch Selection Controls Bar -->
+                <div id="batch-shorts-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 12px; padding: 12px 16px; margin-bottom: 10px;">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="select-all-shorts-chk" onchange="toggleSelectAllShorts(this.checked)" style="width: 17px; height: 17px; accent-color: #8b5cf6; cursor: pointer;" />
+                    <span>☑️ تحديد جميع المقاطع</span>
+                  </label>
+
+                  <button id="batch-caption-btn" onclick="startBatchCaptionProcess()" disabled style="background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; padding: 9px 18px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; opacity: 0.5; transition: all 0.3s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                    <span>⚡</span>
+                    <span>معالجة المحددة دفعة واحدة (Batch Caption)</span>
+                    <span id="batch-selected-count-badge" style="background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 12px; font-size: 11px;">(0)</span>
+                  </button>
+                </div>
+
                 <div id="shorts-cards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; width: 100%;">
                   <!-- Shorts cards will be injected here dynamically -->
                 </div>
@@ -513,6 +532,35 @@
         </div>
       </div>
     </div>
+    <!-- 48-Hour Captioned Videos History Archive Panel -->
+    <div id="history-archive-panel" class="panel hidden" style="margin-top: 10px; direction: rtl; text-align: right;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h2 class="panel-title" style="margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+            <span>📁</span> أرشيف الفيديوهات الجاهزة (تحفظ لمدة 48 ساعة)
+          </h2>
+          <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
+            تُحفظ الفيديوهات التي قمت بإنشائها هنا أوتوماتيكياً لمدة 48 ساعة فقط لتتمكن من معاينتها وتنزيلها في أي وقت.
+          </p>
+        </div>
+        <button type="button" onclick="clearExpiredHistoryEntries()" class="btn-secondary" style="font-size: 12px; padding: 8px 14px;">
+          <span>🧹</span> تنظيف الأرشيف المنتهي
+        </button>
+      </div>
+
+      <!-- Grid of Saved Captioned Videos -->
+      <div id="history-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; width: 100%;">
+        <!-- Injected dynamically by JS -->
+      </div>
+
+      <!-- Empty state when no videos in history -->
+      <div id="history-empty-view" class="hidden" style="text-align: center; padding: 40px 20px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px dashed rgba(255,255,255,0.15);">
+        <span style="font-size: 50px; display: block; margin-bottom: 10px;">📂</span>
+        <h3 style="color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 6px;">لا توجد فيديوهات مجهزة في الأرشيف حالياً</h3>
+        <p style="color: var(--text-muted); font-size: 13px;">عند دمج أي فيديو وتجهيزه، سيظهر هنا تلقائياً لمدة 48 ساعة لتنزيله بسهولة!</p>
+      </div>
+    </div>
+
     <div id="editor-state" class="panel hidden" style="margin-top: 10px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px;">
         <h2 class="panel-title" style="margin-bottom: 0;">محرر النصوص والتفريغ التفاعلي ✏️</h2>
@@ -940,8 +988,22 @@
       <p>© 2026 ReKaption. جميع الحقوق محفوظة.</p>
     </footer>
 
-  </div>
+    <!-- Batch Caption Processing Progress Modal -->
+    <div id="batch-progress-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 10001; justify-content: center; align-items: center; padding: 20px; direction: rtl; font-family: Cairo, sans-serif;">
+      <div style="background-color: #0e0c1b; border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 20px; width: 100%; max-width: 480px; padding: 30px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); text-align: center; color: #fff;">
+        <div class="spinner" style="margin: 0 auto 15px auto; width: 36px; height: 36px; border-left-color: #10b981; border-top-color: transparent; border-right-color: transparent; border-bottom-color: transparent; border-style: solid; border-width: 4px; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <h2 id="batch-modal-title" style="font-size: 18px; font-weight: 800; color: #fff; margin: 0 0 10px 0;">⚡ جاري معالجة المقاطع دفعة واحدة...</h2>
+        <p id="batch-modal-step" style="font-size: 14px; font-weight: 700; color: #10b981; margin: 0 0 15px 0;">المقطع 1 من 3</p>
+        
+        <!-- Progress Bar -->
+        <div style="background: rgba(255,255,255,0.08); height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 12px;">
+          <div id="batch-modal-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.3s ease;"></div>
+        </div>
+        <p id="batch-modal-status-desc" style="font-size: 12px; color: rgba(255,255,255,0.7); margin: 0; line-height: 1.5;">جارٍ قص المقطع وتحليله بالذكاء الاصطناعي وتجهيز الكابشن...</p>
+      </div>
+    </div>
 
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
