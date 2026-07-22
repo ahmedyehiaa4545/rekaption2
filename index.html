@@ -382,32 +382,41 @@
                 <span>📋</span> نسخ النص كامل
               </button>
 
-              <!-- Number of shorts input -->
-              <div class="control-field" style="margin-top: 10px; margin-bottom: 5px; text-align: right; direction: rtl;">
-                <span class="control-label" style="font-size: 12px; color: var(--text-main); font-weight: bold; margin-bottom: 6px; display: block;">عدد مقاطع Shorts المطلوبة:</span>
-                <input type="number" id="gemini-shorts-count" value="3" min="1" max="10" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; font-size: 13px;" />
-              </div>
+              <!-- Shorts Settings Glass Box -->
+              <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 14px; padding: 14px; margin-top: 15px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 12px; direction: rtl; text-align: right;">
+                <div style="font-size: 13px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+                  <span>⚙️</span> إعدادات وتخصيص استخراج ה-Shorts:
+                </div>
 
-              <!-- OpenRouter model selection input -->
-              <div class="control-field" style="margin-top: 10px; margin-bottom: 5px; text-align: right; direction: rtl;">
-                <span class="control-label" style="font-size: 12px; color: var(--purple-accent); font-weight: bold; margin-bottom: 6px; display: block;">🤖 نموذج OpenRouter لتحليل الـ Shorts (لتجربة النماذج):</span>
-                <input type="text" id="openrouter-model-input" value="google/gemini-3.1-flash-lite" placeholder="مثال: google/gemini-3.1-flash-lite" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #8b5cf6; font-size: 13px; direction: ltr; font-family: monospace; font-weight: bold;" />
-              </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <!-- Number of shorts input -->
+                  <div>
+                    <span class="control-label" style="font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 700; margin-bottom: 6px; display: block;">🔢 عدد المقاطع المطلوبة:</span>
+                    <input type="number" id="gemini-shorts-count" value="3" min="1" max="10" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; font-weight: 700; box-sizing: border-box;" />
+                  </div>
 
-              <!-- Title length preference selector -->
-              <div class="control-field" style="margin-top: 10px; margin-bottom: 5px; text-align: right; direction: rtl;">
-                <span class="control-label" style="font-size: 12px; color: var(--text-main); font-weight: bold; margin-bottom: 6px; display: block;">🏷️ نمط وطول عنوان الـ Shorts:</span>
-                <select id="gemini-title-style" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff; font-size: 13px; cursor: pointer;">
-                  <option value="auto">🎯 تلقائي (حسب تقدير الذكاء الاصطناعي)</option>
-                  <option value="short">⚡ قصير ومختصر (من 2 إلى 4 كلمات فقط - قوي ومباشر)</option>
-                  <option value="medium">📝 متوسط ومفصل (من 5 إلى 9 كلمات - شرح واضح)</option>
-                </select>
-              </div>
+                  <!-- Title length preference selector -->
+                  <div>
+                    <span class="control-label" style="font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 700; margin-bottom: 6px; display: block;">🏷️ نمط طول العنوان:</span>
+                    <select id="gemini-title-style" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.35); background: #0f0c1b; color: #a78bfa; font-size: 13px; font-weight: 700; cursor: pointer; font-family: Cairo, sans-serif; box-sizing: border-box;">
+                      <option value="auto" style="background: #0f0c1b; color: #fff;">🎯 تلقائي (حسب الذكاء الاصطناعي)</option>
+                      <option value="short" style="background: #0f0c1b; color: #a78bfa;">⚡ قصير ومختصر (من 2 إلى 4 كلمات)</option>
+                      <option value="medium" style="background: #0f0c1b; color: #fff;">📝 متوسط ومفصل (من 5 إلى 9 كلمات)</option>
+                    </select>
+                  </div>
+                </div>
 
-              <!-- Custom guidance prompt input -->
-              <div class="control-field" style="margin-top: 10px; margin-bottom: 5px; text-align: right; direction: rtl;">
-                <span class="control-label" style="font-size: 12px; color: var(--text-main); font-weight: bold; margin-bottom: 6px; display: block;">💡 توجيه إضافي مخصص للذكاء الاصطناعي (اختياري):</span>
-                <input type="text" id="gemini-custom-prompt" placeholder="مثال: ركز على القصص المشوقة، الأحداث الصادمة، المواقف المفاجئة..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; font-size: 13px;" />
+                <!-- OpenRouter model selection input -->
+                <div>
+                  <span class="control-label" style="font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 700; margin-bottom: 6px; display: block;">🤖 نموذج OpenRouter لتحليل ה-Shorts:</span>
+                  <input type="text" id="openrouter-model-input" value="google/gemini-3.1-flash-lite" placeholder="مثال: google/gemini-3.1-flash-lite" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(0,0,0,0.35); color: #c084fc; font-size: 13px; direction: ltr; font-family: monospace; font-weight: bold; box-sizing: border-box;" />
+                </div>
+
+                <!-- Custom guidance prompt input -->
+                <div>
+                  <span class="control-label" style="font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 700; margin-bottom: 6px; display: block;">💡 توجيه إضافي مخصص للذكاء الاصطناعي (اختياري):</span>
+                  <input type="text" id="gemini-custom-prompt" placeholder="مثال: ركز على القصص المشوقة، الأحداث الصادمة، المواقف المفاجئة..." style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; font-family: Cairo, sans-serif; box-sizing: border-box;" />
+                </div>
               </div>
 
               <!-- AI Shorts suggestions trigger button -->
