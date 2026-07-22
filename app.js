@@ -837,7 +837,7 @@ function updateLiveCaptionOverlay(time) {
   const overlayContainer = document.getElementById('live-caption-overlay');
   if (!overlayContainer) return;
   
-  if (activeSegmentIndex === -1 || !transcribeData) {
+  if (activeSegmentIndex === -1 || !transcribeData || !transcribeData.segments || !transcribeData.segments[activeSegmentIndex]) {
     overlayContainer.classList.add('hidden');
     overlayContainer.removeAttribute('data-rendered-key');
     return;
@@ -846,27 +846,47 @@ function updateLiveCaptionOverlay(time) {
   const segment = transcribeData.segments[activeSegmentIndex];
   
   overlayContainer.classList.remove('hidden');
-  const activeColor = document.getElementById('active-color').value;
-  const inactiveColor = document.getElementById('inactive-color').value;
+  const activeColor = document.getElementById('active-color')?.value || '#FFFFFF';
+  const inactiveColor = document.getElementById('inactive-color')?.value || '#FFFFFF';
   
-  // Read dynamic style customizations
-  const fontSize = parseFloat(document.getElementById('font-size').value) || 48;
-  const fontWeight = document.getElementById('font-weight')?.value || 400;
-  const strokeSize = parseFloat(document.getElementById('stroke-size')?.value) ?? 2;
-  const strokeColor = document.getElementById('stroke-color')?.value || '#000000';
-  const shadowSize = parseFloat(document.getElementById('shadow-size')?.value) ?? 4;
-  const shadowOpacity = (parseFloat(document.getElementById('shadow-opacity')?.value) ?? 80) / 100;
+  // Read dynamic style customizations with robust NaN fallbacks
+  const fontSizeInput = parseFloat(document.getElementById('font-size')?.value);
+  const fontSize = isNaN(fontSizeInput) ? 48 : fontSizeInput;
 
-  const bgColor = document.getElementById('bg-color').value;
-  const bgOpacity = parseFloat(document.getElementById('bg-opacity').value) || 75;
-  const wordSpacing = parseFloat(document.getElementById('word-spacing').value) || 25;
-  const bgPadding = parseFloat(document.getElementById('bg-padding').value) || 10;
-  const removeBg = document.getElementById('show-bg').checked;
+  const fontWeightInput = document.getElementById('font-weight')?.value;
+  const fontWeight = fontWeightInput || '400';
+
+  const strokeSizeInput = parseFloat(document.getElementById('stroke-size')?.value);
+  const strokeSize = isNaN(strokeSizeInput) ? 2 : strokeSizeInput;
+
+  const strokeColorInput = document.getElementById('stroke-color')?.value;
+  const strokeColor = strokeColorInput || '#000000';
+
+  const shadowSizeInput = parseFloat(document.getElementById('shadow-size')?.value);
+  const shadowSize = isNaN(shadowSizeInput) ? 4 : shadowSizeInput;
+
+  const shadowOpacityInput = parseFloat(document.getElementById('shadow-opacity')?.value);
+  const shadowOpacity = (isNaN(shadowOpacityInput) ? 80 : shadowOpacityInput) / 100;
+
+  const bgColorInput = document.getElementById('bg-color')?.value;
+  const bgColor = bgColorInput || '#525252';
+
+  const bgOpacityInput = parseFloat(document.getElementById('bg-opacity')?.value);
+  const bgOpacity = isNaN(bgOpacityInput) ? 75 : bgOpacityInput;
+
+  const wordSpacingInput = parseFloat(document.getElementById('word-spacing')?.value);
+  const wordSpacing = isNaN(wordSpacingInput) ? 25 : wordSpacingInput;
+
+  const bgPaddingInput = parseFloat(document.getElementById('bg-padding')?.value);
+  const bgPadding = isNaN(bgPaddingInput) ? 10 : bgPaddingInput;
+
+  const showBgCheckbox = document.getElementById('show-bg');
+  const removeBg = showBgCheckbox ? showBgCheckbox.checked : false;
   const isBgVisible = !removeBg && bgOpacity > 0;
   
   // Apply styles to overlay container dynamically
   overlayContainer.style.top = `${captionTop}%`;
-  overlayContainer.style.fontSize = `${fontSize / 4.5}px`;
+  overlayContainer.style.fontSize = `${Math.max(14, fontSize / 3.0)}px`;
   overlayContainer.style.fontFamily = "'ThmanyahSans', 'Cairo', sans-serif";
   overlayContainer.style.fontWeight = fontWeight;
   overlayContainer.style.flexWrap = 'nowrap';
@@ -880,8 +900,8 @@ function updateLiveCaptionOverlay(time) {
     overlayContainer.style.webkitBackdropFilter = 'none';
     overlayContainer.style.border = 'none';
     overlayContainer.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-    overlayContainer.style.padding = `${bgPadding / 4.5}px ${(bgPadding * 2) / 4.5}px`;
-    overlayContainer.style.borderRadius = `${4 / 4.5}px`;
+    overlayContainer.style.padding = `${bgPadding / 3.0}px ${(bgPadding * 2) / 3.0}px`;
+    overlayContainer.style.borderRadius = '4px';
   } else {
     overlayContainer.style.background = 'none';
     overlayContainer.style.backdropFilter = 'none';
@@ -893,8 +913,8 @@ function updateLiveCaptionOverlay(time) {
   }
   
   // Dynamic text shadow / outline computation scaled for web preview
-  const sSize = strokeSize / 2.5;
-  const shSize = shadowSize / 2.5;
+  const sSize = strokeSize / 2.0;
+  const shSize = shadowSize / 2.0;
   let shadowParts = [];
   if (sSize > 0) {
     shadowParts.push(
