@@ -1363,12 +1363,17 @@ window.renderVideo = async function() {
     inactiveColor: document.getElementById('inactive-color').value,
     leftLogo: transcribeData.leftLogo,
     rightLogo: transcribeData.rightLogo,
-    fontSize: parseInt(document.getElementById('font-size').value) || 50,
+    fontSize: parseInt(document.getElementById('font-size').value) || 48,
+    fontWeight: parseInt(document.getElementById('font-weight')?.value) || 400,
+    strokeSize: parseInt(document.getElementById('stroke-size')?.value) || 2,
+    strokeColor: document.getElementById('stroke-color')?.value || '#000000',
+    shadowSize: parseInt(document.getElementById('shadow-size')?.value) || 4,
+    shadowOpacity: parseInt(document.getElementById('shadow-opacity')?.value) || 80,
     bgColor: document.getElementById('bg-color').value,
-    bgOpacity: parseFloat(document.getElementById('bg-opacity').value) || 86,
+    bgOpacity: parseFloat(document.getElementById('bg-opacity').value) || 75,
     syncOffset: parseFloat(document.getElementById('sync-offset').value) || 0.20,
-    wordSpacing: parseInt(document.getElementById('word-spacing').value) || 31,
-    bgPadding: parseInt(document.getElementById('bg-padding').value) || 8,
+    wordSpacing: parseInt(document.getElementById('word-spacing').value) || 25,
+    bgPadding: parseInt(document.getElementById('bg-padding').value) || 10,
     showBg: !document.getElementById('show-bg').checked,
     captionTop: captionTop
   };
@@ -1667,8 +1672,16 @@ window.switchMainTab = function(tab) {
     }
   });
 
-  if (tab !== 'editor' && editorState) {
-    editorState.classList.add('hidden');
+  if (tab === 'editor') {
+    if (transcribeData) {
+      if (dashboard) dashboard.classList.add('hidden');
+      if (editorState) editorState.classList.remove('hidden');
+    } else {
+      if (dashboard) dashboard.classList.remove('hidden');
+      if (editorState) editorState.classList.add('hidden');
+    }
+  } else {
+    if (editorState) editorState.classList.add('hidden');
   }
 
   if (tab === 'gemini') {
