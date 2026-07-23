@@ -51,7 +51,7 @@ function loadGoogleFontCSS(fontName) {
 }
 
 window.applyLiveFontPreview = function(fontKey) {
-  let fontCSSName = "'Cairo', sans-serif";
+  let fontCSSName = "'Thmanyah', 'Cairo', sans-serif";
   
   if (fontKey === 'thmanyah') {
     fontCSSName = "'Thmanyah', 'Cairo', sans-serif";
@@ -1532,13 +1532,13 @@ window.renderVideo = async function() {
     bgPadding: parseInt(document.getElementById('bg-padding').value) || 8,
     showBg: !document.getElementById('show-bg').checked,
     captionTop: captionTop,
-    fontFamily: document.getElementById('font-family-select') ? document.getElementById('font-family-select').value : 'cairo',
+    fontFamily: document.getElementById('font-family-select') ? document.getElementById('font-family-select').value : 'thmanyah',
     customFontName: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontName : null,
     customFontBase64: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontDataUrl : null,
     strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
-    strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 3,
+    strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
     shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
-    shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 10
+    shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
   };
   
   try {
