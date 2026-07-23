@@ -709,16 +709,16 @@ function initMediaPlayer() {
   const wrapper = document.getElementById('preview-wrapper');
   if (!wrapper || !transcribeData) return;
   
+  const mediaUrl = `${apiUrl}/public/${transcribeData.audioPath}`;
+  
   let mediaHtml = '';
   if (transcribeData.videoPath) {
     wrapper.classList.remove('audio-mode');
-    const videoUrl = `${apiUrl}/public/${transcribeData.videoPath}`;
     mediaHtml = `
-      <video id="media-player" src="${videoUrl}" class="preview-media-element" controls></video>
+      <video id="media-player" src="${mediaUrl}" class="preview-media-element" controls></video>
     `;
   } else {
     wrapper.classList.add('audio-mode');
-    const audioUrl = `${apiUrl}/public/${transcribeData.audioPath}`;
     mediaHtml = `
       <div class="audio-equalizer-dots" style="margin-top: 20px;">
         <div class="audio-equalizer-dot"></div>
@@ -726,7 +726,7 @@ function initMediaPlayer() {
         <div class="audio-equalizer-dot"></div>
         <div class="audio-equalizer-dot"></div>
       </div>
-      <audio id="media-player" src="${audioUrl}" controls style="width: 90%; margin-bottom: 20px;"></audio>
+      <audio id="media-player" src="${mediaUrl}" controls style="width: 90%; margin-bottom: 20px;"></audio>
     `;
   }
   
@@ -762,42 +762,34 @@ function initMediaPlayer() {
   
   wrapper.innerHTML = mediaHtml;
   
-  setupLiveStyleListeners();
-
   const player = document.getElementById('media-player');
-  if (player) {
-    player.addEventListener('timeupdate', function() {
-      updateActiveSegment(this.currentTime);
+  player.addEventListener('timeupdate', function() {
+    updateActiveSegment(this.currentTime);
+  });
+
+  if (transcribeData.videoPath && player) {
+    player.style.cursor = 'pointer';
+    player.addEventListener('click', function(e) {
+      const rect = this.getBoundingClientRect();
+      const clickY = e.clientY - rect.top;
+      if (clickY > rect.height - 50) {
+        return;
+      }
+      e.preventDefault();
+      if (this.paused) {
+        this.play();
+      } else {
+        this.pause();
+      }
     });
-
-    if (transcribeData.videoPath) {
-      player.style.cursor = 'pointer';
-      player.addEventListener('click', function(e) {
-        const rect = this.getBoundingClientRect();
-        const clickY = e.clientY - rect.top;
-        if (clickY > rect.height - 50) {
-          return;
-        }
-        e.preventDefault();
-        if (this.paused) {
-          this.play();
-        } else {
-          this.pause();
-        }
-      });
-    }
   }
-
-  // Force immediate initial live caption rendering so preview is visible right away!
-  setTimeout(() => {
-    updateLiveCaptionOverlay(0);
-  }, 100);
 }
 
 function updateActiveSegment(time) {
   if (!transcribeData) return;
   
-  const syncOffset = parseFloat(document.getElementById('sync-offset')?.value) || 0;
+  // Apply the syncOffset to the player's time for the caption overlay!
+  const syncOffset = parseFloat(document.getElementById('sync-offset').value) || 0;
   const adjustedTime = time + syncOffset;
   
   currentTime = adjustedTime;
@@ -845,78 +837,30 @@ function updateLiveCaptionOverlay(time) {
   const overlayContainer = document.getElementById('live-caption-overlay');
   if (!overlayContainer) return;
   
-  if (!transcribeData || !transcribeData.segments || transcribeData.segments.length === 0) {
+  if (activeSegmentIndex === -1 || !transcribeData) {
     overlayContainer.classList.add('hidden');
     overlayContainer.removeAttribute('data-rendered-key');
     return;
   }
   
-  const player = document.getElementById('media-player');
-  const isPaused = !player || player.paused;
-
-  // Determine target segment to render safely
-  let targetIndex = activeSegmentIndex;
-  if (targetIndex < 0 || targetIndex >= transcribeData.segments.length) {
-    if (isPaused || time === 0) {
-      targetIndex = 0; // Show first segment as fallback when paused/idle
-    } else {
-      overlayContainer.classList.add('hidden');
-      overlayContainer.removeAttribute('data-rendered-key');
-      return;
-    }
-  }
-
-  const segment = transcribeData.segments[targetIndex];
-  if (!segment || !segment.words || segment.words.length === 0) {
-    overlayContainer.classList.add('hidden');
-    overlayContainer.removeAttribute('data-rendered-key');
-    return;
-  }
-
+  const segment = transcribeData.segments[activeSegmentIndex];
+  
   overlayContainer.classList.remove('hidden');
-  const activeColor = document.getElementById('active-color')?.value || '#FFFFFF';
-  const inactiveColor = document.getElementById('inactive-color')?.value || '#FFFFFF';
+  const activeColor = document.getElementById('active-color').value;
+  const inactiveColor = document.getElementById('inactive-color').value;
   
-  // Read dynamic style customizations with robust NaN fallbacks
-  const fontSizeInput = parseFloat(document.getElementById('font-size')?.value);
-  const fontSize = isNaN(fontSizeInput) ? 48 : fontSizeInput;
-
-  const fontWeightInput = document.getElementById('font-weight')?.value;
-  const fontWeight = fontWeightInput || '400';
-
-  const strokeSizeInput = parseFloat(document.getElementById('stroke-size')?.value);
-  const strokeSize = isNaN(strokeSizeInput) ? 2 : strokeSizeInput;
-
-  const strokeColorInput = document.getElementById('stroke-color')?.value;
-  const strokeColor = strokeColorInput || '#000000';
-
-  const shadowSizeInput = parseFloat(document.getElementById('shadow-size')?.value);
-  const shadowSize = isNaN(shadowSizeInput) ? 4 : shadowSizeInput;
-
-  const shadowOpacityInput = parseFloat(document.getElementById('shadow-opacity')?.value);
-  const shadowOpacity = (isNaN(shadowOpacityInput) ? 80 : shadowOpacityInput) / 100;
-
-  const bgColorInput = document.getElementById('bg-color')?.value;
-  const bgColor = bgColorInput || '#525252';
-
-  const bgOpacityInput = parseFloat(document.getElementById('bg-opacity')?.value);
-  const bgOpacity = isNaN(bgOpacityInput) ? 75 : bgOpacityInput;
-
-  const wordSpacingInput = parseFloat(document.getElementById('word-spacing')?.value);
-  const wordSpacing = isNaN(wordSpacingInput) ? 25 : wordSpacingInput;
-
-  const bgPaddingInput = parseFloat(document.getElementById('bg-padding')?.value);
-  const bgPadding = isNaN(bgPaddingInput) ? 10 : bgPaddingInput;
-
-  const showBgCheckbox = document.getElementById('show-bg');
-  const removeBg = showBgCheckbox ? showBgCheckbox.checked : false;
+  // Read dynamic style customizations
+  const fontSize = parseFloat(document.getElementById('font-size').value) || 50;
+  const bgColor = document.getElementById('bg-color').value;
+  const bgOpacity = parseFloat(document.getElementById('bg-opacity').value) || 86;
+  const wordSpacing = parseFloat(document.getElementById('word-spacing').value) || 31;
+  const bgPadding = parseFloat(document.getElementById('bg-padding').value) || 8;
+  const removeBg = document.getElementById('show-bg').checked;
   const isBgVisible = !removeBg && bgOpacity > 0;
   
   // Apply styles to overlay container dynamically
   overlayContainer.style.top = `${captionTop}%`;
-  overlayContainer.style.fontSize = `${Math.max(14, fontSize / 3.0)}px`;
-  overlayContainer.style.fontFamily = "'ThmanyahSans', 'Cairo', sans-serif";
-  overlayContainer.style.fontWeight = fontWeight;
+  overlayContainer.style.fontSize = `${fontSize / 4.5}px`;
   overlayContainer.style.flexWrap = 'nowrap';
   overlayContainer.style.whiteSpace = 'nowrap';
   overlayContainer.style.columnGap = `${wordSpacing / 100}em`;
@@ -926,10 +870,10 @@ function updateLiveCaptionOverlay(time) {
     overlayContainer.style.background = `rgba(${hexToRgb(bgColor)}, ${bgOpacity / 100})`;
     overlayContainer.style.backdropFilter = 'none';
     overlayContainer.style.webkitBackdropFilter = 'none';
-    overlayContainer.style.border = 'none';
+    overlayContainer.style.border = 'none'; // Clean sharp rectangular edge
     overlayContainer.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-    overlayContainer.style.padding = `${bgPadding / 3.0}px ${(bgPadding * 2) / 3.0}px`;
-    overlayContainer.style.borderRadius = '4px';
+    overlayContainer.style.padding = `${bgPadding / 4.5}px ${(bgPadding * 2) / 4.5}px`;
+    overlayContainer.style.borderRadius = `${4 / 4.5}px`; // tight corners scaled by 4.5
   } else {
     overlayContainer.style.background = 'none';
     overlayContainer.style.backdropFilter = 'none';
@@ -940,28 +884,12 @@ function updateLiveCaptionOverlay(time) {
     overlayContainer.style.borderRadius = '0';
   }
   
-  // Dynamic text shadow / outline computation scaled for web preview
-  const sSize = strokeSize / 2.0;
-  const shSize = shadowSize / 2.0;
-  let shadowParts = [];
-  if (sSize > 0) {
-    shadowParts.push(
-      `${sSize}px ${sSize}px 0px ${strokeColor}`,
-      `-${sSize}px -${sSize}px 0px ${strokeColor}`,
-      `${sSize}px -${sSize}px 0px ${strokeColor}`,
-      `-${sSize}px ${sSize}px 0px ${strokeColor}`,
-      `${sSize}px 0px 0px ${strokeColor}`,
-      `-${sSize}px 0px 0px ${strokeColor}`,
-      `0px ${sSize}px 0px ${strokeColor}`,
-      `0px -${sSize}px 0px ${strokeColor}`
-    );
-  }
-  if (shSize > 0) {
-    shadowParts.push(`0px ${shSize}px ${shSize * 1.5}px rgba(0, 0, 0, ${shadowOpacity})`);
-  }
-  const outlineStroke = shadowParts.length > 0 ? `text-shadow: ${shadowParts.join(', ')};` : 'text-shadow: none;';
+  const outlineStroke = isBgVisible 
+    ? 'text-shadow: 2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 2px 0px 0px #000000, -2px 0px 0px #000000, 0px 2px 0px #000000, 0px -2px 0px #000000, 0px 4px 10px rgba(0, 0, 0, 0.95);'
+    : 'text-shadow: 2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 4px 6px rgba(0, 0, 0, 0.8);';
 
-  const styleKey = `${targetIndex}_${selectedAnimation}_${fontSize}_${fontWeight}_${strokeSize}_${strokeColor}_${shadowSize}_${shadowOpacity}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}`;
+  // React-style state key to avoid destroying the DOM and breaking slide-up transitions
+  const styleKey = `${activeSegmentIndex}_${selectedAnimation}_${fontSize}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}`;
   const isNewSegment = overlayContainer.getAttribute('data-rendered-key') !== styleKey;
 
   if (selectedAnimation === 'slide') {
@@ -1435,17 +1363,12 @@ window.renderVideo = async function() {
     inactiveColor: document.getElementById('inactive-color').value,
     leftLogo: transcribeData.leftLogo,
     rightLogo: transcribeData.rightLogo,
-    fontSize: parseInt(document.getElementById('font-size').value) || 48,
-    fontWeight: parseInt(document.getElementById('font-weight')?.value) || 400,
-    strokeSize: parseInt(document.getElementById('stroke-size')?.value) || 2,
-    strokeColor: document.getElementById('stroke-color')?.value || '#000000',
-    shadowSize: parseInt(document.getElementById('shadow-size')?.value) || 4,
-    shadowOpacity: parseInt(document.getElementById('shadow-opacity')?.value) || 80,
+    fontSize: parseInt(document.getElementById('font-size').value) || 50,
     bgColor: document.getElementById('bg-color').value,
-    bgOpacity: parseFloat(document.getElementById('bg-opacity').value) || 75,
+    bgOpacity: parseFloat(document.getElementById('bg-opacity').value) || 86,
     syncOffset: parseFloat(document.getElementById('sync-offset').value) || 0.20,
-    wordSpacing: parseInt(document.getElementById('word-spacing').value) || 25,
-    bgPadding: parseInt(document.getElementById('bg-padding').value) || 10,
+    wordSpacing: parseInt(document.getElementById('word-spacing').value) || 31,
+    bgPadding: parseInt(document.getElementById('bg-padding').value) || 8,
     showBg: !document.getElementById('show-bg').checked,
     captionTop: captionTop
   };
@@ -1744,16 +1667,8 @@ window.switchMainTab = function(tab) {
     }
   });
 
-  if (tab === 'editor') {
-    if (transcribeData) {
-      if (dashboard) dashboard.classList.add('hidden');
-      if (editorState) editorState.classList.remove('hidden');
-    } else {
-      if (dashboard) dashboard.classList.remove('hidden');
-      if (editorState) editorState.classList.add('hidden');
-    }
-  } else {
-    if (editorState) editorState.classList.add('hidden');
+  if (tab !== 'editor' && editorState) {
+    editorState.classList.add('hidden');
   }
 
   if (tab === 'gemini') {

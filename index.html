@@ -12,44 +12,6 @@
   
   <link rel="stylesheet" href="style.css" />
   
-  <style>
-    @font-face {
-      font-family: 'ThmanyahSans';
-      src: url('./fonts/thmanyahsans-Regular.woff2') format('woff2'),
-           url('./fonts/thmanyahsans-Regular.otf') format('opentype');
-      font-weight: 400;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'ThmanyahSans';
-      src: url('./fonts/thmanyahsans-Light.woff2') format('woff2'),
-           url('./fonts/thmanyahsans-Light.otf') format('opentype');
-      font-weight: 300;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'ThmanyahSans';
-      src: url('./fonts/thmanyahsans-Medium.woff2') format('woff2'),
-           url('./fonts/thmanyahsans-Medium.otf') format('opentype');
-      font-weight: 500;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'ThmanyahSans';
-      src: url('./fonts/thmanyahsans-Bold.woff2') format('woff2'),
-           url('./fonts/thmanyahsans-Bold.otf') format('opentype');
-      font-weight: 700;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'ThmanyahSans';
-      src: url('./fonts/thmanyahsans-Black.woff2') format('woff2'),
-           url('./fonts/thmanyahsans-Black.otf') format('opentype');
-      font-weight: 900;
-      font-style: normal;
-    }
-  </style>
-  
   <!-- Firebase App, Analytics, Auth & Firestore SDKs (Compat v9/v10) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
@@ -703,54 +665,23 @@
               </label>
             </div>
 
-            <!-- Font, Weight & Opacity Grid! -->
+            <!-- Font, Opacity, Spacing, Padding Grid! -->
             <div class="grid-3" style="gap: 10px; margin-bottom: 10px;">
               <div class="control-field">
                 <span class="control-label" style="font-size: 11px;">حجم الخط</span>
                 <input type="number" id="font-size" value="48" min="20" max="150" style="height: 34px; font-size: 12px; padding: 5px 8px;" />
               </div>
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">وزن خط ثمانية 🖋️</span>
-                <select id="font-weight" style="height: 34px; font-size: 12px; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: #0f0c1b; color: #fff; cursor: pointer; font-family: Cairo, sans-serif;">
-                  <option value="400" selected>عادي (Regular - 400)</option>
-                  <option value="500">متوسط (Medium - 500)</option>
-                  <option value="700">عريض (Bold - 700)</option>
-                  <option value="900">عريض جداً (Black - 900)</option>
-                  <option value="300">خفيف (Light - 300)</option>
-                </select>
-              </div>
-              <div class="control-field">
                 <span class="control-label" style="font-size: 11px;">شفافية الخلفية: <span id="bg-opacity-val">75</span>%</span>
                 <input type="range" id="bg-opacity" value="75" min="0" max="100" style="width: 100%; margin-top: 8px;" />
               </div>
-            </div>
-
-            <!-- Stroke & Shadow Numerical Controls -->
-            <div class="grid-3" style="gap: 10px; margin-bottom: 10px;">
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">حجم الستروك: <span id="stroke-size-val">2</span>px</span>
-                <input type="range" id="stroke-size" value="2" min="0" max="10" oninput="document.getElementById('stroke-size-val').textContent=this.value" style="width: 100%; margin-top: 8px;" />
-              </div>
-              <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">لون الستروك</span>
-                <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
-                  <div class="color-circle-preview" style="width: 20px; height: 20px;">
-                    <input type="color" id="stroke-color" value="#000000" />
-                  </div>
-                  <span id="stroke-color-hex" class="color-hex-text" style="font-size: 10px;">#000000</span>
-                </div>
-              </div>
-              <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">حجم الظل (Shadow): <span id="shadow-size-val">4</span>px</span>
-                <input type="range" id="shadow-size" value="4" min="0" max="20" oninput="document.getElementById('shadow-size-val').textContent=this.value" style="width: 100%; margin-top: 8px;" />
+                <span class="control-label" style="font-size: 11px;">المزامنة (+/- ث)</span>
+                <input type="number" id="sync-offset" value="0.20" step="0.05" min="-2.0" max="2.0" style="height: 34px; font-size: 12px; padding: 5px 8px;" />
               </div>
             </div>
 
-            <div class="grid-3" style="gap: 10px; margin-bottom: 10px;">
-              <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">شفافية الظل: <span id="shadow-opacity-val">80</span>%</span>
-                <input type="range" id="shadow-opacity" value="80" min="0" max="100" oninput="document.getElementById('shadow-opacity-val').textContent=this.value" style="width: 100%; margin-top: 8px;" />
-              </div>
+            <div class="grid-2" style="gap: 10px;">
               <div class="control-field">
                 <span class="control-label" style="font-size: 11px;">المسافة بين الكلمات: <span id="word-spacing-val">25</span></span>
                 <input type="range" id="word-spacing" value="25" min="0" max="80" style="width: 100%; margin-top: 8px;" />
