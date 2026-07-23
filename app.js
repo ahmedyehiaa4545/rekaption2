@@ -851,8 +851,28 @@ function updateLiveCaptionOverlay(time) {
     return;
   }
   
-  const segment = transcribeData.segments[activeSegmentIndex];
-  
+  const player = document.getElementById('media-player');
+  const isPaused = !player || player.paused;
+
+  // Determine target segment to render safely
+  let targetIndex = activeSegmentIndex;
+  if (targetIndex < 0 || targetIndex >= transcribeData.segments.length) {
+    if (isPaused || time === 0) {
+      targetIndex = 0; // Show first segment as fallback when paused/idle
+    } else {
+      overlayContainer.classList.add('hidden');
+      overlayContainer.removeAttribute('data-rendered-key');
+      return;
+    }
+  }
+
+  const segment = transcribeData.segments[targetIndex];
+  if (!segment || !segment.words || segment.words.length === 0) {
+    overlayContainer.classList.add('hidden');
+    overlayContainer.removeAttribute('data-rendered-key');
+    return;
+  }
+
   overlayContainer.classList.remove('hidden');
   const activeColor = document.getElementById('active-color')?.value || '#FFFFFF';
   const inactiveColor = document.getElementById('inactive-color')?.value || '#FFFFFF';
@@ -941,7 +961,7 @@ function updateLiveCaptionOverlay(time) {
   }
   const outlineStroke = shadowParts.length > 0 ? `text-shadow: ${shadowParts.join(', ')};` : 'text-shadow: none;';
 
-  const styleKey = `${activeSegmentIndex}_${selectedAnimation}_${fontSize}_${fontWeight}_${strokeSize}_${strokeColor}_${shadowSize}_${shadowOpacity}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}`;
+  const styleKey = `${targetIndex}_${selectedAnimation}_${fontSize}_${fontWeight}_${strokeSize}_${strokeColor}_${shadowSize}_${shadowOpacity}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}`;
   const isNewSegment = overlayContainer.getAttribute('data-rendered-key') !== styleKey;
 
   if (selectedAnimation === 'slide') {
