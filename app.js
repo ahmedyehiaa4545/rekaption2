@@ -762,34 +762,42 @@ function initMediaPlayer() {
   
   wrapper.innerHTML = mediaHtml;
   
-  const player = document.getElementById('media-player');
-  player.addEventListener('timeupdate', function() {
-    updateActiveSegment(this.currentTime);
-  });
+  setupLiveStyleListeners();
 
-  if (transcribeData.videoPath && player) {
-    player.style.cursor = 'pointer';
-    player.addEventListener('click', function(e) {
-      const rect = this.getBoundingClientRect();
-      const clickY = e.clientY - rect.top;
-      if (clickY > rect.height - 50) {
-        return;
-      }
-      e.preventDefault();
-      if (this.paused) {
-        this.play();
-      } else {
-        this.pause();
-      }
+  const player = document.getElementById('media-player');
+  if (player) {
+    player.addEventListener('timeupdate', function() {
+      updateActiveSegment(this.currentTime);
     });
+
+    if (transcribeData.videoPath) {
+      player.style.cursor = 'pointer';
+      player.addEventListener('click', function(e) {
+        const rect = this.getBoundingClientRect();
+        const clickY = e.clientY - rect.top;
+        if (clickY > rect.height - 50) {
+          return;
+        }
+        e.preventDefault();
+        if (this.paused) {
+          this.play();
+        } else {
+          this.pause();
+        }
+      });
+    }
   }
+
+  // Force immediate initial live caption rendering so preview is visible right away!
+  setTimeout(() => {
+    updateLiveCaptionOverlay(0);
+  }, 100);
 }
 
 function updateActiveSegment(time) {
   if (!transcribeData) return;
   
-  // Apply the syncOffset to the player's time for the caption overlay!
-  const syncOffset = parseFloat(document.getElementById('sync-offset').value) || 0;
+  const syncOffset = parseFloat(document.getElementById('sync-offset')?.value) || 0;
   const adjustedTime = time + syncOffset;
   
   currentTime = adjustedTime;
@@ -837,7 +845,7 @@ function updateLiveCaptionOverlay(time) {
   const overlayContainer = document.getElementById('live-caption-overlay');
   if (!overlayContainer) return;
   
-  if (activeSegmentIndex === -1 || !transcribeData || !transcribeData.segments || !transcribeData.segments[activeSegmentIndex]) {
+  if (!transcribeData || !transcribeData.segments || transcribeData.segments.length === 0) {
     overlayContainer.classList.add('hidden');
     overlayContainer.removeAttribute('data-rendered-key');
     return;
