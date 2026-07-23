@@ -249,6 +249,39 @@
             </div>
           </div>
 
+          <!-- Stroke & Shadow Controls Grid (Pre-Upload) -->
+          <div class="grid-2" style="gap: 10px; margin-bottom: 12px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 12px; border: 1px solid var(--border-subtle);">
+            <div class="control-field">
+              <span class="control-label" style="font-size: 11px;">لون الستروك (Stroke Color) 🖌️</span>
+              <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
+                <div class="color-circle-preview" style="width: 20px; height: 20px;">
+                  <input type="color" id="upload-stroke-color" value="#000000" />
+                </div>
+                <span id="upload-stroke-color-hex" class="color-hex-text" style="font-size: 10px;">#000000</span>
+              </div>
+            </div>
+            <div class="control-field">
+              <span class="control-label" style="font-size: 11px;">سمك الستروك: <span id="upload-stroke-width-val">3</span>px</span>
+              <input type="range" id="upload-stroke-width" value="3" min="0" max="10" step="1" style="width: 100%; margin-top: 8px;" />
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap: 10px; margin-bottom: 12px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 12px; border: 1px solid var(--border-subtle);">
+            <div class="control-field">
+              <span class="control-label" style="font-size: 11px;">لون الشادو (Shadow Color) 🌫️</span>
+              <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
+                <div class="color-circle-preview" style="width: 20px; height: 20px;">
+                  <input type="color" id="upload-shadow-color" value="#000000" />
+                </div>
+                <span id="upload-shadow-color-hex" class="color-hex-text" style="font-size: 10px;">#000000</span>
+              </div>
+            </div>
+            <div class="control-field">
+              <span class="control-label" style="font-size: 11px;">ضبابية الشادو: <span id="upload-shadow-blur-val">10</span>px</span>
+              <input type="range" id="upload-shadow-blur" value="10" min="0" max="30" step="1" style="width: 100%; margin-top: 8px;" />
+            </div>
+          </div>
+
           <div class="control-field" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-subtle);">
             <input 
               type="checkbox" 
@@ -721,6 +754,39 @@
                   </div>
                   <span id="bg-color-hex" class="color-hex-text" style="font-size: 10px;">#525252</span>
                 </div>
+              </div>
+            </div>
+
+            <!-- Stroke & Shadow Controls Grid (In-Editor) -->
+            <div class="grid-2" style="gap: 10px; margin-bottom: 12px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 12px; border: 1px solid var(--border-subtle);">
+              <div class="control-field">
+                <span class="control-label" style="font-size: 11px;">لون الستروك (Stroke Color) 🖌️</span>
+                <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
+                  <div class="color-circle-preview" style="width: 20px; height: 20px;">
+                    <input type="color" id="stroke-color" value="#000000" />
+                  </div>
+                  <span id="stroke-color-hex" class="color-hex-text" style="font-size: 10px;">#000000</span>
+                </div>
+              </div>
+              <div class="control-field">
+                <span class="control-label" style="font-size: 11px;">سمك الستروك: <span id="stroke-width-val">3</span>px</span>
+                <input type="range" id="stroke-width" value="3" min="0" max="10" step="1" style="width: 100%; margin-top: 8px;" />
+              </div>
+            </div>
+
+            <div class="grid-2" style="gap: 10px; margin-bottom: 12px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 12px; border: 1px solid var(--border-subtle);">
+              <div class="control-field">
+                <span class="control-label" style="font-size: 11px;">لون الشادو (Shadow Color) 🌫️</span>
+                <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
+                  <div class="color-circle-preview" style="width: 20px; height: 20px;">
+                    <input type="color" id="shadow-color" value="#000000" />
+                  </div>
+                  <span id="shadow-color-hex" class="color-hex-text" style="font-size: 10px;">#000000</span>
+                </div>
+              </div>
+              <div class="control-field">
+                <span class="control-label" style="font-size: 11px;">ضبابية الشادو: <span id="shadow-blur-val">10</span>px</span>
+                <input type="range" id="shadow-blur" value="10" min="0" max="30" step="1" style="width: 100%; margin-top: 8px;" />
               </div>
             </div>
 

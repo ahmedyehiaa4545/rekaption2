@@ -712,11 +712,15 @@ document.addEventListener('DOMContentLoaded', () => {
   bindSyncedInputs('upload-active-color', 'active-color', true);
   bindSyncedInputs('upload-inactive-color', 'inactive-color', true);
   bindSyncedInputs('upload-bg-color', 'bg-color', true);
+  bindSyncedInputs('upload-stroke-color', 'stroke-color', true);
+  bindSyncedInputs('upload-shadow-color', 'shadow-color', true);
   bindSyncedInputs('upload-font-size', 'font-size');
   bindSyncedInputs('upload-bg-opacity', 'bg-opacity');
   bindSyncedInputs('upload-sync-offset', 'sync-offset');
   bindSyncedInputs('upload-word-spacing', 'word-spacing');
   bindSyncedInputs('upload-bg-padding', 'bg-padding');
+  bindSyncedInputs('upload-stroke-width', 'stroke-width');
+  bindSyncedInputs('upload-shadow-blur', 'shadow-blur');
 
   // Bind show-bg checkboxes
   const uploadShowBg = document.getElementById('upload-show-bg');
@@ -733,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initialize all range labels
-  ['upload-bg-opacity', 'upload-word-spacing', 'upload-bg-padding', 'bg-opacity', 'word-spacing', 'bg-padding'].forEach(id => {
+  ['upload-bg-opacity', 'upload-word-spacing', 'upload-bg-padding', 'upload-stroke-width', 'upload-shadow-blur', 'bg-opacity', 'word-spacing', 'bg-padding', 'stroke-width', 'shadow-blur'].forEach(id => {
     const el = document.getElementById(id);
     if (el) updateRangeLabel(id, el.value);
   });
@@ -767,9 +771,21 @@ document.getElementById('bg-color').addEventListener('input', function() {
   document.getElementById('bg-color-hex').textContent = this.value.toUpperCase();
   if (typeof updateLiveCaptionOverlay === 'function') updateLiveCaptionOverlay(currentTime);
 });
+if (document.getElementById('stroke-color')) {
+  document.getElementById('stroke-color').addEventListener('input', function() {
+    if (document.getElementById('stroke-color-hex')) document.getElementById('stroke-color-hex').textContent = this.value.toUpperCase();
+    if (typeof updateLiveCaptionOverlay === 'function') updateLiveCaptionOverlay(currentTime);
+  });
+}
+if (document.getElementById('shadow-color')) {
+  document.getElementById('shadow-color').addEventListener('input', function() {
+    if (document.getElementById('shadow-color-hex')) document.getElementById('shadow-color-hex').textContent = this.value.toUpperCase();
+    if (typeof updateLiveCaptionOverlay === 'function') updateLiveCaptionOverlay(currentTime);
+  });
+}
 
 // Other styling changes trigger live refresh
-['font-size', 'bg-opacity', 'word-spacing', 'bg-padding'].forEach(id => {
+['font-size', 'bg-opacity', 'word-spacing', 'bg-padding', 'stroke-width', 'shadow-blur'].forEach(id => {
   const el = document.getElementById(id);
   if (el) {
     el.addEventListener('input', () => {
@@ -1014,12 +1030,27 @@ function updateLiveCaptionOverlay(time) {
     overlayContainer.style.borderRadius = '0';
   }
   
-  const outlineStroke = isBgVisible 
-    ? 'text-shadow: 2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 2px 0px 0px #000000, -2px 0px 0px #000000, 0px 2px 0px #000000, 0px -2px 0px #000000, 0px 4px 10px rgba(0, 0, 0, 0.95);'
-    : 'text-shadow: 2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 4px 6px rgba(0, 0, 0, 0.8);';
+  const strokeColor = document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000';
+  const strokeWidth = document.getElementById('stroke-width') ? parseFloat(document.getElementById('stroke-width').value) : 3;
+  const shadowColor = document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000';
+  const shadowBlur = document.getElementById('shadow-blur') ? parseFloat(document.getElementById('shadow-blur').value) : 10;
+
+  const scaledStrokeWidth = (strokeWidth / 3.5).toFixed(1);
+  const scaledShadowBlur = (shadowBlur / 3.5).toFixed(1);
+
+  let outlineStroke = '';
+  if (strokeWidth > 0 || shadowBlur > 0) {
+    const strokePart = strokeWidth > 0 ? `-webkit-text-stroke: ${scaledStrokeWidth}px ${strokeColor};` : '';
+    const shadowPart = shadowBlur > 0 ? `text-shadow: 0px 2px ${scaledShadowBlur}px ${shadowColor};` : '';
+    outlineStroke = `${strokePart} ${shadowPart}`;
+  } else {
+    outlineStroke = isBgVisible 
+      ? 'text-shadow: 1.5px 1.5px 0px #000000, -1.5px -1.5px 0px #000000, 1.5px -1.5px 0px #000000, -1.5px 1.5px 0px #000000;'
+      : 'text-shadow: 1px 1px 0px #000000, -1px -1px 0px #000000;';
+  }
 
   // React-style state key to avoid destroying the DOM and breaking slide-up transitions
-  const styleKey = `${activeSegmentIndex}_${selectedAnimation}_${fontSize}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}`;
+  const styleKey = `${activeSegmentIndex}_${selectedAnimation}_${fontSize}_${bgColor}_${bgOpacity}_${wordSpacing}_${bgPadding}_${!removeBg}_${activeColor}_${inactiveColor}_${strokeColor}_${strokeWidth}_${shadowColor}_${shadowBlur}`;
   const isNewSegment = overlayContainer.getAttribute('data-rendered-key') !== styleKey;
 
   if (selectedAnimation === 'slide') {
@@ -1503,7 +1534,11 @@ window.renderVideo = async function() {
     captionTop: captionTop,
     fontFamily: document.getElementById('font-family-select') ? document.getElementById('font-family-select').value : 'cairo',
     customFontName: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontName : null,
-    customFontBase64: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontDataUrl : null
+    customFontBase64: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontDataUrl : null,
+    strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
+    strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 3,
+    shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
+    shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 10
   };
   
   try {
