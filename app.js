@@ -84,7 +84,8 @@ window.applyLiveFontPreview = function(fontKey) {
     document.head.appendChild(styleTag);
   }
   styleTag.innerHTML = `
-    .segment-card, .segment-text, .word-chip, .word-input, #editor-segments, #transcription-text, .editable-word-btn {
+    .segment-card, .segment-text, .word-chip, .word-input, #editor-segments, #transcription-text, .editable-word-btn,
+    #caption-overlay, #caption-overlay *, .caption-word, .slide-wrapper, .preview-media-wrapper, .preview-media-wrapper * {
       font-family: ${fontCSSName} !important;
     }
   `;
@@ -111,6 +112,9 @@ window.handleFontFamilyChange = function(val) {
   }
 
   window.applyLiveFontPreview(val);
+  if (typeof updateLiveCaptionOverlay === 'function' && typeof currentTime !== 'undefined') {
+    updateLiveCaptionOverlay(currentTime);
+  }
 };
 
 window.handleCustomFontUpload = function(event) {
