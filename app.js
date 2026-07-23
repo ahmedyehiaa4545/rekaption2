@@ -709,16 +709,16 @@ function initMediaPlayer() {
   const wrapper = document.getElementById('preview-wrapper');
   if (!wrapper || !transcribeData) return;
   
-  const mediaUrl = `${apiUrl}/public/${transcribeData.audioPath}`;
-  
   let mediaHtml = '';
   if (transcribeData.videoPath) {
     wrapper.classList.remove('audio-mode');
+    const videoUrl = `${apiUrl}/public/${transcribeData.videoPath}`;
     mediaHtml = `
-      <video id="media-player" src="${mediaUrl}" class="preview-media-element" controls></video>
+      <video id="media-player" src="${videoUrl}" class="preview-media-element" controls></video>
     `;
   } else {
     wrapper.classList.add('audio-mode');
+    const audioUrl = `${apiUrl}/public/${transcribeData.audioPath}`;
     mediaHtml = `
       <div class="audio-equalizer-dots" style="margin-top: 20px;">
         <div class="audio-equalizer-dot"></div>
@@ -726,7 +726,7 @@ function initMediaPlayer() {
         <div class="audio-equalizer-dot"></div>
         <div class="audio-equalizer-dot"></div>
       </div>
-      <audio id="media-player" src="${mediaUrl}" controls style="width: 90%; margin-bottom: 20px;"></audio>
+      <audio id="media-player" src="${audioUrl}" controls style="width: 90%; margin-bottom: 20px;"></audio>
     `;
   }
   
