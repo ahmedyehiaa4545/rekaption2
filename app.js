@@ -39,17 +39,78 @@ let captionTop = 68;
 let customFontDataUrl = null;
 let customFontName = null;
 
+function loadGoogleFontCSS(fontName) {
+  const id = `gfont-${fontName.replace(/\+/g, '-')}`;
+  if (!document.getElementById(id)) {
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@400;600;700;900&display=swap`;
+    document.head.appendChild(link);
+  }
+}
+
+window.applyLiveFontPreview = function(fontKey) {
+  let fontCSSName = "'Cairo', sans-serif";
+  
+  if (fontKey === 'thmanyah') {
+    fontCSSName = "'Thmanyah', 'Cairo', sans-serif";
+  } else if (fontKey === 'tajawal') {
+    loadGoogleFontCSS('Tajawal');
+    fontCSSName = "'Tajawal', 'Cairo', sans-serif";
+  } else if (fontKey === 'almarai') {
+    loadGoogleFontCSS('Almarai');
+    fontCSSName = "'Almarai', 'Cairo', sans-serif";
+  } else if (fontKey === 'noto-kufi') {
+    loadGoogleFontCSS('Noto+Kufi+Arabic');
+    fontCSSName = "'Noto Kufi Arabic', 'Cairo', sans-serif";
+  } else if (fontKey === 'alexandria') {
+    loadGoogleFontCSS('Alexandria');
+    fontCSSName = "'Alexandria', 'Cairo', sans-serif";
+  } else if (fontKey === 'changa') {
+    loadGoogleFontCSS('Changa');
+    fontCSSName = "'Changa', 'Cairo', sans-serif";
+  } else if (fontKey === 'amiri') {
+    loadGoogleFontCSS('Amiri');
+    fontCSSName = "'Amiri', 'Cairo', sans-serif";
+  } else if (fontKey === 'custom' && customFontName) {
+    fontCSSName = `'${customFontName}', 'Cairo', sans-serif`;
+  }
+
+  let styleTag = document.getElementById('live-font-preview-style');
+  if (!styleTag) {
+    styleTag = document.createElement('style');
+    styleTag.id = 'live-font-preview-style';
+    document.head.appendChild(styleTag);
+  }
+  styleTag.innerHTML = `
+    .segment-card, .segment-text, .word-chip, .word-input, #editor-segments, #transcription-text, .editable-word-btn {
+      font-family: ${fontCSSName} !important;
+    }
+  `;
+};
+
 window.handleFontFamilyChange = function(val) {
+  const uploadSelect = document.getElementById('upload-font-family-select');
+  const editorSelect = document.getElementById('font-family-select');
+  if (uploadSelect && uploadSelect.value !== val) uploadSelect.value = val;
+  if (editorSelect && editorSelect.value !== val) editorSelect.value = val;
+
   const customContainer = document.getElementById('custom-font-upload-container');
+  const uploadCustomContainer = document.getElementById('upload-custom-font-upload-container');
   if (val === 'custom') {
     if (customContainer) customContainer.style.display = 'block';
+    if (uploadCustomContainer) uploadCustomContainer.style.display = 'block';
     if (!customFontDataUrl) {
-      const fileInput = document.getElementById('custom-font-file-input');
+      const fileInput = document.getElementById('custom-font-file-input') || document.getElementById('upload-custom-font-file-input');
       if (fileInput) fileInput.click();
     }
   } else {
     if (customContainer) customContainer.style.display = 'none';
+    if (uploadCustomContainer) uploadCustomContainer.style.display = 'none';
   }
+
+  window.applyLiveFontPreview(val);
 };
 
 window.handleCustomFontUpload = function(event) {
@@ -66,7 +127,10 @@ window.handleCustomFontUpload = function(event) {
   }
 
   const statusEl = document.getElementById('custom-font-status');
-  if (statusEl) statusEl.textContent = `جارٍ تحميل الخط: ${fileName}...`;
+  const uploadStatusEl = document.getElementById('upload-custom-font-status');
+  const msgText = `جارٍ تحميل الخط: ${fileName}...`;
+  if (statusEl) statusEl.textContent = msgText;
+  if (uploadStatusEl) uploadStatusEl.textContent = msgText;
 
   const reader = new FileReader();
   reader.onload = function(e) {
@@ -78,13 +142,22 @@ window.handleCustomFontUpload = function(event) {
       const fontFace = new FontFace(cleanFontName, `url(${customFontDataUrl})`);
       fontFace.load().then(function(loadedFace) {
         document.fonts.add(loadedFace);
-        if (statusEl) statusEl.innerHTML = `✅ تم رفع الخط وتفعيله بنجاح: <strong>${fileName}</strong>`;
+        const successMsg = `✅ تم رفع الخط وتفعيله بنجاح: <strong>${fileName}</strong>`;
+        if (statusEl) statusEl.innerHTML = successMsg;
+        if (uploadStatusEl) uploadStatusEl.innerHTML = successMsg;
+        window.applyLiveFontPreview('custom');
       }).catch(function(err) {
         console.warn('FontFace API load warning:', err);
-        if (statusEl) statusEl.innerHTML = `✅ تم رفع الخط بنجاح: <strong>${fileName}</strong>`;
+        const successMsg = `✅ تم رفع الخط بنجاح: <strong>${fileName}</strong>`;
+        if (statusEl) statusEl.innerHTML = successMsg;
+        if (uploadStatusEl) uploadStatusEl.innerHTML = successMsg;
+        window.applyLiveFontPreview('custom');
       });
     } catch (err) {
-      if (statusEl) statusEl.innerHTML = `✅ تم رفع الخط بنجاح: <strong>${fileName}</strong>`;
+      const successMsg = `✅ تم رفع الخط بنجاح: <strong>${fileName}</strong>`;
+      if (statusEl) statusEl.innerHTML = successMsg;
+      if (uploadStatusEl) uploadStatusEl.innerHTML = successMsg;
+      window.applyLiveFontPreview('custom');
     }
   };
   reader.readAsDataURL(file);

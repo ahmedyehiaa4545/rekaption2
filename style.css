@@ -27,6 +27,19 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+select {
+  background-color: #161224 !important;
+  color: #ffffff !important;
+}
+
+select option {
+  background-color: #161224 !important;
+  color: #ffffff !important;
+  padding: 10px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
 body {
   font-family: var(--font-ar);
   background-color: var(--bg-dark);
