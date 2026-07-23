@@ -602,6 +602,41 @@
           <div class="panel-section-compact" style="background: rgba(14, 12, 24, 0.4); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 15px; width: 100%; box-sizing: border-box;">
             <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 12px; color: var(--purple-accent); font-weight: 700;">تنسيق الكابشن والمظهر 🎨</h3>
             
+            <!-- Font Family & Custom Font Selector -->
+            <div class="control-field" style="margin-bottom: 15px;">
+              <span class="control-label" style="font-size: 11px;">نوع الخط المستخدم 🔤</span>
+              <select 
+                id="font-family-select" 
+                onchange="handleFontFamilyChange(this.value)"
+                style="width: 100%; height: 38px; border-radius: 12px; border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.04); color: var(--text-main); font-size: 12px; padding: 0 10px; cursor: pointer; font-family: inherit; outline: none;"
+              >
+                <option value="cairo" selected>🌟 كايرو (Cairo - افتراضي)</option>
+                <option value="thmanyah">✒️ ثمانية (Thmanyah)</option>
+                <option value="tajawal">🎨 تجوال (Tajawal)</option>
+                <option value="almarai">💫 مراعي (Almarai)</option>
+                <option value="noto-kufi">🖊️ نوتو كوفي (Noto Kufi Arabic)</option>
+                <option value="alexandria">📐 الإسكندرية (Alexandria)</option>
+                <option value="changa">🔥 تشانجا (Changa)</option>
+                <option value="amiri">📜 أميري (Amiri)</option>
+                <option value="custom">📁 + رفع خط خاص (.ttf, .otf, .woff2)...</option>
+              </select>
+
+              <!-- Hidden File Input Container for Custom Font Upload -->
+              <div id="custom-font-upload-container" style="display: none; margin-top: 10px; background: rgba(139,92,246,0.06); border: 1.5px dashed var(--purple-accent); padding: 12px; border-radius: 12px; text-align: center;">
+                <input 
+                  type="file" 
+                  id="custom-font-file-input" 
+                  accept=".ttf,.otf,.woff,.woff2" 
+                  onchange="handleCustomFontUpload(event)"
+                  style="display: none;" 
+                />
+                <label for="custom-font-file-input" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                  <span style="font-size: 20px;">📤</span>
+                  <span id="custom-font-status" style="font-size: 11px; font-weight: 600; color: var(--text-main);">انقر لرفع ملف خط (.ttf, .otf, .woff2)</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Animation Selector inside Editor! -->
             <div class="control-field" style="margin-bottom: 15px;">
               <span class="control-label" style="font-size: 11px;">حركة الكابشن</span>

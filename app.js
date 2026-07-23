@@ -36,6 +36,59 @@ let leftLogoFile = null;
 let rightLogoFile = null;
 let selectedAnimation = 'classic';
 let captionTop = 68;
+let customFontDataUrl = null;
+let customFontName = null;
+
+window.handleFontFamilyChange = function(val) {
+  const customContainer = document.getElementById('custom-font-upload-container');
+  if (val === 'custom') {
+    if (customContainer) customContainer.style.display = 'block';
+    if (!customFontDataUrl) {
+      const fileInput = document.getElementById('custom-font-file-input');
+      if (fileInput) fileInput.click();
+    }
+  } else {
+    if (customContainer) customContainer.style.display = 'none';
+  }
+};
+
+window.handleCustomFontUpload = function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const validExts = ['.ttf', '.otf', '.woff', '.woff2'];
+  const fileName = file.name;
+  const ext = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+
+  if (!validExts.includes(ext)) {
+    alert('الرجاء اختيار ملف خط بصيغة مدعومة (.ttf, .otf, .woff, .woff2)!');
+    return;
+  }
+
+  const statusEl = document.getElementById('custom-font-status');
+  if (statusEl) statusEl.textContent = `جارٍ تحميل الخط: ${fileName}...`;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    customFontDataUrl = e.target.result;
+    const cleanFontName = 'Custom_' + fileName.replace(/[^a-zA-Z0-9]/g, '_');
+    customFontName = cleanFontName;
+
+    try {
+      const fontFace = new FontFace(cleanFontName, `url(${customFontDataUrl})`);
+      fontFace.load().then(function(loadedFace) {
+        document.fonts.add(loadedFace);
+        if (statusEl) statusEl.innerHTML = `✅ تم رفع الخط وتفعيله بنجاح: <strong>${fileName}</strong>`;
+      }).catch(function(err) {
+        console.warn('FontFace API load warning:', err);
+        if (statusEl) statusEl.innerHTML = `✅ تم رفع الخط بنجاح: <strong>${fileName}</strong>`;
+      });
+    } catch (err) {
+      if (statusEl) statusEl.innerHTML = `✅ تم رفع الخط بنجاح: <strong>${fileName}</strong>`;
+    }
+  };
+  reader.readAsDataURL(file);
+};
 
 let transcribeData = null; // Holds the JSON returned from /api/transcribe
 let activeSegmentIndex = -1;
@@ -1370,7 +1423,10 @@ window.renderVideo = async function() {
     wordSpacing: parseInt(document.getElementById('word-spacing').value) || 31,
     bgPadding: parseInt(document.getElementById('bg-padding').value) || 8,
     showBg: !document.getElementById('show-bg').checked,
-    captionTop: captionTop
+    captionTop: captionTop,
+    fontFamily: document.getElementById('font-family-select') ? document.getElementById('font-family-select').value : 'cairo',
+    customFontName: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontName : null,
+    customFontBase64: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontDataUrl : null
   };
   
   try {
