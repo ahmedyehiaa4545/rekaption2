@@ -3290,6 +3290,9 @@ window.runCohereTranscription = async function() {
     return;
   }
 
+  const tokenInput = document.getElementById('cohere-hf-token');
+  const hfToken = tokenInput ? tokenInput.value.trim() : (localStorage.getItem('cohereHfToken') || '');
+
   const btn = document.getElementById('cohere-transcribe-btn');
   const outputText = document.getElementById('cohere-output-text');
   const origHtml = btn.innerHTML;
@@ -3302,6 +3305,9 @@ window.runCohereTranscription = async function() {
   try {
     const fd = new FormData();
     fd.append('audio', cohereSelectedFile);
+    if (hfToken) {
+      fd.append('hf_token', hfToken);
+    }
 
     const res = await fetch(`${apiUrl}/api/transcribe-cohere`, {
       method: 'POST',
@@ -3326,6 +3332,15 @@ window.runCohereTranscription = async function() {
     btn.innerHTML = origHtml;
   }
 };
+
+// Initialize saved HF token on load
+document.addEventListener('DOMContentLoaded', () => {
+  const savedToken = localStorage.getItem('cohereHfToken');
+  const tokenInput = document.getElementById('cohere-hf-token');
+  if (savedToken && tokenInput) {
+    tokenInput.value = savedToken;
+  }
+});
 
 function fileToBase64DataUrl(file) {
   return new Promise((resolve, reject) => {

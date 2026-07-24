@@ -650,6 +650,17 @@
         <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
           <h3 style="font-size: 14px; color: var(--purple-accent); margin: 0;">اختر أو ارفع الصوت للمُعالجة 📤</h3>
           
+          <!-- HF Access Token Input Box -->
+          <div style="background: rgba(168,85,247,0.06); border: 1px solid rgba(168,85,247,0.25); border-radius: 12px; padding: 12px; margin-bottom: 5px;">
+            <label for="cohere-hf-token" style="display: block; font-size: 0.85rem; color: #c084fc; margin-bottom: 6px; font-weight: 800;">
+              🔑 توكن هادجن فيس (Hugging Face Access Token) <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(مطلوب لتشغيل نموذج Cohere)</span>
+            </label>
+            <input type="password" id="cohere-hf-token" placeholder="أدخل توكن HF الخاص بك (hf_...)" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(168,85,247,0.4); background: rgba(15,23,42,0.8); color: #fff; font-size: 0.9rem; outline: none; box-sizing: border-box;" onchange="localStorage.setItem('cohereHfToken', this.value)" />
+            <span style="display: block; font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-top: 5px;">
+              💡 يمكنك الحصول على توكن مجاني من حسابك على Hugging Face ➔ Settings ➔ Access Tokens
+            </span>
+          </div>
+
           <div class="file-upload-box" onclick="document.getElementById('cohere-audio-input').click()" style="padding: 30px 15px; text-align: center;">
             <input type="file" id="cohere-audio-input" accept="audio/*,video/*" style="display:none" onchange="handleCohereFileSelect(this.files[0])" />
             <div id="cohere-file-box-content" class="file-box-content">
