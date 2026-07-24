@@ -1348,6 +1348,11 @@ formControls.addEventListener('submit', async function(e) {
   const hfTokenVal = cohereTokenInput ? cohereTokenInput.value.trim() : savedHfToken;
   if (hfTokenVal) fd.append('hfToken', hfTokenVal);
 
+  const savedOrKey = localStorage.getItem('openrouterApiKey') || localStorage.getItem('openrouterKey') || '';
+  const orInput = document.getElementById('openrouter-api-key') || document.getElementById('openrouter-key-input');
+  const openrouterKeyVal = orInput ? orInput.value.trim() : savedOrKey;
+  if (openrouterKeyVal) fd.append('openrouterKey', openrouterKeyVal);
+
   let intervalId = null;
 
   try {
