@@ -1801,6 +1801,7 @@ window.switchMainTab = function(tab) {
   const editorBtn = document.getElementById('main-nav-editor');
   const geminiBtn = document.getElementById('main-nav-gemini');
   const convertBtn = document.getElementById('main-nav-convert');
+  const historyBtn = document.getElementById('main-nav-history');
   const cohereBtn = document.getElementById('main-nav-cohere');
   const coherePanel = document.getElementById('cohere-dashboard-panel');
   const dashboard = document.getElementById('main-dashboard');
