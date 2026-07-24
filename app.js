@@ -3296,69 +3296,25 @@ window.runCohereTranscription = async function() {
 
   btn.disabled = true;
   btn.style.opacity = '0.6';
-  btn.innerHTML = '<span>⏳</span> جاري رفع الصوت للـ Space...';
+  btn.innerHTML = '<span>⏳</span> جاري رفع الصوت واستخراج النص بنموذج Cohere...';
   outputText.value = 'جاري تفريغ الصوت بنواة Cohere (CohereLabs/cohere-transcribe-arabic-07-2026)... يرجى الانتظار لحظات...';
 
   try {
-    const spaceHost = 'https://ahmedyehia-cohere-arabic-asr.hf.space';
-    
-    // 1. Upload audio file to Gradio Space
     const fd = new FormData();
-    fd.append('files', cohereSelectedFile);
+    fd.append('audio', cohereSelectedFile);
 
-    const uploadRes = await fetch(`${spaceHost}/gradio_api/upload`, {
+    const res = await fetch(`${apiUrl}/api/transcribe-cohere`, {
       method: 'POST',
       body: fd
     });
 
-    if (!uploadRes.ok) {
-      throw new Error(`فشل رفع الملف لـ Space كوهير (Status ${uploadRes.status})`);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`فشل الاتصال بـ API التفريغ (Status ${res.status}: ${errText})`);
     }
 
-    const uploadData = await uploadRes.json();
-    const uploadedFilePath = Array.isArray(uploadData) ? uploadData[0] : uploadData;
-
-    btn.innerHTML = '<span>🚀</span> جاري الاستماع واستخراج النص...';
-
-    // 2. Trigger transcribe_audio prediction
-    const callRes = await fetch(`${spaceHost}/gradio_api/call/transcribe_audio`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: [
-          {
-            path: uploadedFilePath,
-            meta: { _type: 'gradio.FileData' }
-          }
-        ]
-      })
-    });
-
-    if (!callRes.ok) {
-      throw new Error(`فشل بدء التفريغ على السبيس (Status ${callRes.status})`);
-    }
-
-    const callData = await callRes.json();
-    const eventId = callData.event_id;
-
-    // 3. Fetch result stream
-    const eventRes = await fetch(`${spaceHost}/gradio_api/call/transcribe_audio/${eventId}`);
-    const eventText = await eventRes.text();
-
-    let finalText = '';
-    const lines = eventText.split('\n');
-    for (const line of lines) {
-      if (line.startsWith('data:')) {
-        try {
-          const arr = JSON.parse(line.replace('data:', '').trim());
-          if (Array.isArray(arr) && arr.length > 0) {
-            finalText = arr[0];
-          }
-        } catch (_) {}
-      }
-    }
-
-    outputText.value = finalText || eventText || 'تم الانتهاء ولم يتم إرجاع نص.';
+    const data = await res.json();
+    outputText.value = data.text || 'تم الانتهاء ولم يتم إرجاع نص.';
     alert('✨ تم استخراج النص بنجاح باستخدام نموذج Cohere!');
   } catch (err) {
     console.error(err);
