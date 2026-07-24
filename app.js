@@ -3296,56 +3296,69 @@ window.runCohereTranscription = async function() {
 
   btn.disabled = true;
   btn.style.opacity = '0.6';
-  btn.innerHTML = '<span>⏳</span> جاري الاتصال بنموذج Cohere واستخراج النص...';
+  btn.innerHTML = '<span>⏳</span> جاري رفع الصوت للـ Space...';
   outputText.value = 'جاري تفريغ الصوت بنواة Cohere (CohereLabs/cohere-transcribe-arabic-07-2026)... يرجى الانتظار لحظات...';
 
   try {
+    const spaceHost = 'https://ahmedyehia-cohere-arabic-asr.hf.space';
+    
+    // 1. Upload audio file to Gradio Space
     const fd = new FormData();
-    fd.append('file', cohereSelectedFile);
-    fd.append('audio', cohereSelectedFile);
+    fd.append('files', cohereSelectedFile);
 
-    // Try backend proxy endpoints
-    let res = await fetch(`${audioApiUrl}/api/transcribe-cohere`, {
+    const uploadRes = await fetch(`${spaceHost}/gradio_api/upload`, {
       method: 'POST',
       body: fd
-    }).catch(() => null);
+    });
 
-    if (!res || !res.ok) {
-      res = await fetch(`${apiUrl}/api/transcribe-cohere`, {
-        method: 'POST',
-        body: fd
-      }).catch(() => null);
+    if (!uploadRes.ok) {
+      throw new Error(`فشل رفع الملف لـ Space كوهير (Status ${uploadRes.status})`);
     }
 
-    if (res && res.ok) {
-      const data = await res.json();
-      outputText.value = data.text || 'تم الانتهاء ولم يتم إرجاع نص.';
-      alert('✨ تم استخراج النص بنجاح باستخدام نموذج Cohere!');
-      return;
-    }
+    const uploadData = await uploadRes.json();
+    const uploadedFilePath = Array.isArray(uploadData) ? uploadData[0] : uploadData;
 
-    // Direct Gradio API Fallback
-    const base64Data = await fileToBase64DataUrl(cohereSelectedFile);
-    const gradioRes = await fetch('https://ahmedyehia-cohere-arabic-asr.hf.space/api/predict', {
+    btn.innerHTML = '<span>🚀</span> جاري الاستماع واستخراج النص...';
+
+    // 2. Trigger transcribe_audio prediction
+    const callRes = await fetch(`${spaceHost}/gradio_api/call/transcribe_audio`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         data: [
           {
-            name: cohereSelectedFile.name,
-            data: base64Data
+            path: uploadedFilePath,
+            meta: { _type: 'gradio.FileData' }
           }
         ]
       })
     });
 
-    if (!gradioRes.ok) {
-      throw new Error(`فشل الاتصال بنواة Cohere (Status ${gradioRes.status})`);
+    if (!callRes.ok) {
+      throw new Error(`فشل بدء التفريغ على السبيس (Status ${callRes.status})`);
     }
 
-    const gData = await gradioRes.json();
-    const resultText = gData.data ? gData.data[0] : JSON.stringify(gData);
-    outputText.value = resultText || 'تم الانتهاء ولم يتم إرجاع نص.';
+    const callData = await callRes.json();
+    const eventId = callData.event_id;
+
+    // 3. Fetch result stream
+    const eventRes = await fetch(`${spaceHost}/gradio_api/call/transcribe_audio/${eventId}`);
+    const eventText = await eventRes.text();
+
+    let finalText = '';
+    const lines = eventText.split('\n');
+    for (const line of lines) {
+      if (line.startsWith('data:')) {
+        try {
+          const arr = JSON.parse(line.replace('data:', '').trim());
+          if (Array.isArray(arr) && arr.length > 0) {
+            finalText = arr[0];
+          }
+        } catch (_) {}
+      }
+    }
+
+    outputText.value = finalText || eventText || 'تم الانتهاء ولم يتم إرجاع نص.';
     alert('✨ تم استخراج النص بنجاح باستخدام نموذج Cohere!');
   } catch (err) {
     console.error(err);
