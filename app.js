@@ -1343,6 +1343,17 @@ formControls.addEventListener('submit', async function(e) {
   fd.append('activeColor', document.getElementById('active-color').value);
   fd.append('inactiveColor', document.getElementById('inactive-color').value);
 
+  const openrouterKeyEl = document.getElementById('upload-openrouter-key-input') || document.getElementById('openrouter-key-input');
+  const openrouterModelEl = document.getElementById('upload-openrouter-model-input') || document.getElementById('openrouter-model-input');
+  if (openrouterKeyEl && openrouterKeyEl.value.trim()) {
+    fd.append('openrouterApiKey', openrouterKeyEl.value.trim());
+    localStorage.setItem('openrouter_api_key', openrouterKeyEl.value.trim());
+  }
+  if (openrouterModelEl && openrouterModelEl.value.trim()) {
+    fd.append('openrouterModel', openrouterModelEl.value.trim());
+    localStorage.setItem('openrouter_model', openrouterModelEl.value.trim());
+  }
+
   let intervalId = null;
 
   try {
@@ -2261,8 +2272,10 @@ window.fetchShortsSuggestions = async function() {
   const listContainer = document.getElementById('shorts-cards-list');
   
   const numShorts = parseInt(document.getElementById('gemini-shorts-count').value) || 3;
-  const openrouterModelInput = document.getElementById('openrouter-model-input');
-  const openrouterModel = openrouterModelInput ? openrouterModelInput.value.trim() : "google/gemini-3.1-flash-lite";
+  const openrouterKeyInput = document.getElementById('openrouter-key-input') || document.getElementById('upload-openrouter-key-input');
+  const openrouterApiKey = openrouterKeyInput ? openrouterKeyInput.value.trim() : "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";
+  const openrouterModelInput = document.getElementById('openrouter-model-input') || document.getElementById('upload-openrouter-model-input');
+  const openrouterModel = openrouterModelInput ? openrouterModelInput.value.trim() : "google/gemini-2.5-flash-preview-09-2025";
   const customPromptInput = document.getElementById('gemini-custom-prompt');
   const customPrompt = customPromptInput ? customPromptInput.value.trim() : "";
   const titleStyleSelect = document.getElementById('gemini-title-style');
@@ -2271,11 +2284,6 @@ window.fetchShortsSuggestions = async function() {
 
   if (!transcriptionText || transcriptionText.trim() === "") {
     alert("لا يوجد نص مفرغ لتحليله واقتراح مقاطع Shorts منه!");
-    return;
-  }
-
-  if (!geminiApiKey) {
-    alert("الرجاء إدخال مفتاح Gemini API Key لتتمكن من تحليل النص!");
     return;
   }
 
@@ -2314,6 +2322,7 @@ window.fetchShortsSuggestions = async function() {
         body: JSON.stringify({
           transcription: transcriptionText,
           geminiApiKey: geminiApiKey,
+          openrouterApiKey: openrouterApiKey,
           openrouterModel: openrouterModel,
           customPrompt: customPrompt,
           titleStyle: titleStyle,
@@ -2367,6 +2376,7 @@ window.fetchShortsSuggestions = async function() {
         body: JSON.stringify({
           transcription: transcriptionText,
           geminiApiKey: geminiApiKey,
+          openrouterApiKey: openrouterApiKey,
           openrouterModel: openrouterModel,
           customPrompt: customPrompt,
           titleStyle: titleStyle,
