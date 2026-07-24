@@ -1343,6 +1343,11 @@ formControls.addEventListener('submit', async function(e) {
   fd.append('activeColor', document.getElementById('active-color').value);
   fd.append('inactiveColor', document.getElementById('inactive-color').value);
 
+  const savedHfToken = localStorage.getItem('cohereHfToken') || '';
+  const cohereTokenInput = document.getElementById('cohere-hf-token');
+  const hfTokenVal = cohereTokenInput ? cohereTokenInput.value.trim() : savedHfToken;
+  if (hfTokenVal) fd.append('hfToken', hfTokenVal);
+
   let intervalId = null;
 
   try {
