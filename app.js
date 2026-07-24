@@ -3300,11 +3300,33 @@ window.runCohereTranscription = async function() {
   outputText.value = 'جاري تفريغ الصوت بنواة Cohere (CohereLabs/cohere-transcribe-arabic-07-2026)... يرجى الانتظار لحظات...';
 
   try {
-    const cohereEndpoint = 'https://ahmedyehia-cohere-arabic-asr.hf.space/call/predict';
+    const fd = new FormData();
+    fd.append('file', cohereSelectedFile);
+    fd.append('audio', cohereSelectedFile);
+
+    // Try backend proxy endpoints
+    let res = await fetch(`${audioApiUrl}/api/transcribe-cohere`, {
+      method: 'POST',
+      body: fd
+    }).catch(() => null);
+
+    if (!res || !res.ok) {
+      res = await fetch(`${apiUrl}/api/transcribe-cohere`, {
+        method: 'POST',
+        body: fd
+      }).catch(() => null);
+    }
+
+    if (res && res.ok) {
+      const data = await res.json();
+      outputText.value = data.text || 'تم الانتهاء ولم يتم إرجاع نص.';
+      alert('✨ تم استخراج النص بنجاح باستخدام نموذج Cohere!');
+      return;
+    }
+
+    // Direct Gradio API Fallback
     const base64Data = await fileToBase64DataUrl(cohereSelectedFile);
-    
-    // 1. Initiate Gradio prediction call
-    const res = await fetch(cohereEndpoint, {
+    const gradioRes = await fetch('https://ahmedyehia-cohere-arabic-asr.hf.space/api/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3317,35 +3339,13 @@ window.runCohereTranscription = async function() {
       })
     });
 
-    if (!res.ok) {
-      throw new Error(`فشل الاتصال بنواة Cohere (Status ${res.status})`);
+    if (!gradioRes.ok) {
+      throw new Error(`فشل الاتصال بنواة Cohere (Status ${gradioRes.status})`);
     }
 
-    const data = await res.json();
-    const eventId = data.event_id;
-
-    // 2. Fetch result from Gradio API
-    const resultRes = await fetch(`https://ahmedyehia-cohere-arabic-asr.hf.space/call/predict/${eventId}`);
-    const resultText = await resultRes.text();
-
-    let finalText = '';
-    const lines = resultText.split('\n');
-    for (const line of lines) {
-      if (line.startsWith('data:')) {
-        try {
-          const jsonArr = JSON.parse(line.replace('data:', '').trim());
-          if (Array.isArray(jsonArr) && jsonArr.length > 0) {
-            finalText = jsonArr[0];
-          }
-        } catch (_) {}
-      }
-    }
-
-    if (!finalText && resultText) {
-      finalText = resultText;
-    }
-
-    outputText.value = finalText || 'تم الانتهاء ولم يتم إرجاع نص.';
+    const gData = await gradioRes.json();
+    const resultText = gData.data ? gData.data[0] : JSON.stringify(gData);
+    outputText.value = resultText || 'تم الانتهاء ولم يتم إرجاع نص.';
     alert('✨ تم استخراج النص بنجاح باستخدام نموذج Cohere!');
   } catch (err) {
     console.error(err);
