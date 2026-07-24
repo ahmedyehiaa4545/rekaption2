@@ -52,9 +52,14 @@ function loadGoogleFontCSS(fontName) {
 
 window.applyLiveFontPreview = function(fontKey) {
   let fontCSSName = "'Thmanyah', 'Cairo', sans-serif";
+  let fontWeightOverride = '400';
   
-  if (fontKey === 'thmanyah') {
+  if (fontKey === 'thmanyah-regular') {
     fontCSSName = "'Thmanyah', 'Cairo', sans-serif";
+    fontWeightOverride = '400';
+  } else if (fontKey === 'thmanyah') {
+    fontCSSName = "'Thmanyah', 'Cairo', sans-serif";
+    fontWeightOverride = '400';
   } else if (fontKey === 'tajawal') {
     loadGoogleFontCSS('Tajawal');
     fontCSSName = "'Tajawal', 'Cairo', sans-serif";

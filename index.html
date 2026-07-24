@@ -735,7 +735,8 @@
                 onchange="handleFontFamilyChange(this.value)"
                 style="width: 100%; height: 38px; border-radius: 12px; border: 1px solid var(--border-subtle); background-color: #161224; color: #FFFFFF; font-size: 12px; font-weight: 700; padding: 0 10px; cursor: pointer; font-family: inherit; outline: none;"
               >
-                <option value="thmanyah" selected style="background-color: #161224; color: #FFFFFF;">✒️ ثمانية (Thmanyah Serif Text - افتراضي)</option>
+                <option value="thmanyah-regular" selected style="background-color: #161224; color: #FFFFFF;">✒️ ثمانية Regular (Thmanyah Regular - افتراضي)</option>
+                <option value="thmanyah" style="background-color: #161224; color: #FFFFFF;">✒️ ثمانية Serif (Thmanyah Serif Text)</option>
                 <option value="cairo" style="background-color: #161224; color: #FFFFFF;">🌟 كايرو (Cairo)</option>
                 <option value="tajawal" style="background-color: #161224; color: #FFFFFF;">🎨 تجوال (Tajawal)</option>
                 <option value="almarai" style="background-color: #161224; color: #FFFFFF;">💫 مراعي (Almarai)</option>
@@ -805,9 +806,9 @@
                 <span class="control-label" style="font-size: 11px;">لون الخلفية</span>
                 <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
                   <div class="color-circle-preview" style="width: 20px; height: 20px;">
-                    <input type="color" id="bg-color" value="#525252" />
+                    <input type="color" id="bg-color" value="#000000" />
                   </div>
-                  <span id="bg-color-hex" class="color-hex-text" style="font-size: 10px;">#525252</span>
+                  <span id="bg-color-hex" class="color-hex-text" style="font-size: 10px;">#000000</span>
                 </div>
               </div>
             </div>
@@ -865,8 +866,8 @@
                 <input type="number" id="font-size" value="48" min="20" max="150" style="height: 34px; font-size: 12px; padding: 5px 8px;" />
               </div>
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">شفافية الخلفية: <span id="bg-opacity-val">75</span>%</span>
-                <input type="range" id="bg-opacity" value="75" min="0" max="100" style="width: 100%; margin-top: 8px;" />
+                <span class="control-label" style="font-size: 11px;">شفافية الخلفية: <span id="bg-opacity-val">65</span>%</span>
+                <input type="range" id="bg-opacity" value="65" min="0" max="100" style="width: 100%; margin-top: 8px;" />
               </div>
               <div class="control-field">
                 <span class="control-label" style="font-size: 11px;">المزامنة (+/- ث)</span>
@@ -876,12 +877,12 @@
 
             <div class="grid-2" style="gap: 10px;">
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">المسافة بين الكلمات: <span id="word-spacing-val">25</span></span>
-                <input type="range" id="word-spacing" value="25" min="0" max="80" style="width: 100%; margin-top: 8px;" />
+                <span class="control-label" style="font-size: 11px;">المسافة بين الكلمات: <span id="word-spacing-val">21</span></span>
+                <input type="range" id="word-spacing" value="21" min="0" max="80" style="width: 100%; margin-top: 8px;" />
               </div>
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">هوامش الخلفية: <span id="bg-padding-val">10</span>px</span>
-                <input type="range" id="bg-padding" value="10" min="2" max="30" style="width: 100%; margin-top: 8px;" />
+                <span class="control-label" style="font-size: 11px;">هوامش الخلفية: <span id="bg-padding-val">5</span>px</span>
+                <input type="range" id="bg-padding" value="5" min="2" max="30" style="width: 100%; margin-top: 8px;" />
               </div>
             </div>
           </div>
