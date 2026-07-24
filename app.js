@@ -1801,7 +1801,8 @@ window.switchMainTab = function(tab) {
   const editorBtn = document.getElementById('main-nav-editor');
   const geminiBtn = document.getElementById('main-nav-gemini');
   const convertBtn = document.getElementById('main-nav-convert');
-  const historyBtn = document.getElementById('main-nav-history');
+  const cohereBtn = document.getElementById('main-nav-cohere');
+  const coherePanel = document.getElementById('cohere-dashboard-panel');
   const dashboard = document.getElementById('main-dashboard');
   const geminiPanel = document.getElementById('gemini-transcribe-panel');
   const convertPanel = document.getElementById('convert-video-panel');
@@ -1812,7 +1813,8 @@ window.switchMainTab = function(tab) {
     { name: 'editor', btn: editorBtn, el: dashboard },
     { name: 'gemini', btn: geminiBtn, el: geminiPanel },
     { name: 'convert', btn: convertBtn, el: convertPanel },
-    { name: 'history', btn: historyBtn, el: historyPanel }
+    { name: 'history', btn: historyBtn, el: historyPanel },
+    { name: 'cohere', btn: cohereBtn, el: coherePanel }
   ];
 
   tabs.forEach(t => {
@@ -3266,5 +3268,112 @@ window.startBatchCaptionProcess = async function() {
 
   // Switch to History Tab to let user preview & download all!
   switchMainTab('history');
+};
+
+// ==================== Cohere ASR Logic ====================
+let cohereSelectedFile = null;
+
+window.handleCohereFileSelect = function(file) {
+  if (!file) return;
+  cohereSelectedFile = file;
+  const label = document.getElementById('cohere-file-label');
+  if (label) {
+    label.textContent = `تم اختيار: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+    label.style.color = '#a855f7';
+  }
+};
+
+window.runCohereTranscription = async function() {
+  if (!cohereSelectedFile) {
+    alert('الرجاء اختيار أو رفع ملف صوتي أولاً!');
+    return;
+  }
+
+  const btn = document.getElementById('cohere-transcribe-btn');
+  const outputText = document.getElementById('cohere-output-text');
+  const origHtml = btn.innerHTML;
+
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.innerHTML = '<span>⏳</span> جاري الاتصال بنموذج Cohere واستخراج النص...';
+  outputText.value = 'جاري تفريغ الصوت بنواة Cohere (CohereLabs/cohere-transcribe-arabic-07-2026)... يرجى الانتظار لحظات...';
+
+  try {
+    const cohereEndpoint = 'https://ahmedyehia-cohere-arabic-asr.hf.space/call/predict';
+    const base64Data = await fileToBase64DataUrl(cohereSelectedFile);
+    
+    // 1. Initiate Gradio prediction call
+    const res = await fetch(cohereEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: [
+          {
+            name: cohereSelectedFile.name,
+            data: base64Data
+          }
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`فشل الاتصال بنواة Cohere (Status ${res.status})`);
+    }
+
+    const data = await res.json();
+    const eventId = data.event_id;
+
+    // 2. Fetch result from Gradio API
+    const resultRes = await fetch(`https://ahmedyehia-cohere-arabic-asr.hf.space/call/predict/${eventId}`);
+    const resultText = await resultRes.text();
+
+    let finalText = '';
+    const lines = resultText.split('\n');
+    for (const line of lines) {
+      if (line.startsWith('data:')) {
+        try {
+          const jsonArr = JSON.parse(line.replace('data:', '').trim());
+          if (Array.isArray(jsonArr) && jsonArr.length > 0) {
+            finalText = jsonArr[0];
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (!finalText && resultText) {
+      finalText = resultText;
+    }
+
+    outputText.value = finalText || 'تم الانتهاء ولم يتم إرجاع نص.';
+    alert('✨ تم استخراج النص بنجاح باستخدام نموذج Cohere!');
+  } catch (err) {
+    console.error(err);
+    outputText.value = 'حدث خطأ أثناء الاتصال بنموذج Cohere: ' + err.message;
+    alert('حدث خطأ أثناء التفريغ: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = origHtml;
+  }
+};
+
+function fileToBase64DataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+window.copyCohereText = function() {
+  const textarea = document.getElementById('cohere-output-text');
+  if (!textarea || !textarea.value) {
+    alert('لا يوجد نص لنسخه!');
+    return;
+  }
+  textarea.select();
+  document.execCommand('copy');
+  alert('📋 تم نسخ النص بنجاح إلى الحافظة!');
 };
 

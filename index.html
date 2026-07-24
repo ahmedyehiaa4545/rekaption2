@@ -116,6 +116,9 @@
         <span>📁</span> أرشيف الفيديوهات (48h)
         <span id="history-badge" style="background: #8b5cf6; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 20px;">0</span>
       </button>
+      <button type="button" id="main-nav-cohere" class="nav-tab" onclick="switchMainTab('cohere')" style="padding: 10px 20px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
+        <span>🎙️</span> تفريغ Cohere (تجريبي)
+      </button>
     </div>
 
     <!-- Main Dashboard Grid -->
@@ -628,6 +631,47 @@
         <span style="font-size: 50px; display: block; margin-bottom: 10px;">📂</span>
         <h3 style="color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 6px;">لا توجد فيديوهات مجهزة في الأرشيف حالياً</h3>
         <p style="color: var(--text-muted); font-size: 13px;">عند دمج أي فيديو وتجهيزه، سيظهر هنا تلقائياً لمدة 48 ساعة لتنزيله بسهولة!</p>
+      </div>
+    </div>
+
+    <!-- COHERE ASR DASHBOARD PANEL -->
+    <div id="cohere-dashboard-panel" class="panel hidden" style="margin-top: 10px;">
+      <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px;">
+        <h2 class="panel-title" style="margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+          <span>🎙️</span> تفريغ الصوت الذكي - نموذج Cohere (تجريبي)
+        </h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
+          استخرج النصوص العربية بدقة عالية باستخدام نواة التعرّف على الصوت الحديثة من Cohere (Cohere-Transcribe-Arabic).
+        </p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <!-- Left: Upload & Trigger -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+          <h3 style="font-size: 14px; color: var(--purple-accent); margin: 0;">اختر أو ارفع الصوت للمُعالجة 📤</h3>
+          
+          <div class="file-upload-box" onclick="document.getElementById('cohere-audio-input').click()" style="padding: 30px 15px; text-align: center;">
+            <input type="file" id="cohere-audio-input" accept="audio/*,video/*" style="display:none" onchange="handleCohereFileSelect(this.files[0])" />
+            <div id="cohere-file-box-content" class="file-box-content">
+              <span class="file-box-icon" style="font-size: 32px;">🎙️</span>
+              <span class="file-box-text" id="cohere-file-label" style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-top: 8px;">اضغط هنا لرفع ملف صوتي أو فيديو</span>
+              <span style="font-size: 11px; color: var(--text-muted);">يدعم MP3, WAV, M4A, MP4</span>
+            </div>
+          </div>
+
+          <button type="button" id="cohere-transcribe-btn" onclick="runCohereTranscription()" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px;">
+            <span>🚀</span> بدء التفريغ بنموذج Cohere
+          </button>
+        </div>
+
+        <!-- Right: Results Textarea -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+          <h3 style="font-size: 14px; color: var(--purple-accent); margin: 0;">النص المستخرج (Cohere ASR Result) 📝</h3>
+          <textarea id="cohere-output-text" placeholder="سيظهر النص العربي المفرغ هنا فور الانتهاء من استماع النموذج..." readonly style="width: 100%; height: 220px; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.4); color: #fff; font-family: inherit; font-size: 14px; line-height: 1.6; resize: vertical; box-sizing: border-box; outline: none; direction: rtl; text-align: right;"></textarea>
+          <button type="button" onclick="copyCohereText()" class="btn-secondary" style="width: 100%; justify-content: center; padding: 10px;">
+            <span>📋</span> نسخ النص كامل
+          </button>
+        </div>
       </div>
     </div>
 
