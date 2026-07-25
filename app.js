@@ -1858,8 +1858,8 @@ window.switchMainTab = function(tab) {
   }
 
   if (tab === 'gemini') {
-    const savedKey = localStorage.getItem('gemini_api_key');
-    const keyInput = document.getElementById('gemini-key-input');
+    const savedKey = localStorage.getItem('groq_api_key') || localStorage.getItem('gemini_api_key');
+    const keyInput = document.getElementById('groq-key-input') || document.getElementById('gemini-key-input');
     if (savedKey && keyInput) {
       keyInput.value = savedKey;
     }
@@ -2122,12 +2122,12 @@ window.startAudioDownloadOnly = async function() {
     }, speed);
   };
 
-  // Get Gemini API Key
-  const geminiKeyInput = document.getElementById('gemini-key-input');
-  const geminiApiKey = geminiKeyInput ? geminiKeyInput.value.trim() : "";
+  // Get Groq / Gemini API Key
+  const groqKeyInput = document.getElementById('groq-key-input') || document.getElementById('gemini-key-input');
+  const groqApiKey = groqKeyInput ? groqKeyInput.value.trim() : (localStorage.getItem('groq_api_key') || localStorage.getItem('gemini_api_key') || "");
 
-  if (!geminiApiKey) {
-    alert('الرجاء إدخال مفتاح Gemini API Key لتتمكن من تفريغ الصوت!');
+  if (!groqApiKey) {
+    alert('الرجاء إدخال مفتاح Groq API Key لتتمكن من تفريغ الصوت بسرعة فائقة!');
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
     loadingDiv.classList.add('hidden');
@@ -2136,25 +2136,27 @@ window.startAudioDownloadOnly = async function() {
   }
 
   // Save to localStorage
-  localStorage.setItem('gemini_api_key', geminiApiKey);
+  localStorage.setItem('groq_api_key', groqApiKey);
+  localStorage.setItem('gemini_api_key', groqApiKey);
 
   // Phase 1: Processing (from 5% to 95%)
   let progressInterval = updateProgress(
     95, 
-    800, 
-    'جاري تحميل الصوت وتجزئته ثم تفريغه بالذكاء الاصطناعي (قد يستغرق ذلك دقيقة أو دقيقتين)...',
+    500, 
+    'جاري تحميل الصوت وتفريغه عبر Groq Whisper Turbo بسرعة فائقة...',
     'جاري المعالجة والتفريغ'
   );
 
   try {
-    const response = await fetch(audioApiUrl + '/api/transcribe-gemini', {
+    const response = await fetch(audioApiUrl + '/api/transcribe-groq', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         youtubeUrl: youtubeUrl,
-        geminiApiKey: geminiApiKey
+        groqApiKey: groqApiKey,
+        geminiApiKey: groqApiKey
       })
     });
 
@@ -2269,8 +2271,8 @@ window.copyTranscription = function() {
 };
 
 window.fetchShortsSuggestions = async function() {
-  const transcriptionText = document.getElementById('transcription-text').value;
-  const geminiApiKey = document.getElementById('gemini-key-input').value.trim();
+  const groqInput = document.getElementById('groq-key-input') || document.getElementById('gemini-key-input');
+  const geminiApiKey = groqInput ? groqInput.value.trim() : (localStorage.getItem('groq_api_key') || localStorage.getItem('openrouter_key') || localStorage.getItem('gemini_api_key') || "");
   const shortsBtn = document.getElementById('gemini-shorts-btn');
   const loadingDiv = document.getElementById('shorts-loading');
   const statusSpan = document.getElementById('shorts-status-text') || (loadingDiv ? loadingDiv.querySelector('span') : null);
@@ -2293,7 +2295,7 @@ window.fetchShortsSuggestions = async function() {
   }
 
   if (!geminiApiKey) {
-    alert("الرجاء إدخال مفتاح Gemini API Key لتتمكن من تحليل النص!");
+    alert("الرجاء إدخال مفتاح API Key لتتمكن من تحليل النص!");
     return;
   }
 
