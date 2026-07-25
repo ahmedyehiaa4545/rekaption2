@@ -2418,7 +2418,20 @@ window.fetchShortsSuggestions = async function() {
       let cardsHtml = '';
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
+      function sanitizeShortText(text) {
+        if (!text || typeof text !== 'string') return '';
+        let cleaned = text.trim();
+        cleaned = cleaned.replace(/^(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(?:الخطاف|النص|العنوان|القصة|السكريبت)\s*:\s*/gi, '');
+        cleaned = cleaned.replace(/^(?:الخطاف|النص|العنوان|القصة|السكريبت)\s*:\s*/gi, '');
+        cleaned = cleaned.replace(/\[\s*\d{1,2}:\d{2}.*?\]\s*:?/g, '');
+        return cleaned.trim();
+      }
+
       shortsList.forEach((short, idx) => {
+        short.title = sanitizeShortText(short.title);
+        short.hook = sanitizeShortText(short.hook);
+        short.script = sanitizeShortText(short.script);
+
         // Safe string escaping for click handler
         const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
