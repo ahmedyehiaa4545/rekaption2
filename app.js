@@ -2271,6 +2271,8 @@ window.copyTranscription = function() {
 };
 
 window.fetchShortsSuggestions = async function() {
+  const transcriptionElem = document.getElementById('transcription-text');
+  const transcriptionText = transcriptionElem ? transcriptionElem.value.trim() : "";
   const groqInput = document.getElementById('groq-key-input') || document.getElementById('gemini-key-input');
   const geminiApiKey = groqInput ? groqInput.value.trim() : (localStorage.getItem('groq_api_key') || localStorage.getItem('openrouter_key') || localStorage.getItem('gemini_api_key') || "");
   const shortsBtn = document.getElementById('gemini-shorts-btn');
@@ -2287,7 +2289,8 @@ window.fetchShortsSuggestions = async function() {
   const customPrompt = customPromptInput ? customPromptInput.value.trim() : "";
   const titleStyleSelect = document.getElementById('gemini-title-style');
   const titleStyle = titleStyleSelect ? titleStyleSelect.value : "auto";
-  const ytUrl = document.getElementById('gemini-yt-url').value.trim();
+  const ytUrlElem = document.getElementById('gemini-yt-url');
+  const ytUrl = ytUrlElem ? ytUrlElem.value.trim() : "";
 
   if (!transcriptionText || transcriptionText.trim() === "") {
     alert("لا يوجد نص مفرغ لتحليله واقتراح مقاطع Shorts منه!");
