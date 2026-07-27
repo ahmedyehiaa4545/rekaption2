@@ -747,6 +747,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) updateRangeLabel(id, el.value);
   });
 
+  // Prefill Groq API Key if stored
+  const groqInput = document.getElementById('groq-api-key-input');
+  if (groqInput) {
+    const savedKey = localStorage.getItem('groq_api_key') || localStorage.getItem('groqApiKey') || '';
+    if (savedKey) groqInput.value = savedKey;
+    groqInput.addEventListener('input', function() {
+      localStorage.setItem('groq_api_key', this.value.trim());
+    });
+  }
+
   // Open Admin modal if hash is #admin or url contains ?admin
   if (window.location.hash === '#admin' || window.location.search.includes('admin')) {
     openAdminModal();
@@ -1357,6 +1367,14 @@ formControls.addEventListener('submit', async function(e) {
   const orInput = document.getElementById('openrouter-api-key') || document.getElementById('openrouter-key-input');
   const openrouterKeyVal = orInput ? orInput.value.trim() : savedOrKey;
   if (openrouterKeyVal) fd.append('openrouterKey', openrouterKeyVal);
+
+  const savedGroqKey = localStorage.getItem('groq_api_key') || localStorage.getItem('groqApiKey') || '';
+  const groqInput = document.getElementById('groq-api-key-input');
+  const groqKeyVal = groqInput ? groqInput.value.trim() : savedGroqKey;
+  if (groqKeyVal) {
+    localStorage.setItem('groq_api_key', groqKeyVal);
+    fd.append('groqApiKey', groqKeyVal);
+  }
 
   let intervalId = null;
 
