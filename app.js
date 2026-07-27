@@ -2145,12 +2145,14 @@ window.startAudioDownloadOnly = async function() {
     }, speed);
   };
 
-  // Get Gemini API Key
-  const geminiKeyInput = document.getElementById('gemini-key-input');
-  const geminiApiKey = geminiKeyInput ? geminiKeyInput.value.trim() : "";
+  // Get Groq & Gemini API Keys
+  const keyInput = document.getElementById('gemini-key-input');
+  const apiKeyVal = keyInput ? keyInput.value.trim() : "";
+  const groqApiKey = localStorage.getItem('groq_api_key') || apiKeyVal;
+  const geminiApiKey = localStorage.getItem('gemini_api_key') || apiKeyVal;
 
-  if (!geminiApiKey) {
-    alert('الرجاء إدخال مفتاح Gemini API Key لتتمكن من تفريغ الصوت!');
+  if (!apiKeyVal && !groqApiKey && !geminiApiKey) {
+    alert('الرجاء إدخال مفتاح Groq API Key لتتمكن من تفريغ الصوت بسرعة فائقة!');
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
     loadingDiv.classList.add('hidden');
@@ -2158,14 +2160,15 @@ window.startAudioDownloadOnly = async function() {
     return;
   }
 
-  // Save to localStorage
-  localStorage.setItem('gemini_api_key', geminiApiKey);
+  if (apiKeyVal.startsWith('gsk_')) {
+    localStorage.setItem('groq_api_key', apiKeyVal);
+  }
 
   // Phase 1: Processing (from 5% to 95%)
   let progressInterval = updateProgress(
     95, 
-    800, 
-    'جاري تحميل الصوت وتجزئته ثم تفريغه بالذكاء الاصطناعي (قد يستغرق ذلك دقيقة أو دقيقتين)...',
+    500, 
+    'جاري تحميل الصوت وتفريغه الفائق بـ Groq Whisper Large V3 Turbo...',
     'جاري المعالجة والتفريغ'
   );
 
@@ -2177,9 +2180,11 @@ window.startAudioDownloadOnly = async function() {
       },
       body: JSON.stringify({
         youtubeUrl: youtubeUrl,
+        groqApiKey: apiKeyVal.startsWith('gsk_') ? apiKeyVal : (groqApiKey || apiKeyVal),
         geminiApiKey: geminiApiKey
       })
     });
+
 
     clearInterval(progressInterval);
 
