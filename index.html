@@ -1186,29 +1186,39 @@
 
     <!-- Comparison Modal -->
     <div id="comparison-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 10001; justify-content: center; align-items: center; padding: 20px; direction: rtl; font-family: Cairo, sans-serif;">
-      <div style="background-color: #0e0c1b; border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 20px; width: 100%; max-width: 800px; padding: 25px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); text-align: right; color: #fff;">
+      <div style="background-color: #0e0c1b; border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 20px; width: 100%; max-width: 1000px; padding: 25px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); text-align: right; color: #fff;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <h3 style="margin: 0; font-size: 18px; color: #fff;">🔍 مقارنة التفريغ الأصلي مقابل التفريغ المصحح</h3>
+          <h3 style="margin: 0; font-size: 18px; color: #fff;">🔍 مقارنة ثلاثية: التفريغ الأصلي vs تقسيم النص vs الاستماع والتصحيح الصوتي</h3>
           <button type="button" onclick="closeComparisonModal()" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">&times;</button>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; direction: rtl; text-align: right;">
-          <!-- Left: Original Groq -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; direction: rtl; text-align: right;">
+          <!-- Column 1: Original Groq -->
           <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="font-weight: bold; color: #fbbf24; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <span>⚡</span> التفريغ الأصلي الخالي من التعديل (Groq Whisper Large V3 Turbo):
+            <div style="font-weight: bold; color: #fbbf24; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <span>⚡</span> 1. Groq الخام (Whisper V3 Turbo):
             </div>
-            <div id="comparison-original-text" style="font-size: 13px; line-height: 1.7; color: rgba(255,255,255,0.85); max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
+            <div id="comparison-original-text" style="font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.85); max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
               جاري التحميل...
             </div>
           </div>
 
-          <!-- Right: Corrected Gemini -->
-          <div style="background: rgba(139, 92, 246, 0.08); padding: 15px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.3);">
-            <div style="font-weight: bold; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <span>🤖</span> التفريغ المصحح والمقسم بالذكاء الاصطناعي (Gemini Multimodal):
+          <!-- Column 2: Text-Only Gemini -->
+          <div style="background: rgba(59, 130, 246, 0.08); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">
+            <div style="font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <span>📝</span> 2. Gemini (تقسيم بالنص فقط دون صوت):
             </div>
-            <div id="comparison-corrected-text" style="font-size: 13px; line-height: 1.7; color: #fff; max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
+            <div id="comparison-textonly-text" style="font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.9); max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
+              جاري التحميل...
+            </div>
+          </div>
+
+          <!-- Column 3: Audio-Listening Gemini -->
+          <div style="background: rgba(139, 92, 246, 0.12); padding: 15px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.4);">
+            <div style="font-weight: bold; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <span>🎧</span> 3. Gemini (استماع صوتي مباشر وتصحيح):
+            </div>
+            <div id="comparison-corrected-text" style="font-size: 12px; line-height: 1.7; color: #fff; max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
               جاري التحميل...
             </div>
           </div>
@@ -1219,6 +1229,7 @@
         </button>
       </div>
     </div>
+
 
     <!-- Footer -->
     <footer style="text-align: center; margin-top: 40px; padding-bottom: 30px; color: rgba(255,255,255,0.3); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px;">

@@ -3407,11 +3407,14 @@ window.openComparisonModal = function() {
   }
   const modal = document.getElementById('comparison-modal');
   const origBox = document.getElementById('comparison-original-text');
+  const txtOnlyBox = document.getElementById('comparison-textonly-text');
   const corrBox = document.getElementById('comparison-corrected-text');
   if (origBox) origBox.textContent = transcribeData.originalText || 'غير متوفر';
-  if (corrBox) corrBox.textContent = (transcribeData.segments || []).map(s => s.text).join('\n');
+  if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.textOnlyText || 'غير متوفر';
+  if (corrBox) corrBox.textContent = transcribeData.audioCorrectedText || (transcribeData.segments || []).map(s => s.text).join('\n');
   if (modal) modal.style.display = 'flex';
 };
+
 
 window.closeComparisonModal = function() {
   const modal = document.getElementById('comparison-modal');
