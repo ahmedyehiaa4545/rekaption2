@@ -690,12 +690,18 @@
     <div id="editor-state" class="panel hidden" style="margin-top: 10px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px;">
         <h2 class="panel-title" style="margin-bottom: 0;">محرر النصوص والتفريغ التفاعلي ✏️</h2>
-        <button type="button" class="btn-secondary" onclick="resetApp()" style="width: auto; padding: 8px 16px;">
-          إلغاء والبدء من جديد 🔄
-        </button>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary" onclick="openComparisonModal()" style="width: auto; padding: 8px 16px; background: rgba(139, 92, 246, 0.15); border-color: var(--purple-accent); color: #fff; font-weight: 600;">
+            🔍 مقارنة الأصلي (Groq) ⚡ vs المصحح (Gemini) 🤖
+          </button>
+          <button type="button" class="btn-secondary" onclick="resetApp()" style="width: auto; padding: 8px 16px;">
+            إلغاء والبدء من جديد 🔄
+          </button>
+        </div>
       </div>
       
       <div class="editor-workspace">
+
         <!-- Left Column: Media Player & Render Trigger -->
         <div class="workspace-left">
           <div style="display: flex; align-items: center; justify-content: center; gap: 20px; width: 100%;">
@@ -1175,6 +1181,42 @@
           عذراً، لقد تم إيقاف حسابك من قبل الإدارة. يرجى التواصل مع الدعم الفني لإعادة تفعيل الحساب أو للاستفسار.
         </p>
         <button onclick="triggerSignOut().then(() => { document.getElementById('suspended-modal').style.display = 'none'; })" style="width: 100%; padding: 15px; font-size: 15px; font-weight: 700; border-radius: 14px; color: #fff; background-color: #ef4444; border: none; cursor: pointer; transition: background 0.2s;">تسجيل الخروج 🚪</button>
+      </div>
+    </div>
+
+    <!-- Comparison Modal -->
+    <div id="comparison-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 10001; justify-content: center; align-items: center; padding: 20px; direction: rtl; font-family: Cairo, sans-serif;">
+      <div style="background-color: #0e0c1b; border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 20px; width: 100%; max-width: 800px; padding: 25px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); text-align: right; color: #fff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="margin: 0; font-size: 18px; color: #fff;">🔍 مقارنة التفريغ الأصلي مقابل التفريغ المصحح</h3>
+          <button type="button" onclick="closeComparisonModal()" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; direction: rtl; text-align: right;">
+          <!-- Left: Original Groq -->
+          <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight: bold; color: #fbbf24; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <span>⚡</span> التفريغ الأصلي الخالي من التعديل (Groq Whisper Large V3 Turbo):
+            </div>
+            <div id="comparison-original-text" style="font-size: 13px; line-height: 1.7; color: rgba(255,255,255,0.85); max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
+              جاري التحميل...
+            </div>
+          </div>
+
+          <!-- Right: Corrected Gemini -->
+          <div style="background: rgba(139, 92, 246, 0.08); padding: 15px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.3);">
+            <div style="font-weight: bold; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <span>🤖</span> التفريغ المصحح والمقسم بالذكاء الاصطناعي (Gemini Multimodal):
+            </div>
+            <div id="comparison-corrected-text" style="font-size: 13px; line-height: 1.7; color: #fff; max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
+              جاري التحميل...
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-primary" onclick="closeComparisonModal()" style="margin-top: 20px; width: 100%; justify-content: center; padding: 12px;">
+          إغلاق نافذة المقارنة ✖️
+        </button>
       </div>
     </div>
 

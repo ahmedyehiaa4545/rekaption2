@@ -3400,3 +3400,22 @@ window.copyCohereText = function() {
   alert('📋 تم نسخ النص بنجاح إلى الحافظة!');
 };
 
+window.openComparisonModal = function() {
+  if (!transcribeData) {
+    alert('لا توجد بيانات تفريغ متاحة حالياً للمقارنة.');
+    return;
+  }
+  const modal = document.getElementById('comparison-modal');
+  const origBox = document.getElementById('comparison-original-text');
+  const corrBox = document.getElementById('comparison-corrected-text');
+  if (origBox) origBox.textContent = transcribeData.originalText || 'غير متوفر';
+  if (corrBox) corrBox.textContent = (transcribeData.segments || []).map(s => s.text).join('\n');
+  if (modal) modal.style.display = 'flex';
+};
+
+window.closeComparisonModal = function() {
+  const modal = document.getElementById('comparison-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+
