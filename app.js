@@ -1858,8 +1858,8 @@ window.switchMainTab = function(tab) {
   }
 
   if (tab === 'gemini') {
-    const savedKey = localStorage.getItem('groq_api_key') || localStorage.getItem('gemini_api_key');
-    const keyInput = document.getElementById('groq-key-input') || document.getElementById('gemini-key-input');
+    const savedKey = localStorage.getItem('gemini_api_key');
+    const keyInput = document.getElementById('gemini-key-input');
     if (savedKey && keyInput) {
       keyInput.value = savedKey;
     }
@@ -2122,12 +2122,12 @@ window.startAudioDownloadOnly = async function() {
     }, speed);
   };
 
-  // Get Groq / Gemini API Key
-  const groqKeyInput = document.getElementById('groq-key-input') || document.getElementById('gemini-key-input');
-  const groqApiKey = groqKeyInput ? groqKeyInput.value.trim() : (localStorage.getItem('groq_api_key') || localStorage.getItem('gemini_api_key') || "");
+  // Get Gemini API Key
+  const geminiKeyInput = document.getElementById('gemini-key-input');
+  const geminiApiKey = geminiKeyInput ? geminiKeyInput.value.trim() : "";
 
-  if (!groqApiKey) {
-    alert('الرجاء إدخال مفتاح Groq API Key لتتمكن من تفريغ الصوت بسرعة فائقة!');
+  if (!geminiApiKey) {
+    alert('الرجاء إدخال مفتاح Gemini API Key لتتمكن من تفريغ الصوت!');
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
     loadingDiv.classList.add('hidden');
@@ -2136,27 +2136,25 @@ window.startAudioDownloadOnly = async function() {
   }
 
   // Save to localStorage
-  localStorage.setItem('groq_api_key', groqApiKey);
-  localStorage.setItem('gemini_api_key', groqApiKey);
+  localStorage.setItem('gemini_api_key', geminiApiKey);
 
   // Phase 1: Processing (from 5% to 95%)
   let progressInterval = updateProgress(
     95, 
-    500, 
-    'جاري تحميل الصوت وتفريغه عبر Groq Whisper Turbo بسرعة فائقة...',
+    800, 
+    'جاري تحميل الصوت وتجزئته ثم تفريغه بالذكاء الاصطناعي (قد يستغرق ذلك دقيقة أو دقيقتين)...',
     'جاري المعالجة والتفريغ'
   );
 
   try {
-    const response = await fetch(audioApiUrl + '/api/transcribe-groq', {
+    const response = await fetch(audioApiUrl + '/api/transcribe-gemini', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         youtubeUrl: youtubeUrl,
-        groqApiKey: groqApiKey,
-        geminiApiKey: groqApiKey
+        geminiApiKey: geminiApiKey
       })
     });
 
@@ -2271,10 +2269,8 @@ window.copyTranscription = function() {
 };
 
 window.fetchShortsSuggestions = async function() {
-  const transcriptionElem = document.getElementById('transcription-text');
-  const transcriptionText = transcriptionElem ? transcriptionElem.value.trim() : "";
-  const groqInput = document.getElementById('groq-key-input') || document.getElementById('gemini-key-input');
-  const geminiApiKey = groqInput ? groqInput.value.trim() : (localStorage.getItem('groq_api_key') || localStorage.getItem('openrouter_key') || localStorage.getItem('gemini_api_key') || "");
+  const transcriptionText = document.getElementById('transcription-text').value;
+  const geminiApiKey = document.getElementById('gemini-key-input').value.trim();
   const shortsBtn = document.getElementById('gemini-shorts-btn');
   const loadingDiv = document.getElementById('shorts-loading');
   const statusSpan = document.getElementById('shorts-status-text') || (loadingDiv ? loadingDiv.querySelector('span') : null);
@@ -2289,8 +2285,7 @@ window.fetchShortsSuggestions = async function() {
   const customPrompt = customPromptInput ? customPromptInput.value.trim() : "";
   const titleStyleSelect = document.getElementById('gemini-title-style');
   const titleStyle = titleStyleSelect ? titleStyleSelect.value : "auto";
-  const ytUrlElem = document.getElementById('gemini-yt-url');
-  const ytUrl = ytUrlElem ? ytUrlElem.value.trim() : "";
+  const ytUrl = document.getElementById('gemini-yt-url').value.trim();
 
   if (!transcriptionText || transcriptionText.trim() === "") {
     alert("لا يوجد نص مفرغ لتحليله واقتراح مقاطع Shorts منه!");
@@ -2298,7 +2293,7 @@ window.fetchShortsSuggestions = async function() {
   }
 
   if (!geminiApiKey) {
-    alert("الرجاء إدخال مفتاح API Key لتتمكن من تحليل النص!");
+    alert("الرجاء إدخال مفتاح Gemini API Key لتتمكن من تحليل النص!");
     return;
   }
 
@@ -2418,20 +2413,7 @@ window.fetchShortsSuggestions = async function() {
       let cardsHtml = '';
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
-      function sanitizeShortText(text) {
-        if (!text || typeof text !== 'string') return '';
-        let cleaned = text.trim();
-        cleaned = cleaned.replace(/^(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(?:الخطاف|النص|العنوان|القصة|السكريبت)\s*:\s*/gi, '');
-        cleaned = cleaned.replace(/^(?:الخطاف|النص|العنوان|القصة|السكريبت)\s*:\s*/gi, '');
-        cleaned = cleaned.replace(/\[\s*\d{1,2}:\d{2}.*?\]\s*:?/g, '');
-        return cleaned.trim();
-      }
-
       shortsList.forEach((short, idx) => {
-        short.title = sanitizeShortText(short.title);
-        short.hook = sanitizeShortText(short.hook);
-        short.script = sanitizeShortText(short.script);
-
         // Safe string escaping for click handler
         const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');

@@ -414,8 +414,8 @@
         <!-- Left: Input controls -->
         <div class="panel-inner" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
           <div class="control-field">
-            <span class="control-label">🔑 مفتاح Groq API Key (سيتم حفظه محلياً في متصفحك)</span>
-            <input type="password" id="groq-key-input" placeholder="gsk_..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
+            <span class="control-label">مفتاح Gemini API Key (سيتم حفظه محلياً في متصفحك)</span>
+            <input type="password" id="gemini-key-input" placeholder="AIzaSy..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
           </div>
 
           <div class="control-field">
@@ -423,8 +423,8 @@
             <input type="text" id="gemini-yt-url" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
           </div>
 
-          <button type="button" id="gemini-start-btn" onclick="startAudioDownloadOnly()" class="btn-primary" style="margin-top: 10px; width: 100%; justify-content: center; background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
-            <span>⚡</span> تحميل وتفريغ الصوت بـ Groq Whisper Turbo
+          <button type="button" id="gemini-start-btn" onclick="startAudioDownloadOnly()" class="btn-primary" style="margin-top: 10px; width: 100%; justify-content: center;">
+            <span>📥</span> تحميل وتفريغ الصوت بالذكاء الاصطناعي
           </button>
           
           <!-- Loading state inside controls -->
