@@ -1376,6 +1376,11 @@ formControls.addEventListener('submit', async function(e) {
     fd.append('groqApiKey', groqKeyVal);
   }
 
+  const savedGeminiKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
+  const gInput = document.getElementById('gemini-key-input');
+  const geminiKeyVal = gInput ? gInput.value.trim() : savedGeminiKey;
+  if (geminiKeyVal) fd.append('geminiApiKey', geminiKeyVal);
+
   let intervalId = null;
 
   try {
