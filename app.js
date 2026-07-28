@@ -2975,57 +2975,70 @@ window.processBatchCaption = async function() {
 
       const audioFile = new File([blob], `batch_clip_${sIdx + 1}.mp4`, { type: 'video/mp4' });
 
-      // 2. Transcribe & weld via backend
+      // 3. Transcribe & weld via MAIN backend (apiUrl, not audioApiUrl)
+      if (batchBtn) {
+        batchBtn.innerHTML = `<span>🎤</span> جاري تفريغ المقطع ${i + 1} من ${indices.length} بالـ AI...`;
+      }
       const fd = new FormData();
       fd.append('audio', audioFile);
-      fd.append('minWords', '3');
-      fd.append('maxWords', '4');
-      fd.append('animation', 'classic');
-      fd.append('activeColor', '#FFFFFF');
-      fd.append('inactiveColor', '#FFFFFF');
+      fd.append('minWords', document.getElementById('min-words') ? document.getElementById('min-words').value : '3');
+      fd.append('maxWords', document.getElementById('max-words') ? document.getElementById('max-words').value : '4');
+      fd.append('animation', selectedAnimation || 'classic');
+      fd.append('activeColor', document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF');
+      fd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
       
       const groqKey = localStorage.getItem('groq_api_key') || '';
-      const geminiKey = localStorage.getItem('gemini_api_key') || '';
+      const geminiKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
       if (groqKey) fd.append('groqApiKey', groqKey);
       if (geminiKey) fd.append('geminiApiKey', geminiKey);
 
-      const transRes = await fetch(`${audioApiUrl}/api/transcribe`, {
+      // Use the MAIN apiUrl (HF backend) for transcription, NOT audioApiUrl
+      const transRes = await fetch(`${apiUrl}/api/transcribe`, {
         method: 'POST',
         body: fd
       });
 
       if (!transRes.ok) {
-        throw new Error(`فشل تفريغ المقطع #${sIdx + 1}`);
+        const errDetail = await transRes.json().catch(() => ({ detail: 'فشل التفريغ' }));
+        throw new Error(`فشل تفريغ المقطع #${sIdx + 1}: ${errDetail.detail || transRes.status}`);
       }
 
       const transData = await transRes.json();
 
-      // 3. Render video
+      // 4. Render video using MAIN apiUrl
+      if (batchBtn) {
+        batchBtn.innerHTML = `<span>🎬</span> جاري رندرة الكابشن على المقطع ${i + 1} من ${indices.length}...`;
+      }
       const renderPayload = {
         audioPath: transData.audioPath,
         videoPath: transData.videoPath,
         durationInSeconds: transData.durationInSeconds,
         segments: transData.segments,
-        animationType: 'classic',
-        activeColor: '#FFFFFF',
-        inactiveColor: '#FFFFFF',
-        showBg: true
+        animationType: selectedAnimation || 'classic',
+        activeColor: document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF',
+        inactiveColor: document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF',
+        showBg: document.getElementById('show-bg') ? document.getElementById('show-bg').checked : false,
+        bgColor: document.getElementById('bg-color') ? document.getElementById('bg-color').value : '#000000',
+        bgOpacity: document.getElementById('bg-opacity') ? parseFloat(document.getElementById('bg-opacity').value) : 86,
+        fontSize: document.getElementById('font-size') ? parseFloat(document.getElementById('font-size').value) : 50,
+        syncOffset: document.getElementById('sync-offset') ? parseFloat(document.getElementById('sync-offset').value) : 0.20
       };
 
-      const renderRes = await fetch(`${audioApiUrl}/api/render/${transData.taskId}`, {
+      const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(renderPayload)
       });
 
       if (!renderRes.ok) {
-        throw new Error(`فشل رندرة المقطع #${sIdx + 1}`);
+        const errDetail = await renderRes.json().catch(() => ({ detail: 'فشل الرندر' }));
+        throw new Error(`فشل رندرة المقطع #${sIdx + 1}: ${errDetail.detail || renderRes.status}`);
       }
 
       const finalVideoBlob = await renderRes.blob();
       const finalUrl = URL.createObjectURL(finalVideoBlob);
 
-      // 4. Save automatically to 48h Archive!
+      // 5. Save automatically to 48h Archive!
       if (typeof saveHistoryEntry === 'function') {
         await saveHistoryEntry({
           title: `🎬 ${short.title} (${short.start_time} - ${short.end_time})`,
@@ -3037,6 +3050,7 @@ window.processBatchCaption = async function() {
       successCount++;
     } catch (err) {
       console.error(`Batch processing error for item ${sIdx}:`, err);
+      alert(`⚠️ خطأ في معالجة المقطع #${sIdx + 1} (${short.title.substring(0,20)}...):\n${err.message}\n\nسيتم الانتقال للمقطع التالي.`);
     }
   }
 
