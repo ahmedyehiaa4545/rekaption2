@@ -2923,6 +2923,56 @@ window.processBatchCaption = async function() {
     try {
       // 1. Cut audio/video segment
       let blob = await performAsyncCut(ytUrl, short.start_time, short.end_time, 720);
+
+      // 2. Convert to vertical (9:16)
+      if (batchBtn) {
+        batchBtn.innerHTML = `<span>📱</span> جاري تحويل المقطع ${i + 1} من ${indices.length} لطولي (9:16)...`;
+      }
+      const rawCutFile = new File([blob], `cut_clip_${sIdx}.mp4`, { type: 'video/mp4' });
+      const convertFd = new FormData();
+      convertFd.append('file', rawCutFile);
+
+      const convertRes = await fetch(audioApiUrl + '/api/convert-vertical-async', {
+        method: 'POST',
+        body: convertFd
+      });
+
+      if (convertRes.ok) {
+        const startData = await convertRes.json();
+        const convertTaskId = startData.taskId;
+
+        let convertPollInterval = null;
+        const convertTaskData = await new Promise((resolve, reject) => {
+          convertPollInterval = setInterval(async () => {
+            try {
+              const statusRes = await fetch(`${audioApiUrl}/api/task-status/${convertTaskId}`);
+              if (!statusRes.ok) {
+                clearInterval(convertPollInterval);
+                reject(new Error('فشل جلب حالة التحويل لطولي.'));
+                return;
+              }
+              const t = await statusRes.json();
+              if (t.status === 'success') {
+                clearInterval(convertPollInterval);
+                resolve(t);
+              } else if (t.status === 'failed') {
+                clearInterval(convertPollInterval);
+                reject(new Error(t.error || 'فشل التحويل لطولي.'));
+              }
+            } catch (e) {
+              clearInterval(convertPollInterval);
+              reject(e);
+            }
+          }, 2000);
+        });
+
+        const verticalVideoUrl = convertTaskData.videoUrl.startsWith('http') ? convertTaskData.videoUrl : (audioApiUrl + '/' + convertTaskData.videoUrl);
+        const verticalRes = await fetch(verticalVideoUrl);
+        if (verticalRes.ok) {
+          blob = await verticalRes.blob();
+        }
+      }
+
       const audioFile = new File([blob], `batch_clip_${sIdx + 1}.mp4`, { type: 'video/mp4' });
 
       // 2. Transcribe & weld via backend
