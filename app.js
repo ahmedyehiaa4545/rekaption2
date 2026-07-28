@@ -2886,6 +2886,125 @@ async function executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, 
   }
 };
 
+window.processBatchCaption = async function() {
+  if (selectedShortsIndices.size === 0) {
+    alert('يرجى تحديد مقطع واحد على الأقل من كروت الـ Shorts بالضغط على زر "تحديد" أعلى المقطع!');
+    return;
+  }
+
+  const indices = Array.from(selectedShortsIndices).sort((a, b) => a - b);
+  const ytUrl = document.getElementById('gemini-yt-url').value.trim();
+
+  if (!ytUrl) {
+    alert('رابط اليوتيوب غير متوفر لقص المقاطع المحددة!');
+    return;
+  }
+
+  const confirmMsg = `هل تريد بدء قص وتوليد الكابشن آلياً لعدد ${indices.length} مقطع مُحدد؟\nسيتم حفض المخرجات تلقائياً في "أرشيف الفيديوهات (48h)".`;
+  if (!confirm(confirmMsg)) return;
+
+  const batchBtn = document.getElementById('batch-caption-btn');
+  const originalBtnHtml = batchBtn ? batchBtn.innerHTML : '';
+  if (batchBtn) {
+    batchBtn.disabled = true;
+    batchBtn.style.opacity = '0.6';
+  }
+
+  let successCount = 0;
+  for (let i = 0; i < indices.length; i++) {
+    const sIdx = indices[i];
+    const short = currentSuggestedShorts[sIdx];
+    if (!short) continue;
+
+    if (batchBtn) {
+      batchBtn.innerHTML = `<span>⏳</span> جاري معالجة المقطع ${i + 1} من ${indices.length}: [${short.title.substring(0, 15)}...]`;
+    }
+
+    try {
+      // 1. Cut audio/video segment
+      let blob = await performAsyncCut(ytUrl, short.start_time, short.end_time, 720);
+      const audioFile = new File([blob], `batch_clip_${sIdx + 1}.mp4`, { type: 'video/mp4' });
+
+      // 2. Transcribe & weld via backend
+      const fd = new FormData();
+      fd.append('audio', audioFile);
+      fd.append('minWords', '3');
+      fd.append('maxWords', '4');
+      fd.append('animation', 'classic');
+      fd.append('activeColor', '#FFFFFF');
+      fd.append('inactiveColor', '#FFFFFF');
+      
+      const groqKey = localStorage.getItem('groq_api_key') || '';
+      const geminiKey = localStorage.getItem('gemini_api_key') || '';
+      if (groqKey) fd.append('groqApiKey', groqKey);
+      if (geminiKey) fd.append('geminiApiKey', geminiKey);
+
+      const transRes = await fetch(`${audioApiUrl}/api/transcribe`, {
+        method: 'POST',
+        body: fd
+      });
+
+      if (!transRes.ok) {
+        throw new Error(`فشل تفريغ المقطع #${sIdx + 1}`);
+      }
+
+      const transData = await transRes.json();
+
+      // 3. Render video
+      const renderPayload = {
+        audioPath: transData.audioPath,
+        videoPath: transData.videoPath,
+        durationInSeconds: transData.durationInSeconds,
+        segments: transData.segments,
+        animationType: 'classic',
+        activeColor: '#FFFFFF',
+        inactiveColor: '#FFFFFF',
+        showBg: true
+      };
+
+      const renderRes = await fetch(`${audioApiUrl}/api/render/${transData.taskId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(renderPayload)
+      });
+
+      if (!renderRes.ok) {
+        throw new Error(`فشل رندرة المقطع #${sIdx + 1}`);
+      }
+
+      const finalVideoBlob = await renderRes.blob();
+      const finalUrl = URL.createObjectURL(finalVideoBlob);
+
+      // 4. Save automatically to 48h Archive!
+      if (typeof saveHistoryEntry === 'function') {
+        await saveHistoryEntry({
+          title: `🎬 ${short.title} (${short.start_time} - ${short.end_time})`,
+          videoUrl: finalUrl,
+          blob: finalVideoBlob
+        });
+      }
+
+      successCount++;
+    } catch (err) {
+      console.error(`Batch processing error for item ${sIdx}:`, err);
+    }
+  }
+
+  if (batchBtn) {
+    batchBtn.disabled = false;
+    batchBtn.style.opacity = '1';
+    batchBtn.innerHTML = originalBtnHtml;
+  }
+
+  alert(`🎉 اكتملت المعالجة الجماعية بنجاح!\nتم توليد وحفظ ${successCount} فيديو في "أرشيف الفيديوهات (48h)".`);
+  
+  // Open 48h archive modal to let user view/download rendered videos
+  if (typeof openHistoryModal === 'function') {
+    openHistoryModal();
+  }
+};
+
+
 window.cutVideoSegment = async function(youtubeUrl, startTime, endTime, idx, btn) {
   if (!youtubeUrl) {
     alert("رابط اليوتيوب غير متوفر لقص المقطع!");
