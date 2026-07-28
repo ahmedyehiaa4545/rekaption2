@@ -3475,26 +3475,92 @@ window.startBatchCaptionProcess = async function() {
         }
       }
 
-      // Save rendered clip to 48-hour history archive (Persistent IndexedDB)
-      const clipUrl = URL.createObjectURL(blob);
+      // 3. AI Speech Transcription & Word Timestamp Alignment
+      if (modalStatusDesc) modalStatusDesc.textContent = `المقطع #${idx+1}: جارٍ التفريغ والتوقيت بالذكاء الاصطناعي...`;
+
+      const audioFile = new File([blob], `batch_clip_${idx+1}.mp4`, { type: 'video/mp4' });
+      const transFd = new FormData();
+      transFd.append('audio', audioFile);
+      transFd.append('minWords', document.getElementById('min-words') ? document.getElementById('min-words').value : '3');
+      transFd.append('maxWords', document.getElementById('max-words') ? document.getElementById('max-words').value : '4');
+      transFd.append('animation', typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic');
+      transFd.append('activeColor', document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF');
+      transFd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
+      
+      const groqKey = localStorage.getItem('groq_api_key') || '';
+      const geminiKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
+      const openrouterKey = localStorage.getItem('openrouterApiKey') || localStorage.getItem('openrouterKey') || '';
+      if (groqKey) transFd.append('groqApiKey', groqKey);
+      if (geminiKey) transFd.append('geminiApiKey', geminiKey);
+      if (openrouterKey) transFd.append('openrouterKey', openrouterKey);
+
+      const transRes = await fetch(`${apiUrl}/api/transcribe`, {
+        method: 'POST',
+        body: transFd
+      });
+
+      if (!transRes.ok) {
+        const errJson = await transRes.json().catch(() => ({ detail: 'فشل تفريغ الكابشن' }));
+        throw new Error(`فشل تفريغ المقطع #${idx+1}: ${errJson.detail || transRes.status}`);
+      }
+
+      const transData = await transRes.json();
+
+      // 4. Burn-in Remotion Captions onto Video
+      if (modalStatusDesc) modalStatusDesc.textContent = `المقطع #${idx+1}: جارٍ طباعة ورندر الكابشن النهائي...`;
+
+      const renderPayload = {
+        audioPath: transData.audioPath,
+        videoPath: transData.videoPath,
+        durationInSeconds: transData.durationInSeconds,
+        segments: transData.segments,
+        animationType: typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic',
+        activeColor: document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF',
+        inactiveColor: document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF',
+        showBg: document.getElementById('show-bg') ? document.getElementById('show-bg').checked : false,
+        bgColor: document.getElementById('bg-color') ? document.getElementById('bg-color').value : '#000000',
+        bgOpacity: document.getElementById('bg-opacity') ? parseFloat(document.getElementById('bg-opacity').value) : 86,
+        fontSize: document.getElementById('font-size') ? parseFloat(document.getElementById('font-size').value) : 50,
+        syncOffset: document.getElementById('sync-offset') ? parseFloat(document.getElementById('sync-offset').value) : 0.20,
+        captionTop: 65
+      };
+
+      const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(renderPayload)
+      });
+
+      if (!renderRes.ok) {
+        const errJson = await renderRes.json().catch(() => ({ detail: 'فشل رندر الكابشن' }));
+        throw new Error(`فشل رندر المقطع #${idx+1}: ${errJson.detail || renderRes.status}`);
+      }
+
+      const finalCaptionedBlob = await renderRes.blob();
+      const clipUrl = URL.createObjectURL(finalCaptionedBlob);
+
+      // 5. Save CAPTIONED video clip to 48-hour history archive (Persistent IndexedDB)
       await saveHistoryEntry({
-        title: `مقطع Shorts #${idx+1}: ${shortItem.title}`,
+        title: `🎬 مقطع Shorts #${idx+1}: ${shortItem.title}`,
         videoUrl: clipUrl,
-        blob: blob
+        blob: finalCaptionedBlob
       });
 
       successCount++;
     } catch (err) {
       console.error(`Error processing batch short #${idx+1}:`, err);
+      alert(`⚠️ خطأ في معالجة المقطع #${idx+1} (${shortItem.title.substring(0,20)}...):\n${err.message}\n\nسيتم الاستمرار في باقي المقاطع.`);
     }
   }
 
   if (modal) modal.style.display = 'none';
 
-  alert(`🎉 اكتملت المعالجة الجماعية بنجاح! تم حفظ ${successCount} من أصل ${total} مقاطع في أرشيف الـ 48 ساعة.`);
+  alert(`🎉 اكتملت المعالجة الجماعية بنجاح! تم توليد وحفظ ${successCount} من أصل ${total} مقاطع بالكابشن النهائي في أرشيف الـ 48 ساعة.`);
 
   // Switch to History Tab to let user preview & download all!
-  switchMainTab('history');
+  if (typeof switchMainTab === 'function') {
+    switchMainTab('history');
+  }
 };
 
 // ==================== Cohere ASR Logic ====================
