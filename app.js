@@ -2839,20 +2839,20 @@ window.confirmShortOptionChoice = function() {
     if (elInput) elInput.value = elKeyVal;
   }
   
+  // Capture values before closing/clearing variables
+  const isBatch = pendingBatchProcess;
+  const batchArgs = pendingBatchArgs;
+  const singleArgs = pendingShortArgs;
+
   closeShortOptionsModal();
 
-  if (pendingBatchProcess) {
-    const args = pendingBatchArgs;
-    pendingBatchProcess = false;
-    pendingBatchArgs = null;
-    if (args) {
-      executeBatchCaptionProcess(args.youtubeUrl, selectedShortChoice);
+  if (isBatch) {
+    if (batchArgs) {
+      executeBatchCaptionProcess(batchArgs.youtubeUrl, selectedShortChoice);
     }
   } else {
-    const args = pendingShortArgs;
-    pendingShortArgs = null;
-    if (args) {
-      executeCutAndSendToCaptions(args.youtubeUrl, args.startTime, args.endTime, args.idx, args.btn, selectedShortChoice);
+    if (singleArgs) {
+      executeCutAndSendToCaptions(singleArgs.youtubeUrl, singleArgs.startTime, singleArgs.endTime, singleArgs.idx, singleArgs.btn, selectedShortChoice);
     }
   }
 };
