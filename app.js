@@ -189,7 +189,7 @@ const progressMsg = document.getElementById('progress-msg');
 const errorMsg = document.getElementById('error-msg');
 const outputVideo = document.getElementById('output-video');
 const downloadLink = document.getElementById('download-link');
-let apiUrl = window.location.origin.includes('http') && !window.location.origin.includes('netlify') && !window.location.origin.includes('localhost')
+let apiUrl = window.location.origin.includes('hf.space')
   ? window.location.origin
   : 'https://ahmedyehia-rekaption.hf.space';
 let audioApiUrl = 'https://youtube-audio-backend-production-a2d5.up.railway.app'; // رابط خدمة تحميل الصوت (الـ Railway المخصص للصوت)
