@@ -1115,34 +1115,38 @@
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
           <h2 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
-            <span>🎬</span> اختيار طريقة تجهيز المقطع قبل الكابشن
+            <span>🎬</span> إعدادات معالجة المقطع والكابشن
           </h2>
           <button type="button" onclick="closeShortOptionsModal()" style="background: transparent; border: none; color: rgba(255,255,255,0.5); font-size: 20px; cursor: pointer;">&times;</button>
         </div>
 
         <p style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
-          اختر كيف ترغب في تجهيز مقطع الـ Short قبل إرساله لصانع الكابشن التفاعلي:
+          اختر خيارات التحوير وتوليد الكابشن للمقاطع المحددة:
         </p>
 
-        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+        <!-- 1. Video Format Selection -->
+        <label style="display: block; font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px;">
+          📱 تنسيق حجم وأبعاد الفيديو:
+        </label>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
           
           <!-- Option 1: Vertical 9:16 (Recommended) -->
           <div id="option-card-vertical" onclick="selectShortOption('vertical')" style="
             background: rgba(139, 92, 246, 0.12);
             border: 2px solid var(--purple-accent);
             border-radius: 16px;
-            padding: 16px;
+            padding: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
           ">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-              <span style="font-size: 15px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 14px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
                 <span>📱</span> تحويل المقطع إلى طولي (9:16)
               </span>
-              <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">⭐ موصى به</span>
+              <span style="background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 8px;">⭐ موصى به</span>
             </div>
-            <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin: 0; line-height: 1.5;">
-              يتم اقتصاص وتمرير المقطع تلقائياً بخوارزمية KIM لتحديد المشاهد والوجوه وتثبيت الكادر طوليًا ليكون جاهزاً لـ Shorts و TikTok.
+            <p style="font-size: 11px; color: rgba(255,255,255,0.6); margin: 0; line-height: 1.4;">
+              اقتصاص وتثبيت الكادر طوليًا بخوارزمية KIM ليكون جاهزاً لـ Shorts و TikTok.
             </p>
           </div>
 
@@ -1151,20 +1155,38 @@
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 16px;
-            padding: 16px;
+            padding: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
           ">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-              <span style="font-size: 15px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 14px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
                 <span>🎬</span> الاستمرار بالحجم الأصلي (16:9)
               </span>
             </div>
-            <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin: 0; line-height: 1.5;">
-              قص المقطع ونقله بنفس الأبعاد العرضية الأصلية للفيديو دون أي تحويل.
+            <p style="font-size: 11px; color: rgba(255,255,255,0.6); margin: 0; line-height: 1.4;">
+              قص المقطع ونقله بنفس الأبعاد العرضية الأصلية للفيديو دون أي تحويل طولي.
             </p>
           </div>
+        </div>
 
+        <!-- 2. Caption Engine Selection -->
+        <div style="margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 14px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.12);">
+          <label style="display: block; font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 8px;">
+            ⚙️ اختر محرك الكابشن (Caption Engine):
+          </label>
+          <select id="modal-caption-engine-select" onchange="toggleModalEngineFields()" style="width: 100%; height: 38px; padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; cursor: pointer; font-size: 13px;">
+            <option value="v1">V1 (Groq Whisper / Gemini)</option>
+            <option value="v2">V2 (ElevenLabs Scribe - فائق الدقة)</option>
+          </select>
+
+          <!-- ElevenLabs API key field in modal (shown only if v2 selected) -->
+          <div id="modal-elevenlabs-key-wrapper" style="margin-top: 10px; display: none;">
+            <label style="display: block; font-size: 11px; color: rgba(255,255,255,0.8); margin-bottom: 4px;">
+              مفتاح ElevenLabs API Key 🎙️
+            </label>
+            <input type="password" id="modal-elevenlabs-key-input" placeholder="Enter ElevenLabs API Key..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 13px; box-sizing: border-box;" />
+          </div>
         </div>
 
         <!-- Remember choice checkbox -->

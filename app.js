@@ -2699,7 +2699,6 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
   } catch (netErr) {
     console.warn('cut-async network error, fallback to sync cut:', netErr);
   }
-
   if (response && response.ok) {
     const startData = await response.json();
     const taskId = startData.taskId;
@@ -2765,6 +2764,8 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
 let selectedShortChoice = 'vertical';
 let rememberedShortChoice = null;
 let pendingShortArgs = null;
+let pendingBatchProcess = false;
+let pendingBatchArgs = null;
 
 window.selectShortOption = function(choice) {
   selectedShortChoice = choice;
@@ -2792,10 +2793,24 @@ window.selectShortOption = function(choice) {
   }
 };
 
+window.toggleModalEngineFields = function() {
+  const select = document.getElementById('modal-caption-engine-select');
+  const elevenlabsWrapper = document.getElementById('modal-elevenlabs-key-wrapper');
+  if (select && elevenlabsWrapper) {
+    if (select.value === 'v2') {
+      elevenlabsWrapper.style.display = 'block';
+    } else {
+      elevenlabsWrapper.style.display = 'none';
+    }
+  }
+};
+
 window.closeShortOptionsModal = function() {
   const modal = document.getElementById('short-options-modal');
   if (modal) modal.style.display = 'none';
   pendingShortArgs = null;
+  pendingBatchProcess = false;
+  pendingBatchArgs = null;
 };
 
 window.confirmShortOptionChoice = function() {
@@ -2803,10 +2818,42 @@ window.confirmShortOptionChoice = function() {
   if (rememberCheckbox && rememberCheckbox.checked) {
     rememberedShortChoice = selectedShortChoice;
   }
-  const args = pendingShortArgs;
+
+  // Sync engine and ElevenLabs key selection from modal to main inputs & localStorage
+  const modalSelect = document.getElementById('modal-caption-engine-select');
+  const modalElInput = document.getElementById('modal-elevenlabs-key-input');
+  
+  const selectedEngine = modalSelect ? modalSelect.value : 'v1';
+  localStorage.setItem('caption_engine', selectedEngine);
+  
+  const engineSelect = document.getElementById('caption-engine-select');
+  if (engineSelect) {
+    engineSelect.value = selectedEngine;
+    if (typeof window.toggleEngineFields === 'function') window.toggleEngineFields();
+  }
+  
+  const elKeyVal = modalElInput ? modalElInput.value.trim() : '';
+  if (elKeyVal) {
+    localStorage.setItem('elevenlabs_api_key', elKeyVal);
+    const elInput = document.getElementById('elevenlabs-api-key-input');
+    if (elInput) elInput.value = elKeyVal;
+  }
+  
   closeShortOptionsModal();
-  if (args) {
-    executeCutAndSendToCaptions(args.youtubeUrl, args.startTime, args.endTime, args.idx, args.btn, selectedShortChoice);
+
+  if (pendingBatchProcess) {
+    const args = pendingBatchArgs;
+    pendingBatchProcess = false;
+    pendingBatchArgs = null;
+    if (args) {
+      executeBatchCaptionProcess(args.youtubeUrl, selectedShortChoice);
+    }
+  } else {
+    const args = pendingShortArgs;
+    pendingShortArgs = null;
+    if (args) {
+      executeCutAndSendToCaptions(args.youtubeUrl, args.startTime, args.endTime, args.idx, args.btn, selectedShortChoice);
+    }
   }
 };
 
@@ -2822,7 +2869,25 @@ window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn)
   }
 
   pendingShortArgs = { youtubeUrl, startTime, endTime, idx, btn };
+  pendingBatchProcess = false;
+  pendingBatchArgs = null;
+
+  // Set up modal inputs to reflect current settings
+  const modalSelect = document.getElementById('modal-caption-engine-select');
+  const modalElInput = document.getElementById('modal-elevenlabs-key-input');
+  
+  const currentEngine = localStorage.getItem('caption_engine') || 'v1';
+  const currentElKey = localStorage.getItem('elevenlabs_api_key') || '';
+  
+  if (modalSelect) modalSelect.value = currentEngine;
+  if (modalElInput) modalElInput.value = currentElKey;
+
   selectShortOption('vertical');
+
+  if (typeof window.toggleModalEngineFields === 'function') {
+    window.toggleModalEngineFields();
+  }
+
   const modal = document.getElementById('short-options-modal');
   if (modal) modal.style.display = 'flex';
 };
@@ -3468,6 +3533,30 @@ window.startBatchCaptionProcess = async function() {
     return;
   }
 
+  pendingBatchProcess = true;
+  pendingBatchArgs = { youtubeUrl };
+
+  // Set up modal inputs to reflect current settings
+  const modalSelect = document.getElementById('modal-caption-engine-select');
+  const modalElInput = document.getElementById('modal-elevenlabs-key-input');
+  
+  const currentEngine = localStorage.getItem('caption_engine') || 'v1';
+  const currentElKey = localStorage.getItem('elevenlabs_api_key') || '';
+  
+  if (modalSelect) modalSelect.value = currentEngine;
+  if (modalElInput) modalElInput.value = currentElKey;
+
+  selectShortOption('vertical');
+
+  if (typeof window.toggleModalEngineFields === 'function') {
+    window.toggleModalEngineFields();
+  }
+
+  const modal = document.getElementById('short-options-modal');
+  if (modal) modal.style.display = 'flex';
+};
+
+async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
   const indicesToProcess = Array.from(selectedShortsIndices).sort((a, b) => a - b);
   const total = indicesToProcess.length;
 
@@ -3499,7 +3588,7 @@ window.startBatchCaptionProcess = async function() {
       });
 
       // 2. Perform Vertical Conversion if selected
-      if (selectedShortChoice === 'vertical') {
+      if (convertChoice === 'vertical') {
         if (modalStatusDesc) modalStatusDesc.textContent = `المقطع #${idx+1}: جارٍ التحويل إلى طولي (9:16)...`;
         const fd = new FormData();
         const rawFile = new File([blob], `short_${idx+1}.mp4`, { type: 'video/mp4' });
