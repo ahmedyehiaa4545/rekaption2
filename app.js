@@ -759,6 +759,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Prefill ElevenLabs API Key & Caption Engine if stored
+  const elInput = document.getElementById('elevenlabs-api-key-input');
+  if (elInput) {
+    const savedElKey = localStorage.getItem('elevenlabs_api_key') || '';
+    if (savedElKey) elInput.value = savedElKey;
+    elInput.addEventListener('input', function() {
+      localStorage.setItem('elevenlabs_api_key', this.value.trim());
+    });
+  }
+
+  const engineSelect = document.getElementById('caption-engine-select');
+  if (engineSelect) {
+    const savedEngine = localStorage.getItem('caption_engine') || 'v1';
+    engineSelect.value = savedEngine;
+    engineSelect.addEventListener('change', function() {
+      localStorage.setItem('caption_engine', this.value);
+      if (typeof window.toggleEngineFields === 'function') window.toggleEngineFields();
+    });
+  }
+
+  window.toggleEngineFields = function() {
+    const select = document.getElementById('caption-engine-select');
+    const groqWrapper = document.getElementById('groq-key-wrapper');
+    const elevenlabsWrapper = document.getElementById('elevenlabs-key-wrapper');
+    if (select && groqWrapper && elevenlabsWrapper) {
+      if (select.value === 'v2') {
+        groqWrapper.style.display = 'none';
+        elevenlabsWrapper.style.display = 'block';
+      } else {
+        groqWrapper.style.display = 'block';
+        elevenlabsWrapper.style.display = 'none';
+      }
+    }
+  };
+
+  // Run toggle once initially
+  setTimeout(() => {
+    if (typeof window.toggleEngineFields === 'function') window.toggleEngineFields();
+  }, 200);
+
   // Open Admin modal if hash is #admin or url contains ?admin
   if (window.location.hash === '#admin' || window.location.search.includes('admin')) {
     openAdminModal();
@@ -1382,6 +1422,18 @@ formControls.addEventListener('submit', async function(e) {
   const gInput = document.getElementById('gemini-key-input');
   const geminiKeyVal = gInput ? gInput.value.trim() : savedGeminiKey;
   if (geminiKeyVal) fd.append('geminiApiKey', geminiKeyVal);
+
+  const engineSelect = document.getElementById('caption-engine-select');
+  const engineVal = engineSelect ? engineSelect.value : 'v1';
+  fd.append('captionEngine', engineVal);
+
+  const savedElKey = localStorage.getItem('elevenlabs_api_key') || '';
+  const elKeyInput = document.getElementById('elevenlabs-api-key-input');
+  const elKeyVal = elKeyInput ? elKeyInput.value.trim() : savedElKey;
+  if (elKeyVal) {
+    localStorage.setItem('elevenlabs_api_key', elKeyVal);
+    fd.append('elevenLabsApiKey', elKeyVal);
+  }
 
   let intervalId = null;
 
@@ -2994,6 +3046,13 @@ window.processBatchCaption = async function() {
       if (groqKey) fd.append('groqApiKey', groqKey);
       if (geminiKey) fd.append('geminiApiKey', geminiKey);
 
+      const engineSelect = document.getElementById('caption-engine-select');
+      const engineVal = engineSelect ? engineSelect.value : 'v1';
+      fd.append('captionEngine', engineVal);
+
+      const elKey = localStorage.getItem('elevenlabs_api_key') || '';
+      if (elKey) fd.append('elevenLabsApiKey', elKey);
+
       // Use the MAIN apiUrl (HF backend) for transcription, NOT audioApiUrl
       const transRes = await fetch(`${apiUrl}/api/transcribe`, {
         method: 'POST',
@@ -3507,6 +3566,13 @@ window.startBatchCaptionProcess = async function() {
       if (groqKey) transFd.append('groqApiKey', groqKey);
       if (geminiKey) transFd.append('geminiApiKey', geminiKey);
       if (openrouterKey) transFd.append('openrouterKey', openrouterKey);
+
+      const engineSelect = document.getElementById('caption-engine-select');
+      const engineVal = engineSelect ? engineSelect.value : 'v1';
+      transFd.append('captionEngine', engineVal);
+
+      const elKey = localStorage.getItem('elevenlabs_api_key') || '';
+      if (elKey) transFd.append('elevenLabsApiKey', elKey);
 
       const transRes = await fetch(`${apiUrl}/api/transcribe`, {
         method: 'POST',

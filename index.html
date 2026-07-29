@@ -321,9 +321,23 @@
           </div>
 
           <div class="control-field" style="margin-top: 10px;">
+            <span class="control-label" style="font-size: 11px;">إصدار ومحرك الكابشن (Caption Engine) ⚙️</span>
+            <select id="caption-engine-select" onchange="toggleEngineFields()" style="width: 100%; height: 38px; padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; cursor: pointer;">
+              <option value="v1">V1 (Groq Whisper / Gemini)</option>
+              <option value="v2">V2 (ElevenLabs Scribe - فائق الدقة)</option>
+            </select>
+          </div>
+
+          <div id="groq-key-wrapper" class="control-field" style="margin-top: 10px;">
             <span class="control-label" style="font-size: 11px;">مفتاح Groq API للتفريغ السريع (Whisper Large V3 Turbo) ⚡</span>
             <input type="password" id="groq-api-key-input" placeholder="gsk_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
             <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">(اختياري) أدخل مفتاح Groq الخاص بك لتوليد التوقيتات بسرعة فائقة وتقسيم الكلمات بالذكاء الاصطناعي.</span>
+          </div>
+
+          <div id="elevenlabs-key-wrapper" class="control-field" style="margin-top: 10px; display: none;">
+            <span class="control-label" style="font-size: 11px;">مفتاح ElevenLabs API Key 🎙️</span>
+            <input type="password" id="elevenlabs-api-key-input" placeholder="Enter ElevenLabs API Key..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
+            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">مطلوب لتشغيل محرك Scribe V2 الفائق وتنسيق الترقيم التلقائي.</span>
           </div>
         </div>
 
