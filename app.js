@@ -189,7 +189,9 @@ const progressMsg = document.getElementById('progress-msg');
 const errorMsg = document.getElementById('error-msg');
 const outputVideo = document.getElementById('output-video');
 const downloadLink = document.getElementById('download-link');
-let apiUrl = 'https://ahmedyehia-rekaption.hf.space';
+let apiUrl = window.location.origin.includes('http') && !window.location.origin.includes('netlify') && !window.location.origin.includes('localhost')
+  ? window.location.origin
+  : 'https://ahmedyehia-rekaption.hf.space';
 let audioApiUrl = 'https://youtube-audio-backend-production-a2d5.up.railway.app'; // رابط خدمة تحميل الصوت (الـ Railway المخصص للصوت)
 const apiUrlInput = document.getElementById('api-url');
 if (apiUrlInput) {
@@ -3014,14 +3016,26 @@ window.processBatchCaption = async function() {
         videoPath: transData.videoPath,
         durationInSeconds: transData.durationInSeconds,
         segments: transData.segments,
-        animationType: selectedAnimation || 'classic',
+        animationType: typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic',
         activeColor: document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF',
         inactiveColor: document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF',
-        showBg: document.getElementById('show-bg') ? document.getElementById('show-bg').checked : false,
+        leftLogo: transData.leftLogo || null,
+        rightLogo: transData.rightLogo || null,
+        fontSize: document.getElementById('font-size') ? parseInt(document.getElementById('font-size').value) : 50,
         bgColor: document.getElementById('bg-color') ? document.getElementById('bg-color').value : '#000000',
         bgOpacity: document.getElementById('bg-opacity') ? parseFloat(document.getElementById('bg-opacity').value) : 86,
-        fontSize: document.getElementById('font-size') ? parseFloat(document.getElementById('font-size').value) : 50,
-        syncOffset: document.getElementById('sync-offset') ? parseFloat(document.getElementById('sync-offset').value) : 0.20
+        syncOffset: document.getElementById('sync-offset') ? parseFloat(document.getElementById('sync-offset').value) : 0.20,
+        wordSpacing: document.getElementById('word-spacing') ? parseInt(document.getElementById('word-spacing').value) : 31,
+        bgPadding: document.getElementById('bg-padding') ? parseInt(document.getElementById('bg-padding').value) : 8,
+        showBg: document.getElementById('show-bg') ? !document.getElementById('show-bg').checked : true,
+        captionTop: typeof captionTop !== 'undefined' ? captionTop : 65,
+        fontFamily: document.getElementById('font-family-select') ? document.getElementById('font-family-select').value : 'thmanyah',
+        customFontName: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontName : null,
+        customFontBase64: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontDataUrl : null,
+        strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
+        strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
+        shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
+        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
@@ -3517,12 +3531,23 @@ window.startBatchCaptionProcess = async function() {
         animationType: typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic',
         activeColor: document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF',
         inactiveColor: document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF',
-        showBg: document.getElementById('show-bg') ? document.getElementById('show-bg').checked : false,
+        leftLogo: transData.leftLogo || null,
+        rightLogo: transData.rightLogo || null,
+        fontSize: document.getElementById('font-size') ? parseInt(document.getElementById('font-size').value) : 50,
         bgColor: document.getElementById('bg-color') ? document.getElementById('bg-color').value : '#000000',
         bgOpacity: document.getElementById('bg-opacity') ? parseFloat(document.getElementById('bg-opacity').value) : 86,
-        fontSize: document.getElementById('font-size') ? parseFloat(document.getElementById('font-size').value) : 50,
         syncOffset: document.getElementById('sync-offset') ? parseFloat(document.getElementById('sync-offset').value) : 0.20,
-        captionTop: 65
+        wordSpacing: document.getElementById('word-spacing') ? parseInt(document.getElementById('word-spacing').value) : 31,
+        bgPadding: document.getElementById('bg-padding') ? parseInt(document.getElementById('bg-padding').value) : 8,
+        showBg: document.getElementById('show-bg') ? !document.getElementById('show-bg').checked : true,
+        captionTop: typeof captionTop !== 'undefined' ? captionTop : 65,
+        fontFamily: document.getElementById('font-family-select') ? document.getElementById('font-family-select').value : 'thmanyah',
+        customFontName: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontName : null,
+        customFontBase64: (document.getElementById('font-family-select') && document.getElementById('font-family-select').value === 'custom') ? customFontDataUrl : null,
+        strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
+        strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
+        shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
+        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
