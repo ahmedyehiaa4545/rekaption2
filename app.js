@@ -803,6 +803,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.location.hash === '#admin' || window.location.search.includes('admin')) {
     openAdminModal();
   }
+
+  // Prefill fast-render-chk if stored
+  const fastRenderChk = document.getElementById('fast-render-chk');
+  if (fastRenderChk) {
+    const savedFastRender = localStorage.getItem('fast_render');
+    if (savedFastRender !== null) {
+      fastRenderChk.checked = savedFastRender === 'true';
+    }
+    fastRenderChk.addEventListener('change', function() {
+      localStorage.setItem('fast_render', this.checked ? 'true' : 'false');
+    });
+  }
 });
 
 window.syncShowBg = function(el) {
@@ -1630,7 +1642,8 @@ window.renderVideo = async function() {
     strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
     strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
     shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
-    shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
+    shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
+    fastRender: document.getElementById('fast-render-chk') ? document.getElementById('fast-render-chk').checked : true
   };
   
   try {
@@ -3159,7 +3172,8 @@ window.processBatchCaption = async function() {
         strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
         strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
         shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
-        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
+        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
+        fastRender: document.getElementById('fast-render-chk') ? document.getElementById('fast-render-chk').checked : true
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
@@ -3702,7 +3716,8 @@ async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
         strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
         strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
         shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
-        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
+        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
+        fastRender: document.getElementById('fast-render-chk') ? document.getElementById('fast-render-chk').checked : true
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {

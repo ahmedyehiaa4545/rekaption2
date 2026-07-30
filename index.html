@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
   
-  <link rel="stylesheet" href="style.css?v=1.6" />
+  <link rel="stylesheet" href="style.css?v=1.7" />
   
   <!-- Firebase App, Analytics, Auth & Firestore SDKs (Compat v9/v10) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -338,6 +338,14 @@
             <span class="control-label" style="font-size: 11px;">مفتاح ElevenLabs API Key 🎙️</span>
             <input type="password" id="elevenlabs-api-key-input" placeholder="Enter ElevenLabs API Key..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
             <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">مطلوب لتشغيل محرك Scribe V2 الفائق وتنسيق الترقيم التلقائي.</span>
+          </div>
+
+          <!-- Fast FFmpeg Render Checkbox -->
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 15px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); padding: 10px 12px; border-radius: 8px;">
+            <input type="checkbox" id="fast-render-chk" checked style="width: 16px; height: 16px; accent-color: #10b981; cursor: pointer;" />
+            <label for="fast-render-chk" style="font-size: 11px; color: #10b981; font-weight: 800; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; margin: 0;">
+              ⚡ رندرة فائقة السرعة (FFmpeg - ثانيتين فقط)
+            </label>
           </div>
         </div>
 
@@ -1289,6 +1297,6 @@
     </div>
 
   </div>
-  <script src="app.js?v=1.6"></script>
+  <script src="app.js?v=1.7"></script>
 </body>
 </html>
