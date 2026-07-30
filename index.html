@@ -321,6 +321,14 @@
           </div>
 
           <div class="control-field" style="margin-top: 10px;">
+            <span class="control-label" style="font-size: 11px;">محرك رندرة وتصدير الفيديو (Rendering Engine) ⚡</span>
+            <select id="rendering-engine-select" style="width: 100%; height: 38px; padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; cursor: pointer;">
+              <option value="fast">الرندرة السريعة الفورية (FFmpeg + ASS) - ثانيتين ⚡</option>
+              <option value="remotion">الرندرة الاحترافية (Remotion) - دقيقة 🎬</option>
+            </select>
+          </div>
+
+          <div class="control-field" style="margin-top: 10px;">
             <span class="control-label" style="font-size: 11px;">إصدار ومحرك الكابشن (Caption Engine) ⚙️</span>
             <select id="caption-engine-select" onchange="toggleEngineFields()" style="width: 100%; height: 38px; padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; cursor: pointer;">
               <option value="v1">V1 (Groq Whisper / Gemini)</option>
@@ -338,14 +346,6 @@
             <span class="control-label" style="font-size: 11px;">مفتاح ElevenLabs API Key 🎙️</span>
             <input type="password" id="elevenlabs-api-key-input" placeholder="Enter ElevenLabs API Key..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
             <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">مطلوب لتشغيل محرك Scribe V2 الفائق وتنسيق الترقيم التلقائي.</span>
-          </div>
-
-          <!-- Fast FFmpeg Render Checkbox -->
-          <div style="display: flex; align-items: center; gap: 8px; margin-top: 15px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); padding: 10px 12px; border-radius: 8px;">
-            <input type="checkbox" id="fast-render-chk" checked style="width: 16px; height: 16px; accent-color: #10b981; cursor: pointer;" />
-            <label for="fast-render-chk" style="font-size: 11px; color: #10b981; font-weight: 800; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; margin: 0;">
-              ⚡ رندرة فائقة السرعة (FFmpeg - ثانيتين فقط)
-            </label>
           </div>
         </div>
 
