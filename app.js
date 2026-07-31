@@ -799,6 +799,56 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.toggleEngineFields === 'function') window.toggleEngineFields();
   }, 200);
 
+  // Initialize Title Overlay controls in DOMContentLoaded
+  const durationInput = document.getElementById('title-duration-input');
+  if (durationInput) {
+    durationInput.addEventListener('input', function() {
+      const valSpan = document.getElementById('title-duration-val');
+      if (valSpan) valSpan.textContent = this.value;
+    });
+  }
+
+  const topInput = document.getElementById('title-top-input');
+  if (topInput) {
+    topInput.addEventListener('input', function() {
+      const valSpan = document.getElementById('title-top-val');
+      if (valSpan) valSpan.textContent = this.value;
+    });
+  }
+
+  const colorInput = document.getElementById('title-color-input');
+  if (colorInput) {
+    colorInput.addEventListener('input', function() {
+      const hexSpan = document.getElementById('title-color-hex');
+      if (hexSpan) hexSpan.textContent = this.value.toUpperCase();
+    });
+  }
+
+  const bgColorInput = document.getElementById('title-bg-color-input');
+  if (bgColorInput) {
+    bgColorInput.addEventListener('input', function() {
+      const hexSpan = document.getElementById('title-bg-hex');
+      if (hexSpan) hexSpan.textContent = this.value.toUpperCase();
+    });
+  }
+
+  window.toggleTitleFields = function(checked) {
+    const bg = document.getElementById('title-toggle-bg');
+    const knob = document.getElementById('title-toggle-knob');
+    const wrapper = document.getElementById('title-settings-wrapper');
+    if (bg && knob && wrapper) {
+      if (checked) {
+        bg.style.backgroundColor = 'var(--purple-accent, #8b5cf6)';
+        knob.style.transform = 'translateX(-22px)';
+        wrapper.style.display = 'flex';
+      } else {
+        bg.style.backgroundColor = 'rgba(255,255,255,0.1)';
+        knob.style.transform = 'translateX(0)';
+        wrapper.style.display = 'none';
+      }
+    }
+  };
+
   // Open Admin modal if hash is #admin or url contains ?admin
   if (window.location.hash === '#admin' || window.location.search.includes('admin')) {
     openAdminModal();
@@ -1630,7 +1680,13 @@ window.renderVideo = async function() {
     strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
     strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
     shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
-    shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
+    shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
+    showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
+    titleText: document.getElementById('title-text-input') ? document.getElementById('title-text-input').value.trim() : '',
+    titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
+    titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#ec4899',
+    titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
+    titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
   };
   
   try {
@@ -2872,6 +2928,21 @@ window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn)
   pendingBatchProcess = false;
   pendingBatchArgs = null;
 
+  // Prefill title input and toggle it ON
+  const shortItem = currentSuggestedShorts[idx];
+  const suggestedTitle = shortItem ? shortItem.title : '';
+  const titleTextInput = document.getElementById('title-text-input');
+  if (titleTextInput) {
+    titleTextInput.value = suggestedTitle;
+  }
+  const showTitleToggle = document.getElementById('show-title-toggle');
+  if (showTitleToggle) {
+    showTitleToggle.checked = true;
+    if (typeof window.toggleTitleFields === 'function') {
+      window.toggleTitleFields(true);
+    }
+  }
+
   // Set up modal inputs to reflect current settings
   const modalSelect = document.getElementById('modal-caption-engine-select');
   const modalElInput = document.getElementById('modal-elevenlabs-key-input');
@@ -3159,7 +3230,13 @@ window.processBatchCaption = async function() {
         strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
         strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
         shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
-        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
+        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
+        showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
+        titleText: short.title,
+        titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
+        titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#ec4899',
+        titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
+        titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
@@ -3702,7 +3779,13 @@ async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
         strokeColor: document.getElementById('stroke-color') ? document.getElementById('stroke-color').value : '#000000',
         strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
         shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
-        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0
+        shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
+        showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
+        titleText: shortItem.title,
+        titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
+        titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#ec4899',
+        titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
+        titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {

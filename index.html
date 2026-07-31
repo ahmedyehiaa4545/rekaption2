@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
   
-  <link rel="stylesheet" href="style.css?v=1.6" />
+  <link rel="stylesheet" href="style.css?v=1.7" />
   
   <!-- Firebase App, Analytics, Auth & Firestore SDKs (Compat v9/v10) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -317,6 +317,60 @@
             <div class="control-field">
               <span class="control-label" style="font-size: 11px;">المسافة بين الكلمات: <span id="upload-word-spacing-val">31</span></span>
               <input type="range" id="upload-word-spacing" value="31" min="0" max="80" style="width: 100%; margin-top: 8px;" />
+            </div>
+          </div>
+
+          <!-- Title Identity Section (Suggested TikTok Title Overlay) -->
+          <div style="margin-top: 15px; margin-bottom: 15px; padding: 12px; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
+                <span>🏷️</span> هوية وعنوان الفيديو (TikTok Style)
+              </span>
+              <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 22px; cursor: pointer;">
+                <input type="checkbox" id="show-title-toggle" onchange="toggleTitleFields(this.checked)" style="display: none;" />
+                <div id="title-toggle-bg" style="width: 44px; height: 22px; background-color: rgba(255,255,255,0.1); border-radius: 11px; border: 1px solid rgba(255,255,255,0.15); transition: background-color 0.3s; position: relative;">
+                  <div id="title-toggle-knob" style="width: 16px; height: 16px; background-color: #fff; border-radius: 50%; position: absolute; top: 2px; right: 2px; transition: transform 0.3s;"></div>
+                </div>
+              </label>
+            </div>
+            
+            <div id="title-settings-wrapper" style="display: none; flex-direction: column; gap: 10px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+              <div class="control-field">
+                <span class="control-label" style="font-size: 11px;">نص العنوان المقترح 📝</span>
+                <input type="text" id="title-text-input" placeholder="اكتب عنواناً جذاباً للفيديو..." style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; font-size: 12px; box-sizing: border-box;" />
+              </div>
+
+              <div class="grid-2" style="gap: 10px;">
+                <div class="control-field">
+                  <span class="control-label" style="font-size: 11px;">لون نص العنوان 🎨</span>
+                  <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
+                    <div class="color-circle-preview" style="width: 20px; height: 20px;">
+                      <input type="color" id="title-color-input" value="#FFFFFF" />
+                    </div>
+                    <span id="title-color-hex" class="color-hex-text" style="font-size: 10px;">#FFFFFF</span>
+                  </div>
+                </div>
+                <div class="control-field">
+                  <span class="control-label" style="font-size: 11px;">لون خلفية العنوان 🏷️</span>
+                  <div class="color-input-wrapper" style="height: 34px; padding: 3px 8px;">
+                    <div class="color-circle-preview" style="width: 20px; height: 20px;">
+                      <input type="color" id="title-bg-color-input" value="#ec4899" />
+                    </div>
+                    <span id="title-bg-hex" class="color-hex-text" style="font-size: 10px;">#ec4899</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid-2" style="gap: 10px;">
+                <div class="control-field">
+                  <span class="control-label" style="font-size: 11px;">مدة الظهور: <span id="title-duration-val">3.0</span> ثانية</span>
+                  <input type="range" id="title-duration-input" min="1.0" max="10.0" step="0.5" value="3.0" style="width: 100%; margin-top: 6px;" />
+                </div>
+                <div class="control-field">
+                  <span class="control-label" style="font-size: 11px;">الارتفاع (Top %): <span id="title-top-val">20</span>%</span>
+                  <input type="range" id="title-top-input" min="5" max="80" step="1" value="20" style="width: 100%; margin-top: 6px;" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1289,6 +1343,6 @@
     </div>
 
   </div>
-  <script src="app.js?v=1.6"></script>
+  <script src="app.js?v=1.7"></script>
 </body>
 </html>
