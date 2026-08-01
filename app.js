@@ -1684,7 +1684,7 @@ window.renderVideo = async function() {
     showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
     titleText: document.getElementById('title-text-input') ? document.getElementById('title-text-input').value.trim() : '',
     titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
-    titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#ec4899',
+    titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
     titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
     titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
   };
@@ -3234,7 +3234,7 @@ window.processBatchCaption = async function() {
         showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
         titleText: short.title,
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
-        titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#ec4899',
+        titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
         titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
       };
@@ -3783,7 +3783,7 @@ async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
         showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
         titleText: shortItem.title,
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
-        titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#ec4899',
+        titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
         titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
       };
@@ -3938,4 +3938,253 @@ window.closeComparisonModal = function() {
   if (modal) modal.style.display = 'none';
 };
 
+// ==================== نظام القوالب — الدوال الأساسية ====================
+const TEMPLATES_KEY = 'rekaption_templates_v2';
+let _pickerCallback = null;
 
+function getTemplates() {
+  try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveTemplates(arr) {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(arr));
+}
+
+function collectCurrentSettings() {
+  const g = id => document.getElementById(id);
+  const val = (id, fb) => { const el=g(id); return el ? el.value : fb; };
+  const num = (id, fb) => { const el=g(id); return el ? parseFloat(el.value) : fb; };
+  const int = (id, fb) => { const el=g(id); return el ? parseInt(el.value) : fb; };
+  const chk = (id, fb) => { const el=g(id); return el ? el.checked : fb; };
+  return {
+    animationType  : typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic',
+    activeColor    : val('active-color', '#FFFFFF'),
+    inactiveColor  : val('inactive-color', '#FFFFFF'),
+    bgColor        : val('bg-color', '#000000'),
+    bgOpacity      : num('bg-opacity', 86),
+    fontSize       : int('font-size', 50),
+    syncOffset     : num('sync-offset', 0.20),
+    wordSpacing    : int('word-spacing', 31),
+    bgPadding      : int('bg-padding', 8),
+    showBg         : chk('show-bg', false),
+    captionTop     : typeof captionTop !== 'undefined' ? captionTop : 65,
+    fontFamily     : val('font-family-select', 'thmanyah'),
+    strokeColor    : val('stroke-color', '#000000'),
+    strokeWidth    : int('stroke-width', 0),
+    shadowColor    : val('shadow-color', '#000000'),
+    shadowBlur     : int('shadow-blur', 0),
+    showTitle      : chk('show-title-toggle', true),
+    titleColor     : val('title-color-input', '#FFFFFF'),
+    titleBgColor   : val('title-bg-color-input', '#000000'),
+    titleDuration  : num('title-duration-input', 3.0),
+    titleTop       : num('title-top-input', 12),
+    leftLogoBase64 : typeof leftLogoBase64Global  !== 'undefined' ? leftLogoBase64Global  : null,
+    rightLogoBase64: typeof rightLogoBase64Global !== 'undefined' ? rightLogoBase64Global : null,
+  };
+}
+
+function applySettingsToDOM(s) {
+  const g   = id => document.getElementById(id);
+  const set = (id, v) => { const el=g(id); if(el){ el.value=v; el.dispatchEvent(new Event('input')); } };
+  const setChk = (id, v) => { const el=g(id); if(el){ el.checked=v; el.dispatchEvent(new Event('change')); } };
+  const setHex = (id, v) => { const el=g(id); if(el) el.textContent=String(v).toUpperCase(); };
+
+  if (s.animationType !== undefined) {
+    if (typeof selectAnimation === 'function') selectAnimation(s.animationType);
+    else selectedAnimation = s.animationType;
+  }
+  if (s.activeColor)   { set('active-color',   s.activeColor);   setHex('active-color-hex',   s.activeColor); }
+  if (s.inactiveColor) { set('inactive-color', s.inactiveColor); setHex('inactive-color-hex', s.inactiveColor); }
+  if (s.bgColor)       { set('bg-color',       s.bgColor);       setHex('bg-color-hex',       s.bgColor); }
+  if (s.strokeColor)   { set('stroke-color',   s.strokeColor);   setHex('stroke-color-hex',   s.strokeColor); }
+  if (s.shadowColor)   { set('shadow-color',   s.shadowColor);   setHex('shadow-color-hex',   s.shadowColor); }
+  if (s.bgOpacity   !== undefined) set('bg-opacity',   s.bgOpacity);
+  if (s.fontSize    !== undefined) set('font-size',    s.fontSize);
+  if (s.syncOffset  !== undefined) set('sync-offset',  s.syncOffset);
+  if (s.wordSpacing !== undefined) set('word-spacing', s.wordSpacing);
+  if (s.bgPadding   !== undefined) set('bg-padding',   s.bgPadding);
+  if (s.strokeWidth !== undefined) set('stroke-width', s.strokeWidth);
+  if (s.shadowBlur  !== undefined) set('shadow-blur',  s.shadowBlur);
+  if (s.showBg      !== undefined) setChk('show-bg', s.showBg);
+  if (s.captionTop !== undefined) {
+    captionTop = s.captionTop;
+    const ctv=g('caption-top-val'); if(ctv) ctv.textContent=s.captionTop;
+    const cts=g('caption-top');     if(cts) cts.value=s.captionTop;
+  }
+  if (s.fontFamily) { const ff=g('font-family-select'); if(ff){ ff.value=s.fontFamily; ff.dispatchEvent(new Event('change')); } }
+  const showT = s.showTitle !== undefined ? s.showTitle : true;
+  setChk('show-title-toggle', showT);
+  if (typeof toggleTitleFields === 'function') toggleTitleFields(showT);
+  if (s.titleColor)   { set('title-color-input',    s.titleColor);   setHex('title-color-hex', s.titleColor); }
+  if (s.titleBgColor) { set('title-bg-color-input', s.titleBgColor); setHex('title-bg-hex',    s.titleBgColor); }
+  if (s.titleDuration !== undefined) set('title-duration-input', s.titleDuration);
+  if (s.titleTop      !== undefined) set('title-top-input',      s.titleTop);
+  if (s.leftLogoBase64  !== undefined) window.leftLogoBase64Global  = s.leftLogoBase64;
+  if (s.rightLogoBase64 !== undefined) window.rightLogoBase64Global = s.rightLogoBase64;
+  // مزامنة المدخلات المزدوجة
+  [['upload-active-color','active-color'],['upload-inactive-color','inactive-color'],
+   ['upload-bg-color','bg-color'],['upload-stroke-color','stroke-color'],
+   ['upload-shadow-color','shadow-color'],['upload-font-size','font-size'],
+   ['upload-bg-opacity','bg-opacity'],['upload-sync-offset','sync-offset'],
+   ['upload-word-spacing','word-spacing'],['upload-bg-padding','bg-padding'],
+   ['upload-stroke-width','stroke-width'],['upload-shadow-blur','shadow-blur']
+  ].forEach(([u,e]) => { const eu=g(u),ee=g(e); if(eu&&ee) eu.value=ee.value; });
+  if (typeof updateLiveCaptionOverlay === 'function') updateLiveCaptionOverlay(0);
+}
+
+window.renderTemplateList = function() {
+  const container = document.getElementById('template-list-container');
+  const emptyMsg  = document.getElementById('template-empty-msg');
+  if (!container) return;
+  const templates = getTemplates();
+  if (templates.length === 0) { if(emptyMsg) emptyMsg.style.display='block'; return; }
+  if (emptyMsg) emptyMsg.style.display = 'none';
+  Array.from(container.children).forEach(c => { if(c !== emptyMsg) c.remove(); });
+  templates.forEach(t => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;';
+    row.innerHTML = `
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;color:#e0e0e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;">${new Date(t.id).toLocaleDateString('ar-EG')}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;align-items:center;">
+        <div style="display:flex;gap:3px;margin-left:4px;">
+          <div style="width:13px;height:13px;border-radius:50%;background:${t.settings.activeColor||'#fff'};border:1px solid rgba(255,255,255,0.3);"></div>
+          <div style="width:13px;height:13px;border-radius:50%;background:${t.settings.bgColor||'#000'};border:1px solid rgba(255,255,255,0.3);"></div>
+          <div style="width:13px;height:13px;border-radius:50%;background:${t.settings.titleBgColor||'#000'};border:1px solid rgba(255,255,255,0.3);"></div>
+        </div>
+        <button onclick="applyTemplate('${t.id}')" style="background:rgba(139,92,246,0.25);color:#c4b5fd;border:1px solid rgba(139,92,246,0.4);border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">تطبيق</button>
+        <button onclick="deleteTemplate('${t.id}')" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:7px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:inherit;">✕</button>
+      </div>`;
+    container.appendChild(row);
+  });
+};
+
+window.applyTemplate = function(templateId) {
+  const t = getTemplates().find(x => String(x.id) === String(templateId));
+  if (!t) { alert('لم يتم العثور على القالب!'); return; }
+  applySettingsToDOM(t.settings);
+  closeTemplatePickerModal(true);
+  showToast('✅ تم تطبيق القالب: ' + t.name);
+};
+
+window.deleteTemplate = function(templateId) {
+  if (!confirm('هل تريد حذف هذا القالب؟')) return;
+  saveTemplates(getTemplates().filter(x => String(x.id) !== String(templateId)));
+  renderTemplateList();
+};
+
+window.openSaveTemplateModal = function() {
+  const inp = document.getElementById('template-name-input');
+  if (inp) inp.value = '';
+  const m = document.getElementById('save-template-modal');
+  if (m) { m.style.display='flex'; setTimeout(()=>{ if(inp) inp.focus(); },100); }
+};
+
+window.closeSaveTemplateModal = function() {
+  const m = document.getElementById('save-template-modal');
+  if (m) m.style.display = 'none';
+};
+
+window.confirmSaveTemplate = function() {
+  const inp = document.getElementById('template-name-input');
+  const name = inp ? inp.value.trim() : '';
+  if (!name) { alert('يرجى كتابة اسم للقالب!'); return; }
+  const templates = getTemplates();
+  templates.unshift({ id: Date.now(), name, settings: collectCurrentSettings() });
+  if (templates.length > 20) templates.splice(20);
+  saveTemplates(templates);
+  closeSaveTemplateModal();
+  renderTemplateList();
+  showToast('✅ تم حفظ القالب: ' + name);
+};
+
+window.openTemplatePickerModal = function(callback) {
+  _pickerCallback = callback || null;
+  const templates = getTemplates();
+  const listEl = document.getElementById('picker-template-list');
+  if (!listEl) { if(callback) callback(); return; }
+  listEl.innerHTML = '';
+  if (templates.length === 0) {
+    listEl.innerHTML = '<p style="font-size:12px;color:rgba(255,255,255,0.4);text-align:center;margin:16px 0;">لا توجد قوالب محفوظة — احفظ قالباً أولاً من قسم الإعدادات</p>';
+  } else {
+    templates.forEach(t => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style.cssText = 'width:100%;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:12px 14px;cursor:pointer;color:#fff;font-family:inherit;text-align:right;transition:background 0.15s;';
+      btn.onmouseover = () => btn.style.background = 'rgba(139,92,246,0.15)';
+      btn.onmouseout  = () => btn.style.background = 'rgba(255,255,255,0.05)';
+      btn.innerHTML = `
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <div style="width:18px;height:18px;border-radius:50%;background:${t.settings.activeColor||'#fff'};border:1px solid rgba(255,255,255,0.3);"></div>
+          <div style="width:18px;height:18px;border-radius:50%;background:${t.settings.bgColor||'#000'};border:1px solid rgba(255,255,255,0.3);"></div>
+          <div style="width:18px;height:18px;border-radius:50%;background:${t.settings.titleBgColor||'#000'};border:1px solid rgba(255,255,255,0.3);"></div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${t.name}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">${t.settings.fontFamily||'thmanyah'} • ${t.settings.animationType||'classic'}</div>
+        </div>
+        <span style="color:#a78bfa;font-size:20px;">✓</span>`;
+      btn.onclick = () => { applySettingsToDOM(t.settings); closeTemplatePickerModal(true); showToast('✅ تم تطبيق القالب: '+t.name); };
+      listEl.appendChild(btn);
+    });
+  }
+  const m = document.getElementById('template-picker-modal');
+  if (m) m.style.display = 'flex';
+};
+
+window.closeTemplatePickerModal = function(proceed) {
+  const m = document.getElementById('template-picker-modal');
+  if (m) m.style.display = 'none';
+  if (proceed && _pickerCallback) { _pickerCallback(); _pickerCallback = null; }
+};
+
+window.proceedWithCurrentSettings = function() { closeTemplatePickerModal(true); };
+
+window.showToast = function(msg) {
+  let toast = document.getElementById('rekaption-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'rekaption-toast';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e1b4b;color:#fff;padding:10px 22px;border-radius:50px;font-size:13px;font-weight:700;z-index:99999;box-shadow:0 6px 20px rgba(0,0,0,0.5);border:1px solid rgba(139,92,246,0.4);opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;font-family:Cairo,sans-serif;direction:rtl;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+};
+
+// --- اعتراض cutAndSendToCaptions لعرض picker أولاً ---
+const _origCutAndSend = window.cutAndSendToCaptions;
+window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn) {
+  const templates = getTemplates();
+  if (templates.length > 0) {
+    openTemplatePickerModal(() => {
+      if (typeof rememberedShortChoice !== 'undefined' && rememberedShortChoice) {
+        executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, btn, rememberedShortChoice);
+      } else {
+        pendingShortArgs = { youtubeUrl, startTime, endTime, idx, btn };
+        const modal = document.getElementById('short-options-modal');
+        if (modal) modal.style.display = 'flex';
+      }
+    });
+  } else {
+    _origCutAndSend && _origCutAndSend(youtubeUrl, startTime, endTime, idx, btn);
+  }
+};
+
+// --- اعتراض processBatchCaption لعرض picker أولاً ---
+const _origProcessBatch = window.processBatchCaption;
+window.processBatchCaption = function() {
+  const templates = getTemplates();
+  if (templates.length > 0) {
+    openTemplatePickerModal(() => { _origProcessBatch && _origProcessBatch(); });
+  } else {
+    _origProcessBatch && _origProcessBatch();
+  }
+};
+
+// تشغيل عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => { renderTemplateList(); });
