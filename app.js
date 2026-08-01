@@ -607,6 +607,9 @@ leftLogoInput.addEventListener('change', function() {
   if (this.files && this.files[0]) {
     leftLogoFile = this.files[0];
     showLogoPreview(leftLogoContent, leftLogoFile, 'left');
+    const reader = new FileReader();
+    reader.onload = (e) => { window.leftLogoBase64Global = e.target.result; };
+    reader.readAsDataURL(leftLogoFile);
   }
 });
 
@@ -614,6 +617,9 @@ rightLogoInput.addEventListener('change', function() {
   if (this.files && this.files[0]) {
     rightLogoFile = this.files[0];
     showLogoPreview(rightLogoContent, rightLogoFile, 'right');
+    const reader = new FileReader();
+    reader.onload = (e) => { window.rightLogoBase64Global = e.target.result; };
+    reader.readAsDataURL(rightLogoFile);
   }
 });
 
@@ -628,6 +634,7 @@ function showLogoPreview(container, file, side) {
 window.clearLogo = function(side) {
   if (side === 'left') {
     leftLogoFile = null;
+    window.leftLogoBase64Global = null;
     leftLogoInput.value = '';
     leftLogoContent.innerHTML = `
       <span class="file-box-icon">🖼️</span>
@@ -635,6 +642,7 @@ window.clearLogo = function(side) {
     `;
   } else {
     rightLogoFile = null;
+    window.rightLogoBase64Global = null;
     rightLogoInput.value = '';
     rightLogoContent.innerHTML = `
       <span class="file-box-icon">🖼️</span>
@@ -1664,8 +1672,8 @@ window.renderVideo = async function() {
     animationType: selectedAnimation,
     activeColor: document.getElementById('active-color').value,
     inactiveColor: document.getElementById('inactive-color').value,
-    leftLogo: transcribeData.leftLogo,
-    rightLogo: transcribeData.rightLogo,
+    leftLogo: window.leftLogoBase64Global || transcribeData.leftLogo || null,
+    rightLogo: window.rightLogoBase64Global || transcribeData.rightLogo || null,
     fontSize: parseInt(document.getElementById('font-size').value) || 50,
     bgColor: document.getElementById('bg-color').value,
     bgOpacity: parseFloat(document.getElementById('bg-opacity').value) || 86,
@@ -1933,9 +1941,18 @@ setTimeout(() => {
         } catch (err) {
           console.warn('Firestore user sync failed:', err);
         }
+        
+        // مزامنة القوالب مع Firestore عند تسجيل الدخول
+        if (typeof syncTemplatesWithFirestore === 'function') {
+          syncTemplatesWithFirestore();
+        }
       } else {
         currentUser = null;
         isSuspended = false;
+        // إعادة رسم القائمة المحلية
+        if (typeof renderTemplateList === 'function') {
+          renderTemplateList();
+        }
       }
       updateAuthWidget();
     });
@@ -3278,8 +3295,8 @@ window.processBatchCaption = async function() {
         animationType: typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic',
         activeColor: document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF',
         inactiveColor: document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF',
-        leftLogo: transData.leftLogo || null,
-        rightLogo: transData.rightLogo || null,
+        leftLogo: window.leftLogoBase64Global || transData.leftLogo || null,
+        rightLogo: window.rightLogoBase64Global || transData.rightLogo || null,
         fontSize: document.getElementById('font-size') ? parseInt(document.getElementById('font-size').value) : 50,
         bgColor: document.getElementById('bg-color') ? document.getElementById('bg-color').value : '#000000',
         bgOpacity: document.getElementById('bg-opacity') ? parseFloat(document.getElementById('bg-opacity').value) : 86,
@@ -3828,8 +3845,8 @@ async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
         animationType: typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic',
         activeColor: document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF',
         inactiveColor: document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF',
-        leftLogo: transData.leftLogo || null,
-        rightLogo: transData.rightLogo || null,
+        leftLogo: window.leftLogoBase64Global || transData.leftLogo || null,
+        rightLogo: window.rightLogoBase64Global || transData.rightLogo || null,
         fontSize: document.getElementById('font-size') ? parseInt(document.getElementById('font-size').value) : 50,
         bgColor: document.getElementById('bg-color') ? document.getElementById('bg-color').value : '#000000',
         bgOpacity: document.getElementById('bg-opacity') ? parseFloat(document.getElementById('bg-opacity').value) : 86,
@@ -4034,6 +4051,8 @@ function collectCurrentSettings() {
     showBg         : chk('show-bg', false),
     captionTop     : typeof captionTop !== 'undefined' ? captionTop : 65,
     fontFamily     : val('font-family-select', 'thmanyah'),
+    customFontName : typeof customFontName !== 'undefined' ? customFontName : null,
+    customFontBase64: typeof customFontDataUrl !== 'undefined' ? customFontDataUrl : null,
     strokeColor    : val('stroke-color', '#000000'),
     strokeWidth    : int('stroke-width', 0),
     shadowColor    : val('shadow-color', '#000000'),
@@ -4055,8 +4074,14 @@ function applySettingsToDOM(s) {
   const setHex = (id, v) => { const el=g(id); if(el) el.textContent=String(v).toUpperCase(); };
 
   if (s.animationType !== undefined) {
-    if (typeof selectAnimation === 'function') selectAnimation(s.animationType);
-    else selectedAnimation = s.animationType;
+    selectedAnimation = s.animationType;
+    document.querySelectorAll('.anim-card, .upload-anim-card').forEach(c => {
+      if (c.dataset.anim === selectedAnimation) {
+        c.classList.add('selected');
+      } else {
+        c.classList.remove('selected');
+      }
+    });
   }
   if (s.activeColor)   { set('active-color',   s.activeColor);   setHex('active-color-hex',   s.activeColor); }
   if (s.inactiveColor) { set('inactive-color', s.inactiveColor); setHex('inactive-color-hex', s.inactiveColor); }
@@ -4076,6 +4101,20 @@ function applySettingsToDOM(s) {
     const ctv=g('caption-top-val'); if(ctv) ctv.textContent=s.captionTop;
     const cts=g('caption-top');     if(cts) cts.value=s.captionTop;
   }
+
+  // الخط المخصص
+  if (s.customFontName !== undefined) window.customFontName = s.customFontName;
+  if (s.customFontBase64 !== undefined) {
+    window.customFontDataUrl = s.customFontBase64;
+    if (s.customFontBase64 && s.customFontName) {
+      const cleanFontName = s.customFontName.replace(/[^a-zA-Z0-9]/g, '');
+      const fontFace = new FontFace(cleanFontName, `url(${s.customFontBase64})`);
+      fontFace.load().then(loadedFace => {
+        document.fonts.add(loadedFace);
+      }).catch(err => console.error("Error loading custom font from template:", err));
+    }
+  }
+
   if (s.fontFamily) { const ff=g('font-family-select'); if(ff){ ff.value=s.fontFamily; ff.dispatchEvent(new Event('change')); } }
   const showT = s.showTitle !== undefined ? s.showTitle : true;
   setChk('show-title-toggle', showT);
@@ -4084,8 +4123,43 @@ function applySettingsToDOM(s) {
   if (s.titleBgColor) { set('title-bg-color-input', s.titleBgColor); setHex('title-bg-hex',    s.titleBgColor); }
   if (s.titleDuration !== undefined) set('title-duration-input', s.titleDuration);
   if (s.titleTop      !== undefined) set('title-top-input',      s.titleTop);
-  if (s.leftLogoBase64  !== undefined) window.leftLogoBase64Global  = s.leftLogoBase64;
-  if (s.rightLogoBase64 !== undefined) window.rightLogoBase64Global = s.rightLogoBase64;
+
+  // تحديث لوجو أعلى اليمين واليسار في الواجهة (DOM Preview)
+  if (s.leftLogoBase64 !== undefined) {
+    window.leftLogoBase64Global = s.leftLogoBase64;
+    const leftLogoContent = g('left-logo-content');
+    if (leftLogoContent) {
+      if (s.leftLogoBase64) {
+        leftLogoContent.innerHTML = `
+          <img src="${s.leftLogoBase64}" class="preview-thumbnail" alt="left logo preview" />
+          <button type="button" class="clear-btn" onclick="event.stopPropagation(); clearLogo('left')">&times;</button>
+        `;
+      } else {
+        leftLogoContent.innerHTML = `
+          <span class="file-box-icon">🖼️</span>
+          <span class="file-box-text">شعار أعلى اليسار</span>
+        `;
+      }
+    }
+  }
+  if (s.rightLogoBase64 !== undefined) {
+    window.rightLogoBase64Global = s.rightLogoBase64;
+    const rightLogoContent = g('right-logo-content');
+    if (rightLogoContent) {
+      if (s.rightLogoBase64) {
+        rightLogoContent.innerHTML = `
+          <img src="${s.rightLogoBase64}" class="preview-thumbnail" alt="right logo preview" />
+          <button type="button" class="clear-btn" onclick="event.stopPropagation(); clearLogo('right')">&times;</button>
+        `;
+      } else {
+        rightLogoContent.innerHTML = `
+          <span class="file-box-icon">🖼️</span>
+          <span class="file-box-text">شعار أعلى اليمين</span>
+        `;
+      }
+    }
+  }
+
   // مزامنة المدخلات المزدوجة
   [['upload-active-color','active-color'],['upload-inactive-color','inactive-color'],
    ['upload-bg-color','bg-color'],['upload-stroke-color','stroke-color'],
@@ -4126,6 +4200,32 @@ window.renderTemplateList = function() {
   });
 };
 
+// مزامنة القوالب مع Firestore عند تسجيل الدخول
+async function syncTemplatesWithFirestore() {
+  if (!currentUser || !window.firebaseDb) return;
+  try {
+    const snapshot = await window.firebaseDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('templates')
+      .get();
+    
+    const dbTemplates = [];
+    snapshot.forEach(doc => {
+      dbTemplates.push(doc.data());
+    });
+    
+    // ترتيب تنازلي حسب التاريخ (الأحدث أولاً)
+    dbTemplates.sort((a, b) => b.id - a.id);
+    
+    saveTemplates(dbTemplates);
+    renderTemplateList();
+  } catch (err) {
+    console.error("Error syncing templates with Firestore:", err);
+  }
+}
+window.syncTemplatesWithFirestore = syncTemplatesWithFirestore;
+
 window.applyTemplate = function(templateId) {
   const t = getTemplates().find(x => String(x.id) === String(templateId));
   if (!t) { alert('لم يتم العثور على القالب!'); return; }
@@ -4134,9 +4234,24 @@ window.applyTemplate = function(templateId) {
   showToast('✅ تم تطبيق القالب: ' + t.name);
 };
 
-window.deleteTemplate = function(templateId) {
+window.deleteTemplate = async function(templateId) {
   if (!confirm('هل تريد حذف هذا القالب؟')) return;
+  
   saveTemplates(getTemplates().filter(x => String(x.id) !== String(templateId)));
+  
+  if (currentUser && window.firebaseDb) {
+    try {
+      await window.firebaseDb
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('templates')
+        .doc(String(templateId))
+        .delete();
+    } catch (err) {
+      console.error("Failed to delete template from Firestore:", err);
+    }
+  }
+  
   renderTemplateList();
 };
 
@@ -4152,14 +4267,35 @@ window.closeSaveTemplateModal = function() {
   if (m) m.style.display = 'none';
 };
 
-window.confirmSaveTemplate = function() {
+window.confirmSaveTemplate = async function() {
   const inp = document.getElementById('template-name-input');
   const name = inp ? inp.value.trim() : '';
   if (!name) { alert('يرجى كتابة اسم للقالب!'); return; }
+  
+  const newTemplate = {
+    id: Date.now(),
+    name: name,
+    settings: collectCurrentSettings()
+  };
+
   const templates = getTemplates();
-  templates.unshift({ id: Date.now(), name, settings: collectCurrentSettings() });
+  templates.unshift(newTemplate);
   if (templates.length > 20) templates.splice(20);
   saveTemplates(templates);
+  
+  if (currentUser && window.firebaseDb) {
+    try {
+      await window.firebaseDb
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('templates')
+        .doc(String(newTemplate.id))
+        .set(newTemplate);
+    } catch (err) {
+      console.error("Failed to save template to Firestore:", err);
+    }
+  }
+
   closeSaveTemplateModal();
   renderTemplateList();
   showToast('✅ تم حفظ القالب: ' + name);
