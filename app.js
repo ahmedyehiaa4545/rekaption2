@@ -2869,6 +2869,68 @@ window.closeShortOptionsModal = function() {
   pendingBatchArgs = null;
 };
 
+// تملأ قائمة القوالب جوّه الـ modal
+window.populateModalTemplates = function() {
+  const listEl   = document.getElementById('modal-template-list');
+  const emptyEl  = document.getElementById('modal-template-empty');
+  const nameEl   = document.getElementById('modal-selected-template-name');
+  if (!listEl) return;
+
+  const templates = typeof getTemplates === 'function' ? getTemplates() : [];
+
+  // احذف كل شيء عدا الـ emptyEl
+  Array.from(listEl.children).forEach(c => { if (c !== emptyEl) c.remove(); });
+  if (nameEl) nameEl.textContent = 'الإعدادات الحالية';
+
+  if (templates.length === 0) {
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // بطاقة "بدون قالب"
+  const noneBtn = document.createElement('button');
+  noneBtn.type = 'button';
+  noneBtn.dataset.tid = 'none';
+  noneBtn.style.cssText = 'width:100%;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.2);border-radius:10px;padding:9px 12px;cursor:pointer;color:#fff;font-family:inherit;text-align:right;transition:all 0.15s;';
+  noneBtn.innerHTML = `<span style="font-size:16px">⚙️</span><span style="font-size:12px;font-weight:700">بدون قالب (الإعدادات الحالية)</span>`;
+  noneBtn.onclick = () => selectModalTemplate(null, noneBtn, 'الإعدادات الحالية');
+  listEl.appendChild(noneBtn);
+
+  templates.forEach(t => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.tid = String(t.id);
+    btn.style.cssText = 'width:100%;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(139,92,246,0.25);border-radius:10px;padding:9px 12px;cursor:pointer;color:#fff;font-family:inherit;text-align:right;transition:all 0.15s;';
+    btn.innerHTML = `
+      <div style="display:flex;gap:3px;flex-shrink:0;">
+        <div style="width:12px;height:12px;border-radius:50%;background:${t.settings.activeColor||'#fff'};border:1px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:12px;height:12px;border-radius:50%;background:${t.settings.bgColor||'#000'};border:1px solid rgba(255,255,255,0.3);"></div>
+        <div style="width:12px;height:12px;border-radius:50%;background:${t.settings.titleBgColor||'#000'};border:1px solid rgba(255,255,255,0.3);"></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.4);flex-shrink:0;">${t.settings.animationType||'classic'}</span>`;
+    btn.onclick = () => selectModalTemplate(t, btn, t.name);
+    listEl.appendChild(btn);
+  });
+};
+
+window.selectModalTemplate = function(template, btnEl, label) {
+  // إزالة التحديد من كل البطاقات
+  const listEl = document.getElementById('modal-template-list');
+  if (listEl) Array.from(listEl.querySelectorAll('button')).forEach(b => {
+    b.style.border = b.dataset.tid === 'none' ? '2px solid rgba(255,255,255,0.2)' : '1px solid rgba(139,92,246,0.25)';
+    b.style.background = 'rgba(255,255,255,0.03)';
+  });
+  if (btnEl) { btnEl.style.border = '2px solid #8b5cf6'; btnEl.style.background = 'rgba(139,92,246,0.15)'; }
+  const nameEl = document.getElementById('modal-selected-template-name');
+  if (nameEl) nameEl.textContent = label;
+
+  // طبّق القالب فوراً لو اختاره
+  if (template && typeof applySettingsToDOM === 'function') applySettingsToDOM(template.settings);
+};
+
+
 window.confirmShortOptionChoice = function() {
   const rememberCheckbox = document.getElementById('remember-short-option');
   if (rememberCheckbox && rememberCheckbox.checked) {
@@ -2959,9 +3021,11 @@ window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn)
     window.toggleModalEngineFields();
   }
 
+  if (typeof window.populateModalTemplates === 'function') window.populateModalTemplates();
   const modal = document.getElementById('short-options-modal');
   if (modal) modal.style.display = 'flex';
 };
+
 
 async function executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, btn, convertChoice) {
   const originalHtml = btn.innerHTML;
@@ -3629,6 +3693,7 @@ window.startBatchCaptionProcess = async function() {
     window.toggleModalEngineFields();
   }
 
+  if (typeof window.populateModalTemplates === 'function') window.populateModalTemplates();
   const modal = document.getElementById('short-options-modal');
   if (modal) modal.style.display = 'flex';
 };
@@ -4154,36 +4219,6 @@ window.showToast = function(msg) {
   toast.style.opacity = '1';
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
-};
-
-// --- اعتراض cutAndSendToCaptions لعرض picker أولاً ---
-const _origCutAndSend = window.cutAndSendToCaptions;
-window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn) {
-  const templates = getTemplates();
-  if (templates.length > 0) {
-    openTemplatePickerModal(() => {
-      if (typeof rememberedShortChoice !== 'undefined' && rememberedShortChoice) {
-        executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, btn, rememberedShortChoice);
-      } else {
-        pendingShortArgs = { youtubeUrl, startTime, endTime, idx, btn };
-        const modal = document.getElementById('short-options-modal');
-        if (modal) modal.style.display = 'flex';
-      }
-    });
-  } else {
-    _origCutAndSend && _origCutAndSend(youtubeUrl, startTime, endTime, idx, btn);
-  }
-};
-
-// --- اعتراض processBatchCaption لعرض picker أولاً ---
-const _origProcessBatch = window.processBatchCaption;
-window.processBatchCaption = function() {
-  const templates = getTemplates();
-  if (templates.length > 0) {
-    openTemplatePickerModal(() => { _origProcessBatch && _origProcessBatch(); });
-  } else {
-    _origProcessBatch && _origProcessBatch();
-  }
 };
 
 // تشغيل عند تحميل الصفحة

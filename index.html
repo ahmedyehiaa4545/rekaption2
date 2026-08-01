@@ -1257,11 +1257,22 @@
         </div>
 
         <!-- Remember choice checkbox -->
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 22px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
           <input type="checkbox" id="remember-short-option" style="width: 16px; height: 16px; accent-color: var(--purple-accent); cursor: pointer;" />
           <label for="remember-short-option" style="font-size: 12px; color: rgba(255,255,255,0.8); cursor: pointer; user-select: none;">
             تذكر اختياري للجلسة الحالية لتسريع العمل ⚡
           </label>
+        </div>
+
+        <!-- 3. Template Selector -->
+        <div style="margin-bottom: 20px; background: rgba(139,92,246,0.07); padding: 14px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.25);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
+            <label style="font-size: 13px; font-weight: 800; color: #a78bfa;">🎨 قالب الهوية البصرية:</label>
+            <span id="modal-selected-template-name" style="font-size:11px; color:rgba(255,255,255,0.5); font-style:italic;">الإعدادات الحالية</span>
+          </div>
+          <div id="modal-template-list" style="display:flex; flex-direction:column; gap:7px; max-height:160px; overflow-y:auto;">
+            <div id="modal-template-empty" style="font-size:11px; color:rgba(255,255,255,0.35); text-align:center; padding:8px 0;">لا توجد قوالب محفوظة — اضغط 💾 في الإعدادات لحفظ قالب</div>
+          </div>
         </div>
 
         <div style="display: flex; gap: 10px;">
