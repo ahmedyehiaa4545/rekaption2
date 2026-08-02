@@ -1694,7 +1694,8 @@ window.renderVideo = async function() {
     titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
     titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
     titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
-    titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
+    titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0,
+    titleStyle: document.getElementById('title-style-select') ? document.getElementById('title-style-select').value : 'tiktok-pill'
   };
   
   try {
@@ -3317,7 +3318,8 @@ window.processBatchCaption = async function() {
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
-        titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
+        titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0,
+        titleStyle: document.getElementById('title-style-select') ? document.getElementById('title-style-select').value : 'tiktok-pill'
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
@@ -3867,7 +3869,8 @@ async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
-        titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0
+        titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0,
+        titleStyle: document.getElementById('title-style-select') ? document.getElementById('title-style-select').value : 'tiktok-pill'
       };
 
       const renderRes = await fetch(`${apiUrl}/api/render/${transData.taskId}`, {
@@ -4062,10 +4065,23 @@ function collectCurrentSettings() {
     titleBgColor   : val('title-bg-color-input', '#000000'),
     titleDuration  : num('title-duration-input', 3.0),
     titleTop       : num('title-top-input', 12),
+    titleStyle     : val('title-style-select', 'tiktok-pill'),
     leftLogoBase64 : typeof leftLogoBase64Global  !== 'undefined' ? leftLogoBase64Global  : null,
     rightLogoBase64: typeof rightLogoBase64Global !== 'undefined' ? rightLogoBase64Global : null,
   };
 }
+
+// دالة مساعدة لتغيير الارتفاع الافتراضي تلقائياً عند تغيير ستايل العنوان
+window.onTitleStyleChange = function(style) {
+  const titleTopInput = document.getElementById('title-top-input');
+  const titleTopVal = document.getElementById('title-top-val');
+  if (titleTopInput) {
+    const targetVal = style === 'centered-rect' ? 42 : 12;
+    titleTopInput.value = targetVal;
+    if (titleTopVal) titleTopVal.textContent = targetVal;
+    titleTopInput.dispatchEvent(new Event('input'));
+  }
+};
 
 function applySettingsToDOM(s) {
   const g   = id => document.getElementById(id);
@@ -4123,6 +4139,7 @@ function applySettingsToDOM(s) {
   if (s.titleBgColor) { set('title-bg-color-input', s.titleBgColor); setHex('title-bg-hex',    s.titleBgColor); }
   if (s.titleDuration !== undefined) set('title-duration-input', s.titleDuration);
   if (s.titleTop      !== undefined) set('title-top-input',      s.titleTop);
+  if (s.titleStyle)   { set('title-style-select',   s.titleStyle); }
 
   // تحديث لوجو أعلى اليمين واليسار في الواجهة (DOM Preview)
   if (s.leftLogoBase64 !== undefined) {
