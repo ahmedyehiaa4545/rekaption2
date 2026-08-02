@@ -1564,6 +1564,16 @@ formControls.addEventListener('submit', async function(e) {
 
     transcribeData = data;
     
+    // Update comparison button label dynamically
+    const compBtn = document.getElementById('comparison-trigger-btn');
+    if (compBtn) {
+      if (data.captionEngine === 'v2') {
+        compBtn.innerHTML = `🔍 مقارنة الأصلي (ElevenLabs) 🎙️ vs المصحح (Gemini) 🤖`;
+      } else {
+        compBtn.innerHTML = `🔍 مقارنة الأصلي (Groq) ⚡ vs المصحح (Gemini) 🤖`;
+      }
+    }
+    
     // Hide main dashboard, show editor workspace
     document.getElementById('main-dashboard').classList.add('hidden');
     document.getElementById('editor-state').classList.remove('hidden');
@@ -4011,6 +4021,21 @@ window.openComparisonModal = function() {
   const origBox = document.getElementById('comparison-original-text');
   const txtOnlyBox = document.getElementById('comparison-textonly-text');
   const corrBox = document.getElementById('comparison-corrected-text');
+  
+  const col1Label = document.getElementById('comparison-col1-label');
+  const col2Label = document.getElementById('comparison-col2-label');
+  const col3Label = document.getElementById('comparison-col3-label');
+
+  if (transcribeData.captionEngine === 'v2') {
+    if (col1Label) col1Label.innerHTML = `<span>🎙️</span> 1. ElevenLabs الخام (Scribe V2):`;
+    if (col2Label) col2Label.innerHTML = `<span>📝</span> 2. تفريغ ElevenLabs الأصلي:`;
+    if (col3Label) col3Label.innerHTML = `<span>🎧</span> 3. Gemini 3.1 Flash-Lite (تصحيح واستماع صوتي):`;
+  } else {
+    if (col1Label) col1Label.innerHTML = `<span>⚡</span> 1. Groq الخام (Whisper V3 Turbo):`;
+    if (col2Label) col2Label.innerHTML = `<span>📝</span> 2. Gemini (تقسيم بالنص فقط دون صوت):`;
+    if (col3Label) col3Label.innerHTML = `<span>🎧</span> 3. Gemini (استماع صوتي مباشر وتصحيح):`;
+  }
+
   if (origBox) origBox.textContent = transcribeData.originalText || 'غير متوفر';
   if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.textOnlyText || 'غير متوفر';
   if (corrBox) corrBox.textContent = transcribeData.audioCorrectedText || (transcribeData.segments || []).map(s => s.text).join('\n');

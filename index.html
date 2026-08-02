@@ -781,7 +781,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px;">
         <h2 class="panel-title" style="margin-bottom: 0;">محرر النصوص والتفريغ التفاعلي ✏️</h2>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <button type="button" class="btn-secondary" onclick="openComparisonModal()" style="width: auto; padding: 8px 16px; background: rgba(139, 92, 246, 0.15); border-color: var(--purple-accent); color: #fff; font-weight: 600;">
+          <button type="button" id="comparison-trigger-btn" class="btn-secondary" onclick="openComparisonModal()" style="width: auto; padding: 8px 16px; background: rgba(139, 92, 246, 0.15); border-color: var(--purple-accent); color: #fff; font-weight: 600;">
             🔍 مقارنة الأصلي (Groq) ⚡ vs المصحح (Gemini) 🤖
           </button>
           <button type="button" class="btn-secondary" onclick="resetApp()" style="width: auto; padding: 8px 16px;">
@@ -1318,7 +1318,7 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; direction: rtl; text-align: right;">
           <!-- Column 1: Original Groq -->
           <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="font-weight: bold; color: #fbbf24; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+            <div id="comparison-col1-label" style="font-weight: bold; color: #fbbf24; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
               <span>⚡</span> 1. Groq الخام (Whisper V3 Turbo):
             </div>
             <div id="comparison-original-text" style="font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.85); max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
@@ -1328,7 +1328,7 @@
 
           <!-- Column 2: Text-Only Gemini -->
           <div style="background: rgba(59, 130, 246, 0.08); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">
-            <div style="font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+            <div id="comparison-col2-label" style="font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
               <span>📝</span> 2. Gemini (تقسيم بالنص فقط دون صوت):
             </div>
             <div id="comparison-textonly-text" style="font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.9); max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
@@ -1338,7 +1338,7 @@
 
           <!-- Column 3: Audio-Listening Gemini -->
           <div style="background: rgba(139, 92, 246, 0.12); padding: 15px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.4);">
-            <div style="font-weight: bold; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+            <div id="comparison-col3-label" style="font-weight: bold; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
               <span>🎧</span> 3. Gemini (استماع صوتي مباشر وتصحيح):
             </div>
             <div id="comparison-corrected-text" style="font-size: 12px; line-height: 1.7; color: #fff; max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
