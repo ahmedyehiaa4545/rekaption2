@@ -603,39 +603,13 @@ const rightLogoInput = document.getElementById('right-logo-input');
 const leftLogoContent = document.getElementById('left-logo-content');
 const rightLogoContent = document.getElementById('right-logo-content');
 
-// دالة لضغط وتصغير حجم اللوجو لتقليل حجم الـ Base64 لتسريع الرندر والمزامنة
-function compressLogoImage(file, callback) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const maxDim = 300;
-      let width = img.width;
-      let height = img.height;
-      if (width > height) {
-        if (width > maxDim) { height = Math.round(height * (maxDim / width)); width = maxDim; }
-      } else {
-        if (height > maxDim) { width = Math.round(width * (maxDim / height)); height = maxDim; }
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      callback(canvas.toDataURL('image/png'));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
 leftLogoInput.addEventListener('change', function() {
   if (this.files && this.files[0]) {
     leftLogoFile = this.files[0];
     showLogoPreview(leftLogoContent, leftLogoFile, 'left');
-    compressLogoImage(leftLogoFile, (base64) => {
-      window.leftLogoBase64Global = base64;
-    });
+    const reader = new FileReader();
+    reader.onload = (e) => { window.leftLogoBase64Global = e.target.result; };
+    reader.readAsDataURL(leftLogoFile);
   }
 });
 
@@ -643,9 +617,9 @@ rightLogoInput.addEventListener('change', function() {
   if (this.files && this.files[0]) {
     rightLogoFile = this.files[0];
     showLogoPreview(rightLogoContent, rightLogoFile, 'right');
-    compressLogoImage(rightLogoFile, (base64) => {
-      window.rightLogoBase64Global = base64;
-    });
+    const reader = new FileReader();
+    reader.onload = (e) => { window.rightLogoBase64Global = e.target.result; };
+    reader.readAsDataURL(rightLogoFile);
   }
 });
 
@@ -1589,16 +1563,6 @@ formControls.addEventListener('submit', async function(e) {
     progressTextLabel.textContent = 'اكتمل!';
 
     transcribeData = data;
-    
-    // Update comparison button label dynamically
-    const compBtn = document.getElementById('comparison-trigger-btn');
-    if (compBtn) {
-      if (data.captionEngine === 'v2') {
-        compBtn.innerHTML = `🔍 مقارنة الأصلي (ElevenLabs) 🎙️ vs المصحح (Gemini) 🤖`;
-      } else {
-        compBtn.innerHTML = `🔍 مقارنة الأصلي (Groq) ⚡ vs المصحح (Gemini) 🤖`;
-      }
-    }
     
     // Hide main dashboard, show editor workspace
     document.getElementById('main-dashboard').classList.add('hidden');
@@ -4047,24 +4011,35 @@ window.openComparisonModal = function() {
   const origBox = document.getElementById('comparison-original-text');
   const txtOnlyBox = document.getElementById('comparison-textonly-text');
   const corrBox = document.getElementById('comparison-corrected-text');
-  
+
+  // Detect ElevenLabs Scribe: originalSegments exist and corrected text differs from originalText
+  const isScribe = !!(transcribeData.originalSegments &&
+    transcribeData.audioCorrectedText &&
+    transcribeData.audioCorrectedText !== transcribeData.originalText);
+
   const col1Label = document.getElementById('comparison-col1-label');
   const col2Label = document.getElementById('comparison-col2-label');
   const col3Label = document.getElementById('comparison-col3-label');
 
-  if (transcribeData.captionEngine === 'v2') {
-    if (col1Label) col1Label.innerHTML = `<span>🎙️</span> 1. ElevenLabs الخام (Scribe V2):`;
-    if (col2Label) col2Label.innerHTML = `<span>📝</span> 2. تفريغ ElevenLabs الأصلي:`;
-    if (col3Label) col3Label.innerHTML = `<span>🎧</span> 3. Gemini 3.1 Flash-Lite (تصحيح واستماع صوتي):`;
+  if (isScribe) {
+    const originalSegsText = (transcribeData.originalSegments || []).map(s => s.text).join('\n');
+    const correctedSegsText = transcribeData.audioCorrectedText ||
+      (transcribeData.segments || []).map(s => s.text).join('\n');
+    if (origBox) origBox.textContent = originalSegsText || 'غير متوفر';
+    if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.originalText || 'غير متوفر';
+    if (corrBox) corrBox.textContent = correctedSegsText || 'غير متوفر';
+    if (col1Label) col1Label.innerHTML = '<span>🎙️</span> 1. ElevenLabs Scribe (التفريغ الأصلي):';
+    if (col2Label) col2Label.innerHTML = '<span>📄</span> 2. النص الكامل الخام:';
+    if (col3Label) col3Label.innerHTML = '<span>🎧</span> 3. بعد تصحيح Gemini:';
   } else {
-    if (col1Label) col1Label.innerHTML = `<span>⚡</span> 1. Groq الخام (Whisper V3 Turbo):`;
-    if (col2Label) col2Label.innerHTML = `<span>📝</span> 2. Gemini (تقسيم بالنص فقط دون صوت):`;
-    if (col3Label) col3Label.innerHTML = `<span>🎧</span> 3. Gemini (استماع صوتي مباشر وتصحيح):`;
+    if (origBox) origBox.textContent = transcribeData.originalText || 'غير متوفر';
+    if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.textOnlyText || 'غير متوفر';
+    if (corrBox) corrBox.textContent = transcribeData.audioCorrectedText || (transcribeData.segments || []).map(s => s.text).join('\n');
+    if (col1Label) col1Label.innerHTML = '<span>⚡</span> 1. Groq الخام (Whisper V3 Turbo):';
+    if (col2Label) col2Label.innerHTML = '<span>📝</span> 2. Gemini (تقسيم بالنص فقط دون صوت):';
+    if (col3Label) col3Label.innerHTML = '<span>🎧</span> 3. Gemini (استماع صوتي مباشر وتصحيح):';
   }
 
-  if (origBox) origBox.textContent = transcribeData.originalText || 'غير متوفر';
-  if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.textOnlyText || 'غير متوفر';
-  if (corrBox) corrBox.textContent = transcribeData.audioCorrectedText || (transcribeData.segments || []).map(s => s.text).join('\n');
   if (modal) modal.style.display = 'flex';
 };
 
