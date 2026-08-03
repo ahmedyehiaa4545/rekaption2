@@ -603,13 +603,39 @@ const rightLogoInput = document.getElementById('right-logo-input');
 const leftLogoContent = document.getElementById('left-logo-content');
 const rightLogoContent = document.getElementById('right-logo-content');
 
+// دالة لضغط وتصغير حجم اللوجو لتقليل حجم الـ Base64 لتسريع الرندر والمزامنة
+function compressLogoImage(file, callback) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxDim = 300;
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > maxDim) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+      } else {
+        if (height > maxDim) { width = Math.round(width * (maxDim / height)); height = maxDim; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      callback(canvas.toDataURL('image/png'));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 leftLogoInput.addEventListener('change', function() {
   if (this.files && this.files[0]) {
     leftLogoFile = this.files[0];
     showLogoPreview(leftLogoContent, leftLogoFile, 'left');
-    const reader = new FileReader();
-    reader.onload = (e) => { window.leftLogoBase64Global = e.target.result; };
-    reader.readAsDataURL(leftLogoFile);
+    compressLogoImage(leftLogoFile, (base64) => {
+      window.leftLogoBase64Global = base64;
+    });
   }
 });
 
@@ -617,9 +643,9 @@ rightLogoInput.addEventListener('change', function() {
   if (this.files && this.files[0]) {
     rightLogoFile = this.files[0];
     showLogoPreview(rightLogoContent, rightLogoFile, 'right');
-    const reader = new FileReader();
-    reader.onload = (e) => { window.rightLogoBase64Global = e.target.result; };
-    reader.readAsDataURL(rightLogoFile);
+    compressLogoImage(rightLogoFile, (base64) => {
+      window.rightLogoBase64Global = base64;
+    });
   }
 });
 
