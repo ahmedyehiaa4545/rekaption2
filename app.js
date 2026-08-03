@@ -4011,35 +4011,9 @@ window.openComparisonModal = function() {
   const origBox = document.getElementById('comparison-original-text');
   const txtOnlyBox = document.getElementById('comparison-textonly-text');
   const corrBox = document.getElementById('comparison-corrected-text');
-
-  // Detect ElevenLabs Scribe: originalSegments exist and corrected text differs from originalText
-  const isScribe = !!(transcribeData.originalSegments &&
-    transcribeData.audioCorrectedText &&
-    transcribeData.audioCorrectedText !== transcribeData.originalText);
-
-  const col1Label = document.getElementById('comparison-col1-label');
-  const col2Label = document.getElementById('comparison-col2-label');
-  const col3Label = document.getElementById('comparison-col3-label');
-
-  if (isScribe) {
-    const originalSegsText = (transcribeData.originalSegments || []).map(s => s.text).join('\n');
-    const correctedSegsText = transcribeData.audioCorrectedText ||
-      (transcribeData.segments || []).map(s => s.text).join('\n');
-    if (origBox) origBox.textContent = originalSegsText || 'غير متوفر';
-    if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.originalText || 'غير متوفر';
-    if (corrBox) corrBox.textContent = correctedSegsText || 'غير متوفر';
-    if (col1Label) col1Label.innerHTML = '<span>🎙️</span> 1. ElevenLabs Scribe (التفريغ الأصلي):';
-    if (col2Label) col2Label.innerHTML = '<span>📄</span> 2. النص الكامل الخام:';
-    if (col3Label) col3Label.innerHTML = '<span>🎧</span> 3. بعد تصحيح Gemini:';
-  } else {
-    if (origBox) origBox.textContent = transcribeData.originalText || 'غير متوفر';
-    if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.textOnlyText || 'غير متوفر';
-    if (corrBox) corrBox.textContent = transcribeData.audioCorrectedText || (transcribeData.segments || []).map(s => s.text).join('\n');
-    if (col1Label) col1Label.innerHTML = '<span>⚡</span> 1. Groq الخام (Whisper V3 Turbo):';
-    if (col2Label) col2Label.innerHTML = '<span>📝</span> 2. Gemini (تقسيم بالنص فقط دون صوت):';
-    if (col3Label) col3Label.innerHTML = '<span>🎧</span> 3. Gemini (استماع صوتي مباشر وتصحيح):';
-  }
-
+  if (origBox) origBox.textContent = transcribeData.originalText || 'غير متوفر';
+  if (txtOnlyBox) txtOnlyBox.textContent = transcribeData.textOnlyText || 'غير متوفر';
+  if (corrBox) corrBox.textContent = transcribeData.audioCorrectedText || (transcribeData.segments || []).map(s => s.text).join('\n');
   if (modal) modal.style.display = 'flex';
 };
 

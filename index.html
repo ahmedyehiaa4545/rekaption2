@@ -1316,10 +1316,10 @@
         </div>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; direction: rtl; text-align: right;">
-          <!-- Column 1: Original Groq -->
+          <!-- Column 1: Original Transcription (Scribe / Whisper) -->
           <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-            <div id="comparison-col1-label" style="font-weight: bold; color: #fbbf24; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
-              <span>⚡</span> 1. Groq الخام (Whisper V3 Turbo):
+            <div style="font-weight: bold; color: #fbbf24; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <span>⚡</span> 1. التفريغ الأصلي الخام (Scribe / Whisper):
             </div>
             <div id="comparison-original-text" style="font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.85); max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
               جاري التحميل...
@@ -1328,8 +1328,8 @@
 
           <!-- Column 2: Text-Only Gemini -->
           <div style="background: rgba(59, 130, 246, 0.08); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">
-            <div id="comparison-col2-label" style="font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
-              <span>📝</span> 2. Gemini (تقسيم بالنص فقط دون صوت):
+            <div style="font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <span>📝</span> 2. تقسيم النص الاصلي:
             </div>
             <div id="comparison-textonly-text" style="font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.9); max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
               جاري التحميل...
@@ -1338,8 +1338,8 @@
 
           <!-- Column 3: Audio-Listening Gemini -->
           <div style="background: rgba(139, 92, 246, 0.12); padding: 15px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.4);">
-            <div id="comparison-col3-label" style="font-weight: bold; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
-              <span>🎧</span> 3. Gemini (استماع صوتي مباشر وتصحيح):
+            <div style="font-weight: bold; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <span>🎧</span> 3. تصحيح بالاستماع الصوتي (Gemini 3.1 Flash Lite):
             </div>
             <div id="comparison-corrected-text" style="font-size: 12px; line-height: 1.7; color: #fff; max-height: 320px; overflow-y: auto; white-space: pre-wrap;">
               جاري التحميل...
