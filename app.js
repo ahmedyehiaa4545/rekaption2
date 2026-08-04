@@ -3271,6 +3271,11 @@ window.processBatchCaption = async function() {
       const elKey = localStorage.getItem('elevenlabs_api_key') || '';
       if (elKey) fd.append('elevenLabsApiKey', elKey);
 
+      const savedOrKey = localStorage.getItem('openrouterApiKey') || localStorage.getItem('openrouterKey') || '';
+      const orInput = document.getElementById('openrouter-api-key') || document.getElementById('openrouter-key-input');
+      const openrouterKeyVal = orInput ? orInput.value.trim() : savedOrKey;
+      if (openrouterKeyVal) fd.append('openrouterKey', openrouterKeyVal);
+
       // Use the MAIN apiUrl (HF backend) for transcription, NOT audioApiUrl
       const transRes = await fetch(`${apiUrl}/api/transcribe`, {
         method: 'POST',
