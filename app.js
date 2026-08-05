@@ -2571,8 +2571,8 @@ window.fetchShortsSuggestions = async function() {
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
       shortsList.forEach((short, idx) => {
-        // Safe string escaping for click handler
-        const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
+        const subHookVal = short.sub_hook || short.summary_hook || '';
+        const copyText = `عنوان المقطع: ${short.title}${subHookVal ? `\nالملخص المشوق (أسفل العنوان): ${subHookVal}` : ''}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         
         cardsHtml += `
@@ -2635,13 +2635,29 @@ window.fetchShortsSuggestions = async function() {
 
             <!-- Title -->
             <h4 style="
-              margin: 5px 0;
+              margin: 5px 0 2px 0;
               font-size: 14px;
               font-weight: 800;
               color: #fff;
             ">
               🎥 العنوان المقترح: ${short.title}
             </h4>
+
+            <!-- Sub Hook (2-Sentence Summary under Title) -->
+            ${(short.sub_hook || short.summary_hook) ? `
+            <div style="
+              background: rgba(139, 92, 246, 0.08);
+              border-right: 3px solid #8b5cf6;
+              padding: 8px 12px;
+              border-radius: 0 8px 8px 0;
+              font-size: 13px;
+              color: #c084fc;
+              line-height: 1.5;
+              font-weight: 600;
+            ">
+              <span style="font-weight: 800; color: #a78bfa;">💡 الملخص المشوق (أسفل العنوان):</span> ${short.sub_hook || short.summary_hook}
+            </div>
+            ` : ''}
 
             <!-- Hook -->
             <div style="
