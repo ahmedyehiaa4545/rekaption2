@@ -1691,6 +1691,7 @@ window.renderVideo = async function() {
     shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
     showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
     titleText: document.getElementById('title-text-input') ? document.getElementById('title-text-input').value.trim() : '',
+    titleSubtext: document.getElementById('title-subtext-input') ? document.getElementById('title-subtext-input').value.trim() : '',
     titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
     titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
     titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
@@ -3008,12 +3009,17 @@ window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn)
   pendingBatchProcess = false;
   pendingBatchArgs = null;
 
-  // Prefill title input and toggle it ON
+  // Prefill title & subtext inputs and toggle title ON
   const shortItem = currentSuggestedShorts[idx];
   const suggestedTitle = shortItem ? shortItem.title : '';
+  const suggestedSubtext = shortItem ? (shortItem.sub_hook || shortItem.summary_hook || '') : '';
   const titleTextInput = document.getElementById('title-text-input');
   if (titleTextInput) {
     titleTextInput.value = suggestedTitle;
+  }
+  const titleSubtextInput = document.getElementById('title-subtext-input');
+  if (titleSubtextInput) {
+    titleSubtextInput.value = suggestedSubtext;
   }
   const showTitleToggle = document.getElementById('show-title-toggle');
   if (showTitleToggle) {
@@ -3320,6 +3326,7 @@ window.processBatchCaption = async function() {
         shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
         showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
         titleText: short.title,
+        titleSubtext: short.sub_hook || short.summary_hook || '',
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
