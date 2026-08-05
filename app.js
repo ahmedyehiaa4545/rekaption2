@@ -2436,7 +2436,7 @@ window.fetchShortsSuggestions = async function() {
   
   const numShorts = parseInt(document.getElementById('gemini-shorts-count').value) || 3;
   const openrouterModelInput = document.getElementById('openrouter-model-input');
-  const openrouterModel = openrouterModelInput ? openrouterModelInput.value.trim() : "google/gemini-3.1-flash-lite";
+  const openrouterModel = openrouterModelInput ? openrouterModelInput.value.trim() : "google/gemini-2.5-pro-preview-05-06";
   const customPromptInput = document.getElementById('gemini-custom-prompt');
   const customPrompt = customPromptInput ? customPromptInput.value.trim() : "";
   const titleStyleSelect = document.getElementById('gemini-title-style');
