@@ -2571,8 +2571,13 @@ window.fetchShortsSuggestions = async function() {
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
       shortsList.forEach((short, idx) => {
-        const subHookVal = short.sub_hook || short.summary_hook || '';
-        const copyText = `عنوان المقطع: ${short.title}${subHookVal ? `\nالملخص المشوق (أسفل العنوان): ${subHookVal}` : ''}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
+        let subHookText = short.sub_hook || short.summary_hook || '';
+        if (!subHookText && short.script) {
+          const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
+          subHookText = parts.length >= 2 ? `${parts[0]}.. ${parts[1]}.` : (parts[0] || '');
+        }
+
+        const copyText = `عنوان المقطع: ${short.title}${subHookText ? `\nالملخص المشوق (أسفل العنوان): ${subHookText}` : ''}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         
         cardsHtml += `
@@ -2644,7 +2649,6 @@ window.fetchShortsSuggestions = async function() {
             </h4>
 
             <!-- Sub Hook (2-Sentence Summary under Title) -->
-            ${(short.sub_hook || short.summary_hook) ? `
             <div style="
               background: rgba(139, 92, 246, 0.08);
               border-right: 3px solid #8b5cf6;
@@ -2655,9 +2659,8 @@ window.fetchShortsSuggestions = async function() {
               line-height: 1.5;
               font-weight: 600;
             ">
-              <span style="font-weight: 800; color: #a78bfa;">💡 الملخص المشوق (أسفل العنوان):</span> ${short.sub_hook || short.summary_hook}
+              <span style="font-weight: 800; color: #a78bfa;">💡 الملخص المشوق (أسفل العنوان):</span> ${subHookText}
             </div>
-            ` : ''}
 
             <!-- Hook -->
             <div style="
