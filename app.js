@@ -1485,6 +1485,30 @@ formControls.addEventListener('submit', async function(e) {
   const engineVal = engineSelect ? engineSelect.value : 'v1';
   fd.append('captionEngine', engineVal);
 
+  const showTitleToggle = document.getElementById('show-title-toggle');
+  if (showTitleToggle) fd.append('showTitle', showTitleToggle.checked ? 'true' : 'false');
+
+  const titleTextInput = document.getElementById('title-text-input');
+  if (titleTextInput && titleTextInput.value.trim()) fd.append('titleText', titleTextInput.value.trim());
+
+  const titleSubtextInput = document.getElementById('title-subtext-input');
+  if (titleSubtextInput && titleSubtextInput.value.trim()) fd.append('titleSubtext', titleSubtextInput.value.trim());
+
+  const titleColorInput = document.getElementById('title-color-input');
+  if (titleColorInput) fd.append('titleColor', titleColorInput.value);
+
+  const titleBgColorInput = document.getElementById('title-bg-color-input');
+  if (titleBgColorInput) fd.append('titleBgColor', titleBgColorInput.value);
+
+  const titleDurationInput = document.getElementById('title-duration-input');
+  if (titleDurationInput) fd.append('titleDuration', titleDurationInput.value);
+
+  const titleTopInput = document.getElementById('title-top-input');
+  if (titleTopInput) fd.append('titleTop', titleTopInput.value);
+
+  const titleStyleSelect = document.getElementById('title-style-select');
+  if (titleStyleSelect) fd.append('titleStyle', titleStyleSelect.value);
+
   const savedElKey = localStorage.getItem('elevenlabs_api_key') || '';
   const elKeyInput = document.getElementById('elevenlabs-api-key-input');
   const elKeyVal = elKeyInput ? elKeyInput.value.trim() : savedElKey;
