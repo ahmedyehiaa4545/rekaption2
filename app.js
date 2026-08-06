@@ -823,7 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (durationInput) {
     durationInput.addEventListener('input', function() {
       const valSpan = document.getElementById('title-duration-val');
-      if (valSpan) valSpan.textContent = this.value;
+      if (valSpan) valSpan.textContent = parseFloat(this.value) === 0 ? "0.0 (طوال الفيديو)" : this.value;
     });
   }
 
@@ -3405,7 +3405,7 @@ window.processBatchCaption = async function() {
         })(),
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
-        titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
+        titleDuration: 0, // Force 0 (infinite) for Batch mode so sentences don't disappear
         titleTop: document.getElementById('title-top-input') ? parseFloat(document.getElementById('title-top-input').value) : 20.0,
         titleStyle: document.getElementById('title-style-select') ? document.getElementById('title-style-select').value : 'tiktok-pill'
       };
