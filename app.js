@@ -3395,14 +3395,7 @@ window.processBatchCaption = async function() {
         shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
         showTitle: true,
         titleText: short.title ? short.title.trim() : '',
-        titleSubtext: (function() {
-          let bSh = short.sub_hook || short.summary_hook || '';
-          if (!bSh && short.script) {
-            const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
-            bSh = parts.length >= 2 ? `${parts[0]}.. ${parts[1]}.` : (parts[0] || '');
-          }
-          return typeof bSh === 'string' ? bSh.trim() : bSh;
-        })(),
+        titleSubtext: typeof batchSubHook === 'string' ? batchSubHook.trim() : (batchSubHook || ''),
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: 0, // Force 0 (infinite) for Batch mode so sentences don't disappear
