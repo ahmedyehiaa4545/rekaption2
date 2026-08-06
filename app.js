@@ -3345,7 +3345,14 @@ window.processBatchCaption = async function() {
         shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
         showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
         titleText: short.title,
-        titleSubtext: short.sub_hook || short.summary_hook || '',
+        titleSubtext: (function() {
+          let bSh = short.sub_hook || short.summary_hook || '';
+          if (!bSh && short.script) {
+            const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
+            bSh = parts.length >= 2 ? `${parts[0]}.. ${parts[1]}.` : (parts[0] || '');
+          }
+          return bSh;
+        })(),
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
