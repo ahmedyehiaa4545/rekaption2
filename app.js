@@ -777,6 +777,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Prefill OpenRouter API Key if stored
+  const orInput = document.getElementById('openrouter-api-key');
+  if (orInput) {
+    const savedOrKey = localStorage.getItem('openrouterApiKey') || localStorage.getItem('openrouterKey') || '';
+    if (savedOrKey) orInput.value = savedOrKey;
+    orInput.addEventListener('input', function() {
+      localStorage.setItem('openrouterApiKey', this.value.trim());
+      localStorage.setItem('openrouterKey', this.value.trim());
+    });
+  }
+
   const engineSelect = document.getElementById('caption-engine-select');
   if (engineSelect) {
     const savedEngine = localStorage.getItem('caption_engine') || 'v1';
