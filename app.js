@@ -3302,8 +3302,8 @@ window.processBatchCaption = async function() {
       }
       const fd = new FormData();
       fd.append('audio', audioFile);
-      fd.append('minWords', document.getElementById('min-words') ? document.getElementById('min-words').value : '3');
-      fd.append('maxWords', document.getElementById('max-words') ? document.getElementById('max-words').value : '4');
+      fd.append('minWords', document.getElementById('min-words') ? document.getElementById('min-words').value : '2');
+      fd.append('maxWords', document.getElementById('max-words') ? document.getElementById('max-words').value : '5');
       fd.append('animation', selectedAnimation || 'classic');
       fd.append('activeColor', document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF');
       fd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
@@ -3382,7 +3382,7 @@ window.processBatchCaption = async function() {
         strokeWidth: document.getElementById('stroke-width') ? parseInt(document.getElementById('stroke-width').value) : 0,
         shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
         shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
-        showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
+        showTitle: true,
         titleText: short.title,
         titleSubtext: (function() {
           let bSh = short.sub_hook || short.summary_hook || '';
@@ -3881,8 +3881,8 @@ async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
       const audioFile = new File([blob], `batch_clip_${idx+1}.mp4`, { type: 'video/mp4' });
       const transFd = new FormData();
       transFd.append('audio', audioFile);
-      transFd.append('minWords', document.getElementById('min-words') ? document.getElementById('min-words').value : '3');
-      transFd.append('maxWords', document.getElementById('max-words') ? document.getElementById('max-words').value : '4');
+      transFd.append('minWords', document.getElementById('min-words') ? document.getElementById('min-words').value : '2');
+      transFd.append('maxWords', document.getElementById('max-words') ? document.getElementById('max-words').value : '5');
       transFd.append('animation', typeof selectedAnimation !== 'undefined' ? selectedAnimation : 'classic');
       transFd.append('activeColor', document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF');
       transFd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
