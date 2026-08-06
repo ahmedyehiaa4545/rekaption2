@@ -3307,6 +3307,21 @@ window.processBatchCaption = async function() {
       fd.append('animation', selectedAnimation || 'classic');
       fd.append('activeColor', document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF');
       fd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
+
+      let batchSubHook = short.sub_hook || short.summary_hook || '';
+      if (!batchSubHook && short.script) {
+        const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
+        batchSubHook = parts.length >= 2 ? `${parts[0]}.. ${parts[1]}.` : (parts[0] || '');
+      }
+
+      fd.append('showTitle', 'true');
+      if (short.title) fd.append('titleText', short.title);
+      if (batchSubHook) fd.append('titleSubtext', batchSubHook);
+      fd.append('titleColor', document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF');
+      fd.append('titleBgColor', document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000');
+      fd.append('titleDuration', document.getElementById('title-duration-input') ? document.getElementById('title-duration-input').value : '3.0');
+      fd.append('titleTop', document.getElementById('title-top-input') ? document.getElementById('title-top-input').value : '12.0');
+      fd.append('titleStyle', document.getElementById('title-style-select') ? document.getElementById('title-style-select').value : 'tiktok-pill');
       
       const groqKey = localStorage.getItem('groq_api_key') || '';
       const geminiKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
