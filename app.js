@@ -2307,14 +2307,7 @@ window.startAudioDownloadOnly = async function() {
   const groqApiKey = localStorage.getItem('groq_api_key') || apiKeyVal;
   const geminiApiKey = localStorage.getItem('gemini_api_key') || apiKeyVal;
 
-  if (!apiKeyVal && !groqApiKey && !geminiApiKey) {
-    alert('الرجاء إدخال مفتاح المحرك السريع لتتمكن من تفريغ الصوت بسرعة فائقة!');
-    startBtn.disabled = false;
-    startBtn.style.opacity = '1';
-    loadingDiv.classList.add('hidden');
-    if (geminiSpinner) geminiSpinner.style.display = 'none';
-    return;
-  }
+
 
   if (apiKeyVal.startsWith('gsk_')) {
     localStorage.setItem('groq_api_key', apiKeyVal);
@@ -2476,10 +2469,7 @@ window.fetchShortsSuggestions = async function() {
     return;
   }
 
-  if (!geminiApiKey) {
-    alert("الرجاء إدخال مفتاح Gemini API Key لتتمكن من تحليل النص!");
-    return;
-  }
+
 
   // Show loading, disable button
   shortsBtn.disabled = true;
