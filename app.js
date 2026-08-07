@@ -2607,9 +2607,12 @@ window.fetchShortsSuggestions = async function() {
       
       shortsList.forEach((short, idx) => {
         let subHookText = short.sub_hook || short.summary_hook || '';
+        if (Array.isArray(subHookText)) {
+          subHookText = subHookText.join('\n');
+        }
         if (!subHookText && short.script) {
           const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
-          subHookText = parts.length >= 2 ? `${parts[0]}.. ${parts[1]}.` : (parts[0] || '');
+          subHookText = parts.length >= 2 ? `${parts[0]}.. \n${parts[1]}.` : (parts[0] || '');
         }
 
         const copyText = `عنوان المقطع: ${short.title}${subHookText ? `\nالملخص المشوق (أسفل العنوان): ${subHookText}` : ''}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
@@ -3066,7 +3069,8 @@ window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn)
   // Prefill title & subtext inputs and toggle title ON
   const shortItem = currentSuggestedShorts[idx];
   const suggestedTitle = shortItem ? shortItem.title : '';
-  const suggestedSubtext = shortItem ? (shortItem.sub_hook || shortItem.summary_hook || '') : '';
+  const rawSubHook = shortItem ? (shortItem.sub_hook || shortItem.summary_hook || '') : '';
+  const suggestedSubtext = Array.isArray(rawSubHook) ? rawSubHook.join('\n') : rawSubHook;
   const titleTextInput = document.getElementById('title-text-input');
   if (titleTextInput) {
     titleTextInput.value = suggestedTitle;
@@ -3320,9 +3324,12 @@ window.processBatchCaption = async function() {
       fd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
 
       let batchSubHook = short.sub_hook || short.summary_hook || '';
+      if (Array.isArray(batchSubHook)) {
+        batchSubHook = batchSubHook.join('\n');
+      }
       if (!batchSubHook && short.script) {
         const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
-        batchSubHook = parts.length >= 2 ? `${parts[0]}.. ${parts[1]}.` : (parts[0] || '');
+        batchSubHook = parts.length >= 2 ? `${parts[0]}.. \n${parts[1]}.` : (parts[0] || '');
       }
 
       fd.append('showTitle', 'true');
@@ -3352,6 +3359,7 @@ window.processBatchCaption = async function() {
       if (openrouterKeyVal) fd.append('openrouterKey', openrouterKeyVal);
 
       // Use the MAIN apiUrl (HF backend) for transcription, NOT audioApiUrl
+      fd.append('isBatchMode', 'true');
       const transRes = await fetch(`${apiUrl}/api/transcribe`, {
         method: 'POST',
         body: fd
@@ -3904,6 +3912,7 @@ async function executeBatchCaptionProcess(youtubeUrl, convertChoice) {
 
       const elKey = localStorage.getItem('elevenlabs_api_key') || '';
       if (elKey) transFd.append('elevenLabsApiKey', elKey);
+      transFd.append('isBatchMode', 'true');
 
       const transRes = await fetch(`${apiUrl}/api/transcribe`, {
         method: 'POST',
