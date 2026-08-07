@@ -4422,5 +4422,49 @@ window.showToast = function(msg) {
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
 };
 
+// ==================== Admin API Keys Modal Management ====================
+window.openAdminKeysModal = function() {
+  const modal = document.getElementById('admin-keys-modal');
+  if (modal) {
+    const groqEl = document.getElementById('admin-groq-key');
+    const elevenlabsEl = document.getElementById('admin-elevenlabs-key');
+    const openrouterEl = document.getElementById('admin-openrouter-key');
+    const geminiEl = document.getElementById('admin-gemini-key');
+
+    if (groqEl) groqEl.value = localStorage.getItem('groq_api_key') || '';
+    if (elevenlabsEl) elevenlabsEl.value = localStorage.getItem('elevenlabs_api_key') || '';
+    if (openrouterEl) openrouterEl.value = localStorage.getItem('openrouterApiKey') || localStorage.getItem('openrouterKey') || '';
+    if (geminiEl) geminiEl.value = localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
+
+    modal.style.display = 'flex';
+  }
+};
+
+window.closeAdminKeysModal = function() {
+  const modal = document.getElementById('admin-keys-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.saveAdminKeys = function() {
+  const groq = (document.getElementById('admin-groq-key')?.value || '').trim();
+  const el = (document.getElementById('admin-elevenlabs-key')?.value || '').trim();
+  const openrouter = (document.getElementById('admin-openrouter-key')?.value || '').trim();
+  const gemini = (document.getElementById('admin-gemini-key')?.value || '').trim();
+
+  if (groq) localStorage.setItem('groq_api_key', groq);
+  if (el) localStorage.setItem('elevenlabs_api_key', el);
+  if (openrouter) {
+    localStorage.setItem('openrouterApiKey', openrouter);
+    localStorage.setItem('openrouterKey', openrouter);
+  }
+  if (gemini) {
+    localStorage.setItem('gemini_api_key', gemini);
+    localStorage.setItem('geminiApiKey', gemini);
+  }
+
+  showToast('✅ تم حفظ مفاتيح التشغيل للنظام بنجاح!');
+  closeAdminKeysModal();
+};
+
 // تشغيل عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => { renderTemplateList(); });
