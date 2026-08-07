@@ -2895,14 +2895,9 @@ window.selectShortOption = function(choice) {
 };
 
 window.toggleModalEngineFields = function() {
-  const select = document.getElementById('modal-caption-engine-select');
   const elevenlabsWrapper = document.getElementById('modal-elevenlabs-key-wrapper');
-  if (select && elevenlabsWrapper) {
-    if (select.value === 'v2') {
-      elevenlabsWrapper.style.display = 'block';
-    } else {
-      elevenlabsWrapper.style.display = 'none';
-    }
+  if (elevenlabsWrapper) {
+    elevenlabsWrapper.style.display = 'none';
   }
 };
 
