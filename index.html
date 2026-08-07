@@ -397,28 +397,28 @@
           <div class="control-field" style="margin-top: 10px;">
             <span class="control-label" style="font-size: 11px;">إصدار ومحرك الكابشن (Caption Engine) ⚙️</span>
             <select id="caption-engine-select" onchange="toggleEngineFields()" style="width: 100%; height: 38px; padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; cursor: pointer;">
-              <option value="v1">V1 (Groq Whisper / Gemini)</option>
-              <option value="v2">V2 (ElevenLabs Scribe - فائق الدقة)</option>
+              <option value="v1">محرك الكابشن القياسي (Standard Engine)</option>
+              <option value="v2">محرك الكابشن الاحترافي (Pro Engine - فائق الدقة)</option>
             </select>
           </div>
 
 
           <div id="groq-key-wrapper" class="control-field" style="margin-top: 10px;">
-            <span class="control-label" style="font-size: 11px;">مفتاح Groq API للتفريغ السريع (Whisper Large V3 Turbo) ⚡</span>
+            <span class="control-label" style="font-size: 11px;">مفتاح المحرك السريع ⚡ (Fast Engine Key)</span>
             <input type="password" id="groq-api-key-input" placeholder="gsk_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
-            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">(اختياري) أدخل مفتاح Groq الخاص بك لتوليد التوقيتات بسرعة فائقة وتقسيم الكلمات بالذكاء الاصطناعي.</span>
+            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">(اختياري) أدخل مفتاح المحرك السريع لتوليد التوقيتات بسرعة فائقة وتقسيم الكلمات بالذكاء الاصطناعي.</span>
           </div>
 
           <div id="elevenlabs-key-wrapper" class="control-field" style="margin-top: 10px; display: none;">
-            <span class="control-label" style="font-size: 11px;">مفتاح ElevenLabs API Key 🎙️</span>
-            <input type="password" id="elevenlabs-api-key-input" placeholder="Enter ElevenLabs API Key..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
-            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">مطلوب لتشغيل محرك Scribe V2 الفائق وتنسيق الترقيم التلقائي.</span>
+            <span class="control-label" style="font-size: 11px;">مفتاح محرك الصوت الدقيق 🎤 (Audio Engine Key)</span>
+            <input type="password" id="elevenlabs-api-key-input" placeholder="el_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
+            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">مطلوب لتشغيل محرك المعالجة الصوتية الاحترافي وتنسيق الترقيم التلقائي.</span>
           </div>
 
           <div id="openrouter-key-wrapper" class="control-field" style="margin-top: 10px;">
-            <span class="control-label" style="font-size: 11px;">مفتاح OpenRouter API Key (لتدقيق الكابشن بـ Gemini 2.5 Pro) 🧠</span>
+            <span class="control-label" style="font-size: 11px;">مفتاح بوابة الذكاء الاصطناعي 🌐 (Gateway AI Key)</span>
             <input type="password" id="openrouter-api-key" placeholder="sk-or-v1-..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr; font-family: monospace;" />
-            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">أدخل مفتاح OpenRouter الخاص بك الذي يحتوي على رصيد لتشغيل موديل google/gemini-2.5-pro-preview-05-06 بدون انقطاع.</span>
+            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">أدخل مفتاح بوابة الذكاء الاصطناعي لتشغيل نماذج التحليل والتصحيح الذكي بدون انقطاع.</span>
           </div>
         </div>
 
@@ -510,7 +510,7 @@
         <!-- Left: Input controls -->
         <div class="panel-inner" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
           <div class="control-field">
-            <span class="control-label">مفتاح Groq API Key (سيتم حفظه محلياً في متصفحك)</span>
+            <span class="control-label">مفتاح المحرك السريع ⚡ (Fast Engine Key)</span>
             <input type="password" id="gemini-key-input" placeholder="gsk_..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; text-align: left; direction: ltr;" />
           </div>
 
@@ -520,7 +520,7 @@
           </div>
 
           <button type="button" id="gemini-start-btn" onclick="startAudioDownloadOnly()" class="btn-primary" style="margin-top: 10px; width: 100%; justify-content: center;">
-            <span>⚡</span> تحميل وتفريغ الصوت الفائق بـ Groq
+            <span>⚡</span> تحميل وتفريغ الصوت المحتري
           </button>
 
           
@@ -550,7 +550,7 @@
             
             <!-- Transcription text box -->
             <div id="transcription-container" style="width: 100%; display: none; flex-direction: column; gap: 10px; margin-top: 15px; text-align: right; direction: rtl;">
-              <span class="control-label" style="align-self: flex-start;">التفريغ النصي الناتج من Gemini:</span>
+              <span class="control-label" style="align-self: flex-start;">التفريغ النصي الناتج:</span>
               <textarea id="transcription-text" readonly style="width: 100%; height: 200px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-family: inherit; font-size: 14px; resize: vertical; line-height: 1.6;"></textarea>
               <button onclick="copyTranscription()" class="btn-secondary" style="width: 100%; justify-content: center;">
                 <span>📋</span> نسخ النص كامل
@@ -581,9 +581,8 @@
                 </div>
 
                 <!-- OpenRouter model selection input -->
-                <div>
-                  <span class="control-label" style="font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 700; margin-bottom: 6px; display: block;">🤖 نموذج OpenRouter لتحليل ה-Shorts:</span>
-                  <input type="text" id="openrouter-model-input" value="google/gemini-3.1-flash-lite" placeholder="مثال: google/gemini-3.1-flash-lite" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(0,0,0,0.35); color: #c084fc; font-size: 13px; direction: ltr; font-family: monospace; font-weight: bold; box-sizing: border-box;" />
+                <div style="display: none;">
+                  <input type="text" id="openrouter-model-input" value="google/gemini-2.5-pro-preview-05-06" />
                 </div>
 
                 <!-- Custom guidance prompt input -->
@@ -1257,16 +1256,16 @@
             ⚙️ اختر محرك الكابشن (Caption Engine):
           </label>
           <select id="modal-caption-engine-select" onchange="toggleModalEngineFields()" style="width: 100%; height: 38px; padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; cursor: pointer; font-size: 13px;">
-            <option value="v1">V1 (Groq Whisper / Gemini)</option>
-            <option value="v2">V2 (ElevenLabs Scribe - فائق الدقة)</option>
+            <option value="v1">محرك الكابشن القياسي (Standard Engine)</option>
+            <option value="v2">محرك الكابشن الاحترافي (Pro Engine - فائق الدقة)</option>
           </select>
 
           <!-- ElevenLabs API key field in modal (shown only if v2 selected) -->
           <div id="modal-elevenlabs-key-wrapper" style="margin-top: 10px; display: none;">
             <label style="display: block; font-size: 11px; color: rgba(255,255,255,0.8); margin-bottom: 4px;">
-              مفتاح ElevenLabs API Key 🎙️
+              مفتاح محرك الصوت الدقيق 🎤 (Audio Engine Key)
             </label>
-            <input type="password" id="modal-elevenlabs-key-input" placeholder="Enter ElevenLabs API Key..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 13px; box-sizing: border-box;" />
+            <input type="password" id="modal-elevenlabs-key-input" placeholder="el_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 13px; box-sizing: border-box;" />
           </div>
         </div>
 

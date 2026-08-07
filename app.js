@@ -2313,7 +2313,7 @@ window.startAudioDownloadOnly = async function() {
   const geminiApiKey = localStorage.getItem('gemini_api_key') || apiKeyVal;
 
   if (!apiKeyVal && !groqApiKey && !geminiApiKey) {
-    alert('الرجاء إدخال مفتاح Groq API Key لتتمكن من تفريغ الصوت بسرعة فائقة!');
+    alert('الرجاء إدخال مفتاح المحرك السريع لتتمكن من تفريغ الصوت بسرعة فائقة!');
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
     loadingDiv.classList.add('hidden');
@@ -2329,7 +2329,7 @@ window.startAudioDownloadOnly = async function() {
   let progressInterval = updateProgress(
     95, 
     500, 
-    'جاري تحميل الصوت وتفريغه الفائق بـ Groq Whisper Large V3 Turbo...',
+    'جاري تحميل الصوت وتفريغه بالذكاء الاصطناعي...',
     'جاري المعالجة والتفريغ'
   );
 
