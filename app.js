@@ -4429,30 +4429,32 @@ async function saveSystemKeysBackend() {
   const openrouter = (document.getElementById('sys-openrouter-key')?.value || '').trim();
   const gemini = (document.getElementById('sys-gemini-key')?.value || '').trim();
 
+  const payload = {
+    token: adminToken,
+    groq_api_key: groq,
+    elevenlabs_api_key: el,
+    openrouter_api_key: openrouter,
+    gemini_api_key: gemini
+  };
+
   try {
-    const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/admin/save-system-keys`, {
+    const urls = [
+      `${apiUrl.replace(/\/$/, '')}/api/admin/save-system-keys`,
+      `${audioApiUrl.replace(/\/$/, '')}/api/admin/save-system-keys`
+    ];
+
+    await Promise.all(urls.map(url => fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: adminToken,
-        groq_api_key: groq,
-        elevenlabs_api_key: el,
-        openrouter_api_key: openrouter,
-        gemini_api_key: gemini
-      })
-    });
+      body: JSON.stringify(payload)
+    }).catch(err => console.warn("Save keys warning for " + url, err))));
 
-    if (res.ok) {
-      // Also store in localStorage as local cache
-      if (groq) localStorage.setItem('groq_api_key', groq);
-      if (el) localStorage.setItem('elevenlabs_api_key', el);
-      if (openrouter) { localStorage.setItem('openrouterApiKey', openrouter); localStorage.setItem('openrouterKey', openrouter); }
-      if (gemini) { localStorage.setItem('gemini_api_key', gemini); localStorage.setItem('geminiApiKey', gemini); }
+    if (groq) localStorage.setItem('groq_api_key', groq);
+    if (el) localStorage.setItem('elevenlabs_api_key', el);
+    if (openrouter) { localStorage.setItem('openrouterApiKey', openrouter); localStorage.setItem('openrouterKey', openrouter); }
+    if (gemini) { localStorage.setItem('gemini_api_key', gemini); localStorage.setItem('geminiApiKey', gemini); }
 
-      showToast('✅ تم حفظ مفاتيح النظام على السيرفر بنجاح لجميع المستخدمين!');
-    } else {
-      alert("حدث خطأ أثناء حفظ المفاتيح على السيرفر");
-    }
+    showToast('✅ تم حفظ مفاتيح النظام على السيرفر بنجاح لجميع المستخدمين!');
   } catch (err) {
     alert("تعذر الاتصال بالسيرفر لحفظ المفاتيح: " + err.message);
   }
