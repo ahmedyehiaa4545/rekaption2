@@ -1502,9 +1502,6 @@ formControls.addEventListener('submit', async function(e) {
   const titleTextInput = document.getElementById('title-text-input');
   if (titleTextInput && titleTextInput.value.trim()) fd.append('titleText', titleTextInput.value.trim());
 
-  const titleSubtextInput = document.getElementById('title-subtext-input');
-  if (titleSubtextInput && titleSubtextInput.value.trim()) fd.append('titleSubtext', titleSubtextInput.value.trim());
-
   const titleColorInput = document.getElementById('title-color-input');
   if (titleColorInput) fd.append('titleColor', titleColorInput.value);
 
@@ -1726,7 +1723,7 @@ window.renderVideo = async function() {
     shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
     showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
     titleText: document.getElementById('title-text-input') ? document.getElementById('title-text-input').value.trim() : '',
-    titleSubtext: document.getElementById('title-subtext-input') ? document.getElementById('title-subtext-input').value.trim() : '',
+    titleSubtext: '',
     titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
     titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
     titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 3.0,
@@ -2606,16 +2603,7 @@ window.fetchShortsSuggestions = async function() {
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
       shortsList.forEach((short, idx) => {
-        let subHookText = short.sub_hook || short.summary_hook || '';
-        if (Array.isArray(subHookText)) {
-          subHookText = subHookText.join('\n');
-        }
-        if (!subHookText && short.script) {
-          const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
-          subHookText = parts.length >= 2 ? `${parts[0]}.. \n${parts[1]}.` : (parts[0] || '');
-        }
-
-        const copyText = `عنوان المقطع: ${short.title}${subHookText ? `\nالملخص المشوق (أسفل العنوان): ${subHookText}` : ''}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
+        const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         
         cardsHtml += `
@@ -2685,20 +2673,6 @@ window.fetchShortsSuggestions = async function() {
             ">
               🎥 العنوان المقترح: ${short.title}
             </h4>
-
-            <!-- Sub Hook (2-Sentence Summary under Title) -->
-            <div style="
-              background: rgba(139, 92, 246, 0.08);
-              border-right: 3px solid #8b5cf6;
-              padding: 8px 12px;
-              border-radius: 0 8px 8px 0;
-              font-size: 13px;
-              color: #c084fc;
-              line-height: 1.5;
-              font-weight: 600;
-            ">
-              <span style="font-weight: 800; color: #a78bfa;">💡 الملخص المشوق (أسفل العنوان):</span> ${subHookText}
-            </div>
 
             <!-- Hook -->
             <div style="
@@ -3066,18 +3040,12 @@ window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn)
   pendingBatchProcess = false;
   pendingBatchArgs = null;
 
-  // Prefill title & subtext inputs and toggle title ON
+  // Prefill title input and toggle title ON
   const shortItem = currentSuggestedShorts[idx];
   const suggestedTitle = shortItem ? shortItem.title : '';
-  const rawSubHook = shortItem ? (shortItem.sub_hook || shortItem.summary_hook || '') : '';
-  const suggestedSubtext = Array.isArray(rawSubHook) ? rawSubHook.join('\n') : rawSubHook;
   const titleTextInput = document.getElementById('title-text-input');
   if (titleTextInput) {
     titleTextInput.value = suggestedTitle;
-  }
-  const titleSubtextInput = document.getElementById('title-subtext-input');
-  if (titleSubtextInput) {
-    titleSubtextInput.value = suggestedSubtext;
   }
   const showTitleToggle = document.getElementById('show-title-toggle');
   if (showTitleToggle) {
@@ -3323,18 +3291,8 @@ window.processBatchCaption = async function() {
       fd.append('activeColor', document.getElementById('active-color') ? document.getElementById('active-color').value : '#FFFFFF');
       fd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
 
-      let batchSubHook = short.sub_hook || short.summary_hook || '';
-      if (Array.isArray(batchSubHook)) {
-        batchSubHook = batchSubHook.join('\n');
-      }
-      if (!batchSubHook && short.script) {
-        const parts = short.script.split(/[.!\?\n،؛]/).map(s => s.trim()).filter(Boolean);
-        batchSubHook = parts.length >= 2 ? `${parts[0]}.. \n${parts[1]}.` : (parts[0] || '');
-      }
-
       fd.append('showTitle', 'true');
       if (short.title) fd.append('titleText', short.title);
-      if (batchSubHook) fd.append('titleSubtext', batchSubHook);
       fd.append('titleColor', document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF');
       fd.append('titleBgColor', document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000');
       fd.append('titleDuration', document.getElementById('title-duration-input') ? document.getElementById('title-duration-input').value : '3.0');
@@ -3403,7 +3361,7 @@ window.processBatchCaption = async function() {
         shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
         showTitle: true,
         titleText: short.title ? short.title.trim() : '',
-        titleSubtext: typeof batchSubHook === 'string' ? batchSubHook.trim() : (batchSubHook || ''),
+        titleSubtext: '',
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: 0, // Force 0 (infinite) for Batch mode so sentences don't disappear
