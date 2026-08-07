@@ -95,14 +95,9 @@
         <p id="subtitle" style="margin: 5px 0 0 0">حوّل مقاطعك الصوتية إلى فيديوهات احترافية بكابشن تفاعلي ومؤثرات بصرية</p>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <button type="button" onclick="openAdminKeysModal()" style="padding: 8px 16px; background: rgba(139, 92, 246, 0.15); border: 1px solid var(--purple-accent); border-radius: 50px; color: #c084fc; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
-          <span>🔑</span> إعدادات المفاتيح (Admin)
-        </button>
-        <!-- User Auth Widget -->
-        <div id="user-auth-widget" style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 50px; border: 1px solid var(--border-subtle);">
-          <!-- Injected by JavaScript -->
-        </div>
+      <!-- User Auth Widget -->
+      <div id="user-auth-widget" style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 50px; border: 1px solid var(--border-subtle);">
+        <!-- Injected by JavaScript -->
       </div>
     </header>
 
@@ -1060,13 +1055,42 @@
         <div id="admin-dashboard-screen" style="display: none;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 20px; margin-bottom: 25px; direction: rtl;">
             <div>
-              <h2 style="font-size: 24px; font-weight: 900; color: var(--text-main); margin: 0;">📊 إحصائيات النشاط والزيارات</h2>
-              <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 4px 0 0 0;">متابعة فورية للمستخدمين والتفاعلات</p>
+              <h2 style="font-size: 24px; font-weight: 900; color: var(--text-main); margin: 0;">📊 لوحة تحكم المدير والإحصائيات</h2>
+              <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 4px 0 0 0;">متابعة فورية للنشاط وإدارة مفاتيح التشغيل العامة للنظام</p>
             </div>
             <div style="display: flex; gap: 10px;">
               <button onclick="refreshAdminStats()" style="padding: 10px 18px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; font-weight: 600; cursor: pointer; font-size: 13px;">🔄 تحديث البيانات</button>
               <button onclick="handleAdminLogout()" style="padding: 10px 18px; border-radius: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; font-weight: 600; cursor: pointer; font-size: 13px;">🚪 تسجيل الخروج</button>
             </div>
+          </div>
+
+          <!-- Global System API Keys Section (Admin Only) -->
+          <div style="background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 22px; margin-bottom: 30px; direction: rtl;">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #c084fc; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+              <span>🔑</span> مفاتيح التشغيل العامة للنظام (Global System API Keys)
+            </h3>
+            <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin: 0 0 16px 0;">
+              المفاتيح المدخلة هنا تُحفظ مباشرة في قاعدة بيانات السيرفر ليعمل بها جميع المستخدمين أوتوماتيكياً دون حقول إدخال.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-size: 11px; color: rgba(255,255,255,0.8); display: block; margin-bottom: 6px; font-weight: 600;">مفتاح المحرك السريع ⚡ (Groq API Key)</label>
+                <input type="password" id="sys-groq-key" placeholder="gsk_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
+              </div>
+              <div>
+                <label style="font-size: 11px; color: rgba(255,255,255,0.8); display: block; margin-bottom: 6px; font-weight: 600;">مفتاح الصوت الدقيق 🎤 (ElevenLabs API Key)</label>
+                <input type="password" id="sys-elevenlabs-key" placeholder="el_... / sk_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
+              </div>
+              <div>
+                <label style="font-size: 11px; color: rgba(255,255,255,0.8); display: block; margin-bottom: 6px; font-weight: 600;">مفتاح بوابة الذكاء 🌐 (OpenRouter API Key)</label>
+                <input type="password" id="sys-openrouter-key" placeholder="sk-or-v1-..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
+              </div>
+              <div>
+                <label style="font-size: 11px; color: rgba(255,255,255,0.8); display: block; margin-bottom: 6px; font-weight: 600;">مفتاح المحرك الذكي 🧠 (Gemini API Key)</label>
+                <input type="password" id="sys-gemini-key" placeholder="AIza..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
+              </div>
+            </div>
+            <button type="button" onclick="saveSystemKeysBackend()" style="margin-top: 18px; padding: 11px 26px; background: linear-gradient(135deg, #8b5cf6, #ec4899); border: none; border-radius: 10px; color: #fff; font-weight: 800; font-size: 13px; cursor: pointer; font-family: inherit;">💾 حفظ المفاتيح في قاعدة بيانات السيرفر لجميع المستخدمين</button>
           </div>
 
           <div style="direction: rtl;">
@@ -1410,50 +1434,7 @@
     </div>
 
 
-    <!-- Admin API Keys Modal -->
-    <div id="admin-keys-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 12000; justify-content: center; align-items: center; padding: 20px; direction: rtl; font-family: Cairo, sans-serif;">
-      <div style="background-color: #0e0c1b; border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 20px; width: 100%; max-width: 520px; padding: 26px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); color: #fff;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-          <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #a78bfa; display: flex; align-items: center; gap: 8px;">
-            <span>🔑</span> لوحة إدارة مفاتيح المشغل (Admin API Keys)
-          </h3>
-          <button type="button" onclick="closeAdminKeysModal()" style="background: none; border: none; color: #9ca3af; font-size: 18px; cursor: pointer;">✕</button>
-        </div>
-
-        <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 16px; line-height: 1.5;">
-          ادخل مفاتيح التشغيل الخاصة بك هنا مرة واحدة. سيتم استخدامها أوتوماتيكياً لجميع عمليات المعالجة والمستخدمين دون إظهارها لهم.
-        </p>
-
-        <div style="display: flex; flex-direction: column; gap: 14px; max-height: 380px; overflow-y: auto; padding-left: 4px;">
-          <div class="control-field">
-            <span class="control-label" style="font-size: 11px;">مفتاح المحرك السريع ⚡ (Groq API Key)</span>
-            <input type="password" id="admin-groq-key" placeholder="gsk_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
-          </div>
-
-          <div class="control-field">
-            <span class="control-label" style="font-size: 11px;">مفتاح محرك الصوت الدقيق 🎤 (ElevenLabs API Key)</span>
-            <input type="password" id="admin-elevenlabs-key" placeholder="el_... / sk_..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
-          </div>
-
-          <div class="control-field">
-            <span class="control-label" style="font-size: 11px;">مفتاح بوابة الذكاء الاصطناعي 🌐 (OpenRouter API Key)</span>
-            <input type="password" id="admin-openrouter-key" placeholder="sk-or-v1-..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
-          </div>
-
-          <div class="control-field">
-            <span class="control-label" style="font-size: 11px;">مفتاح المحرك الذكي 🧠 (Gemini API Key)</span>
-            <input type="password" id="admin-gemini-key" placeholder="AIza..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); color: #fff; text-align: left; direction: ltr; font-family: monospace; font-size: 12px; box-sizing: border-box;" />
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button type="button" onclick="saveAdminKeys()" style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; border: none; border-radius: 10px; padding: 11px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit;">💾 حفظ المفاتيح للنظام</button>
-          <button type="button" onclick="closeAdminKeysModal()" style="background: rgba(255,255,255,0.08); color: #ccc; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 11px 16px; font-size: 13px; cursor: pointer; font-family: inherit;">إلغاء</button>
-        </div>
-      </div>
-    </div>
-
   </div>
-  <script src="app.js?v=2.0"></script>
+  <script src="app.js?v=2.1"></script>
 </body>
 </html>

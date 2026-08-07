@@ -351,6 +351,7 @@ async function handleAdminLogin(event) {
 
 async function refreshAdminStats() {
   if (!adminToken) return;
+  fetchSystemKeysBackend();
   if (!window.firebaseDb) {
     alert("برجاء الانتظار، جاري تهيئة قاعدة بيانات فايربيز...");
     return;
@@ -799,18 +800,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   window.toggleEngineFields = function() {
-    const select = document.getElementById('caption-engine-select');
     const groqWrapper = document.getElementById('groq-key-wrapper');
     const elevenlabsWrapper = document.getElementById('elevenlabs-key-wrapper');
-    if (select && groqWrapper && elevenlabsWrapper) {
-      if (select.value === 'v2') {
-        groqWrapper.style.display = 'none';
-        elevenlabsWrapper.style.display = 'block';
-      } else {
-        groqWrapper.style.display = 'block';
-        elevenlabsWrapper.style.display = 'none';
-      }
-    }
+    const openrouterWrapper = document.getElementById('openrouter-key-wrapper');
+    if (groqWrapper) groqWrapper.style.display = 'none';
+    if (elevenlabsWrapper) elevenlabsWrapper.style.display = 'none';
+    if (openrouterWrapper) openrouterWrapper.style.display = 'none';
   };
 
   // Run toggle once initially
@@ -4422,49 +4417,61 @@ window.showToast = function(msg) {
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
 };
 
-// ==================== Admin API Keys Modal Management ====================
-window.openAdminKeysModal = function() {
-  const modal = document.getElementById('admin-keys-modal');
-  if (modal) {
-    const groqEl = document.getElementById('admin-groq-key');
-    const elevenlabsEl = document.getElementById('admin-elevenlabs-key');
-    const openrouterEl = document.getElementById('admin-openrouter-key');
-    const geminiEl = document.getElementById('admin-gemini-key');
-
-    if (groqEl) groqEl.value = localStorage.getItem('groq_api_key') || '';
-    if (elevenlabsEl) elevenlabsEl.value = localStorage.getItem('elevenlabs_api_key') || '';
-    if (openrouterEl) openrouterEl.value = localStorage.getItem('openrouterApiKey') || localStorage.getItem('openrouterKey') || '';
-    if (geminiEl) geminiEl.value = localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
-
-    modal.style.display = 'flex';
+// ==================== Admin Backend System Keys Management ====================
+async function fetchSystemKeysBackend() {
+  if (!adminToken) return;
+  try {
+    const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/admin/get-system-keys?token=${adminToken}`);
+    if (res.ok) {
+      const keys = await res.json();
+      if (document.getElementById('sys-groq-key')) document.getElementById('sys-groq-key').value = keys.groq || '';
+      if (document.getElementById('sys-elevenlabs-key')) document.getElementById('sys-elevenlabs-key').value = keys.elevenlabs || '';
+      if (document.getElementById('sys-openrouter-key')) document.getElementById('sys-openrouter-key').value = keys.openrouter || '';
+      if (document.getElementById('sys-gemini-key')) document.getElementById('sys-gemini-key').value = keys.gemini || '';
+    }
+  } catch (err) {
+    console.warn("Could not fetch system keys:", err);
   }
-};
+}
 
-window.closeAdminKeysModal = function() {
-  const modal = document.getElementById('admin-keys-modal');
-  if (modal) modal.style.display = 'none';
-};
-
-window.saveAdminKeys = function() {
-  const groq = (document.getElementById('admin-groq-key')?.value || '').trim();
-  const el = (document.getElementById('admin-elevenlabs-key')?.value || '').trim();
-  const openrouter = (document.getElementById('admin-openrouter-key')?.value || '').trim();
-  const gemini = (document.getElementById('admin-gemini-key')?.value || '').trim();
-
-  if (groq) localStorage.setItem('groq_api_key', groq);
-  if (el) localStorage.setItem('elevenlabs_api_key', el);
-  if (openrouter) {
-    localStorage.setItem('openrouterApiKey', openrouter);
-    localStorage.setItem('openrouterKey', openrouter);
+async function saveSystemKeysBackend() {
+  if (!adminToken) {
+    alert("يرجى تسجيل الدخول كمدير أولاً");
+    return;
   }
-  if (gemini) {
-    localStorage.setItem('gemini_api_key', gemini);
-    localStorage.setItem('geminiApiKey', gemini);
-  }
+  const groq = (document.getElementById('sys-groq-key')?.value || '').trim();
+  const el = (document.getElementById('sys-elevenlabs-key')?.value || '').trim();
+  const openrouter = (document.getElementById('sys-openrouter-key')?.value || '').trim();
+  const gemini = (document.getElementById('sys-gemini-key')?.value || '').trim();
 
-  showToast('✅ تم حفظ مفاتيح التشغيل للنظام بنجاح!');
-  closeAdminKeysModal();
-};
+  try {
+    const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/admin/save-system-keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: adminToken,
+        groq_api_key: groq,
+        elevenlabs_api_key: el,
+        openrouter_api_key: openrouter,
+        gemini_api_key: gemini
+      })
+    });
+
+    if (res.ok) {
+      // Also store in localStorage as local cache
+      if (groq) localStorage.setItem('groq_api_key', groq);
+      if (el) localStorage.setItem('elevenlabs_api_key', el);
+      if (openrouter) { localStorage.setItem('openrouterApiKey', openrouter); localStorage.setItem('openrouterKey', openrouter); }
+      if (gemini) { localStorage.setItem('gemini_api_key', gemini); localStorage.setItem('geminiApiKey', gemini); }
+
+      showToast('✅ تم حفظ مفاتيح النظام على السيرفر بنجاح لجميع المستخدمين!');
+    } else {
+      alert("حدث خطأ أثناء حفظ المفاتيح على السيرفر");
+    }
+  } catch (err) {
+    alert("تعذر الاتصال بالسيرفر لحفظ المفاتيح: " + err.message);
+  }
+}
 
 // تشغيل عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => { renderTemplateList(); });
