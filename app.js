@@ -2685,14 +2685,18 @@ window.fetchShortsSuggestions = async function() {
             ">
               <span>⏱️ التوقيت:</span>
               <span style="
-                background: rgba(139, 92, 246, 0.1);
-                border: 1px solid rgba(139, 92, 246, 0.3);
-                padding: 2px 8px;
+                background: rgba(139, 92, 246, 0.15);
+                border: 1px solid rgba(139, 92, 246, 0.4);
+                padding: 3px 10px;
                 border-radius: 6px;
                 font-family: monospace;
                 font-size: 13px;
+                direction: ltr;
+                display: inline-block;
+                color: #c084fc;
+                font-weight: 700;
               ">
-                ${short.start_time} - ${short.end_time}
+                ${short.start_time} ➔ ${short.end_time}
               </span>
             </div>
 
