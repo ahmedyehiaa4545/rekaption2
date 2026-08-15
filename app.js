@@ -2673,31 +2673,45 @@ window.fetchShortsSuggestions = async function() {
               <span>تحديد</span>
             </label>
 
-            <!-- Time Chip -->
+            <!-- Category & Time Row -->
             <div style="
               display: flex;
               align-items: center;
-              gap: 6px;
-              font-size: 12px;
-              font-weight: 700;
-              color: var(--purple-accent);
+              justify-content: space-between;
+              flex-wrap: wrap;
+              gap: 8px;
               margin-top: 5px;
             ">
-              <span>⏱️ التوقيت:</span>
-              <span style="
-                background: rgba(139, 92, 246, 0.15);
-                border: 1px solid rgba(139, 92, 246, 0.4);
-                padding: 3px 10px;
-                border-radius: 6px;
-                font-family: monospace;
-                font-size: 13px;
-                direction: ltr;
-                display: inline-block;
-                color: #c084fc;
-                font-weight: 700;
-              ">
-                ${short.start_time} ➔ ${short.end_time}
-              </span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="
+                  background: rgba(168, 85, 247, 0.15);
+                  border: 1px solid rgba(168, 85, 247, 0.4);
+                  padding: 3px 8px;
+                  border-radius: 6px;
+                  font-size: 11px;
+                  font-weight: 700;
+                  color: #c084fc;
+                ">
+                  ${short.category || '🎯 قصة وخلاصة مكتملة'}
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--purple-accent);">
+                <span>⏱️ التوقيت:</span>
+                <span style="
+                  background: rgba(139, 92, 246, 0.15);
+                  border: 1px solid rgba(139, 92, 246, 0.4);
+                  padding: 3px 10px;
+                  border-radius: 6px;
+                  font-family: monospace;
+                  font-size: 13px;
+                  direction: ltr;
+                  display: inline-block;
+                  color: #c084fc;
+                  font-weight: 700;
+                ">
+                  ${short.start_time} ➔ ${short.end_time}
+                </span>
+              </div>
             </div>
 
             <!-- Title -->
