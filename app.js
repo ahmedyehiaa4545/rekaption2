@@ -2849,7 +2849,7 @@ async function performAsyncCut(youtubeUrl, startTime, endTime, quality, onProgre
         url: youtubeUrl,
         start_time: startTime,
         end_time: endTime,
-        quality: quality || 720
+        quality: quality || 1080
       })
     });
   } catch (netErr) {
@@ -3152,7 +3152,7 @@ async function executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, 
 
   try {
     // Step 1: Perform Async Cut from YouTube
-    let blob = await performAsyncCut(effectiveYtUrl, startTime, endTime, 720, (progText) => {
+    let blob = await performAsyncCut(effectiveYtUrl, startTime, endTime, 1080, (progText) => {
       btn.innerHTML = `<span>⏳</span> ${progText}`;
     });
 
@@ -3303,7 +3303,7 @@ window.processBatchCaption = async function() {
 
     try {
       // 1. Cut audio/video segment
-      let blob = await performAsyncCut(ytUrl, short.start_time, short.end_time, 720);
+      let blob = await performAsyncCut(ytUrl, short.start_time, short.end_time, 1080);
 
       // 2. Convert to vertical (9:16)
       if (batchBtn) {
@@ -3520,7 +3520,7 @@ window.cutVideoSegment = async function(youtubeUrl, startTime, endTime, idx, btn
   btn.innerHTML = '<span>⏳</span> جاري القص...';
 
   try {
-    const blob = await performAsyncCut(youtubeUrl, startTime, endTime, 720, (progText) => {
+    const blob = await performAsyncCut(youtubeUrl, startTime, endTime, 1080, (progText) => {
       btn.innerHTML = `<span>⏳</span> ${progText}`;
     });
 
@@ -3935,7 +3935,7 @@ async function executeBatchCaptionProcess(youtubeUrlOverride, shortChoice) {
 
     try {
       // 1. Perform Async Cut
-      let blob = await performAsyncCut(youtubeUrl, shortItem.start_time, shortItem.end_time, 720, (progMsg) => {
+      let blob = await performAsyncCut(youtubeUrl, shortItem.start_time, shortItem.end_time, 1080, (progMsg) => {
         if (modalStatusDesc) modalStatusDesc.textContent = `المقطع #${idx+1}: ${progMsg}`;
       });
 
