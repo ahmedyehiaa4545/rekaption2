@@ -1800,12 +1800,20 @@ window.renderVideo = async function() {
     playSuccessSound();
 
     // Auto-save to 48-Hour Video Archive (Persistent IndexedDB + LocalStorage)
-    if (typeof saveHistoryEntry === 'function') {
-      saveHistoryEntry({
-        title: 'فيديو كابشن نهائي (' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ')',
-        videoUrl: url,
-        blob: blob
-      });
+    if (typeof window.saveHistoryEntry === 'function') {
+      try {
+        const fullServerUrl = renderTaskStatus && renderTaskStatus.videoUrl 
+          ? `${apiUrl.replace(/\/$/, '')}/${renderTaskStatus.videoUrl.replace(/^\//, '')}`
+          : '';
+        await window.saveHistoryEntry({
+          title: 'فيديو كابشن نهائي (' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ')',
+          videoUrl: url,
+          serverUrl: fullServerUrl,
+          blob: blob
+        });
+      } catch (saveErr) {
+        console.warn('Auto-save main render to archive error:', saveErr);
+      }
     }
 
     // Track render event
@@ -2220,6 +2228,20 @@ window.startVerticalConversion = async function() {
     videoPlayer.src = localVideoUrl;
     downloadBtn.href = localVideoUrl;
     resultContainer.classList.remove('hidden');
+
+    // Auto-save vertical converted video to 48-Hour Video Archive
+    if (typeof window.saveHistoryEntry === 'function') {
+      try {
+        await window.saveHistoryEntry({
+          title: 'فيديو طولي (9:16) (' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ')',
+          videoUrl: localVideoUrl,
+          serverUrl: videoUrl,
+          blob: lastConvertedBlob
+        });
+      } catch (saveErr) {
+        console.warn('Auto-save vertical converter to archive error:', saveErr);
+      }
+    }
 
   } catch (err) {
     console.error(err);
@@ -3631,6 +3653,11 @@ window.getHistoryEntries = function() {
 window.saveHistoryEntry = async function(entry) {
   const id = entry.id || ('vid_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
 
+  let serverUrl = entry.serverUrl || '';
+  if (serverUrl && !serverUrl.startsWith('http') && !serverUrl.startsWith('blob:') && typeof apiUrl !== 'undefined') {
+    serverUrl = `${apiUrl.replace(/\/$/, '')}/${serverUrl.replace(/^\//, '')}`;
+  }
+
   // Try to save blob to IndexedDB (might fail for very large files - non-fatal)
   if (entry.blob) {
     try {
@@ -3642,20 +3669,24 @@ window.saveHistoryEntry = async function(entry) {
 
   // Always save metadata to localStorage regardless of blob result
   try {
-    const entries = getHistoryEntries();
+    let entries = getHistoryEntries();
     const now = Date.now();
     const newEntry = {
       id: id,
       title: entry.title || 'فيديو كابشن مجهز',
-      serverUrl: entry.serverUrl || entry.videoUrl || '',
+      serverUrl: serverUrl,
+      videoUrl: entry.videoUrl || '',
       timestamp: now,
       expiryTime: now + EXPIRE_DURATION_MS,
       duration: entry.duration || ''
     };
+    entries = entries.filter(item => item.id !== id);
     entries.unshift(newEntry);
+    if (entries.length > 50) entries = entries.slice(0, 50);
+
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries));
-    updateHistoryBadge();
-    renderHistoryModal();
+    if (typeof window.updateHistoryBadge === 'function') window.updateHistoryBadge();
+    if (typeof window.renderHistoryModal === 'function') window.renderHistoryModal();
     return newEntry;
   } catch (e) {
     console.warn("Error saving history metadata:", e);
@@ -3740,11 +3771,18 @@ window.renderHistoryModal = async function() {
     const cardEl = document.getElementById(`hist-card-${item.id}`);
     if (!cardEl) continue;
 
-    let activeUrl = item.serverUrl || '';
+    let activeUrl = '';
     const storedBlob = await getVideoBlobFromIDB(item.id);
 
-    if (storedBlob) {
+    if (storedBlob && storedBlob.size > 0) {
       activeUrl = URL.createObjectURL(storedBlob);
+    } else if (item.serverUrl && !item.serverUrl.startsWith('blob:')) {
+      activeUrl = item.serverUrl;
+      if (!activeUrl.startsWith('http') && typeof apiUrl !== 'undefined') {
+        activeUrl = `${apiUrl.replace(/\/$/, '')}/${activeUrl.replace(/^\//, '')}`;
+      }
+    } else if (item.videoUrl && !item.videoUrl.startsWith('blob:')) {
+      activeUrl = item.videoUrl;
     }
 
     if (!activeUrl) {
