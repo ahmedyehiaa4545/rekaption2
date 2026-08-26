@@ -4883,57 +4883,79 @@ window.testZernioConnection = async function(isSilent = false) {
   const profilesList = document.getElementById('zernio-profiles-list');
 
   try {
-    let profilesData = null;
+    let accountsData = null;
     const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
     
-    // Try via backend proxy first
+    // 1. Try via backend accounts endpoint
     try {
-      const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/zernio/profiles`, {
+      const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/zernio/accounts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: apiKey })
       });
       if (res.ok) {
-        profilesData = await res.json();
+        accountsData = await res.json();
       }
     } catch (proxyErr) {
-      console.warn('Backend Zernio proxy failed, attempting direct fetch:', proxyErr);
+      console.warn('Backend Zernio accounts proxy failed, attempting direct fetch:', proxyErr);
     }
 
     // Direct fallback if proxy unavailable
-    if (!profilesData) {
-      const directRes = await fetch('https://zernio.com/api/v1/profiles', {
+    if (!accountsData) {
+      const directRes = await fetch('https://zernio.com/api/v1/accounts', {
         headers: { 'Authorization': `Bearer ${apiKey}` }
       });
-      if (!directRes.ok) {
-        const errText = await directRes.text();
-        throw new Error(`فشل الاتصال بـ Zernio (${directRes.status}): ${errText}`);
+      if (directRes.ok) {
+        accountsData = await directRes.json();
+      } else {
+        // Try profiles as fallback
+        const profRes = await fetch('https://zernio.com/api/v1/profiles', {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        if (!profRes.ok) {
+          const errText = await profRes.text();
+          throw new Error(`فشل الاتصال بـ Zernio (${profRes.status}): ${errText}`);
+        }
+        accountsData = await profRes.json();
       }
-      profilesData = await directRes.json();
     }
 
-    const profiles = profilesData.profiles || (Array.isArray(profilesData) ? profilesData : []);
+    const accountsList = accountsData.accounts || accountsData.data || accountsData.profiles || (Array.isArray(accountsData) ? accountsData : []);
+    
+    if (accountsList.length > 0) {
+      const firstAcc = accountsList[0];
+      window.currentZernioAccountId = firstAcc._id || firstAcc.id || firstAcc.accountId;
+      if (window.currentZernioAccountId) {
+        localStorage.setItem('zernio_account_id', window.currentZernioAccountId);
+      }
+    }
+
     if (statusBox && profilesList) {
       statusBox.style.display = 'block';
-      if (profiles.length === 0) {
+      if (accountsList.length === 0) {
         profilesList.innerHTML = `
           <div style="font-size: 12px; color: #fbbf24;">
             ⚠️ تم التحقق من المفتاح، ولكن لم يتم العثور على حسابات متصلة. يرجى ربط حسابك التيك توك من لوحة تحكم Zernio.
           </div>
         `;
       } else {
-        profilesList.innerHTML = profiles.map(p => `
-          <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 16px;">📱</span>
-              <div>
-                <span style="font-size: 13px; font-weight: 700; color: #fff;">${p.name || 'حساب TikTok'}</span>
-                <span style="display: block; font-size: 10px; color: var(--text-muted); direction: ltr; text-align: right;">ID: ${p._id || p.id || 'Active'}</span>
+        profilesList.innerHTML = accountsList.map(p => {
+          const accId = p._id || p.id || p.accountId || 'Active';
+          const accName = p.name || p.username || p.displayName || 'حساب TikTok';
+          const platform = (p.platform || 'tiktok').toUpperCase();
+          return `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">📱</span>
+                <div>
+                  <span style="font-size: 13px; font-weight: 700; color: #fff;">${accName} (${platform})</span>
+                  <span style="display: block; font-size: 10px; color: var(--text-muted); direction: ltr; text-align: right;">ID: ${accId}</span>
+                </div>
               </div>
+              <span style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;">متصل وجاهز</span>
             </div>
-            <span style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;">متصل وجاهز</span>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       }
     }
 
@@ -5064,12 +5086,14 @@ window.submitZernioSchedule = async function() {
   }
 
   try {
+    const targetAccountId = window.currentZernioAccountId || localStorage.getItem('zernio_account_id') || undefined;
     const postPayload = {
       apiKey: apiKey,
       videoUrl: videoUrl,
       content: caption,
       publishNow: isPublishNow,
       scheduledFor: scheduledForIso,
+      accountId: targetAccountId,
       platform: 'tiktok'
     };
 
@@ -5252,12 +5276,14 @@ window.submitModalTikTokSchedule = async function() {
   }
 
   try {
+    const targetAccountId = window.currentZernioAccountId || localStorage.getItem('zernio_account_id') || undefined;
     const postPayload = {
       apiKey: apiKey,
       videoUrl: fullVideoUrl,
       content: caption,
       publishNow: isPublishNow,
       scheduledFor: scheduledForIso,
+      accountId: targetAccountId,
       platform: 'tiktok'
     };
 
