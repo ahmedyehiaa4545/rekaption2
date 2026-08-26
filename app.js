@@ -2093,8 +2093,8 @@ window.switchMainTab = function(tab) {
   }
 
   if (tab === 'schedule') {
-    if (typeof initZernioTab === 'function') {
-      initZernioTab();
+    if (typeof initBufferTab === 'function') {
+      initBufferTab();
     }
   }
 };
@@ -3817,8 +3817,8 @@ window.renderHistoryModal = async function() {
         <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
           <span>📥</span> تنزيل
         </a>
-        <button type="button" onclick="openTikTokScheduleModal('${activeUrl}', '${item.title.replace(/'/g, "\\'")}', '')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="جدولة على تيك توك">
-          <span>📱</span> تيك توك
+        <button type="button" onclick="openBufferScheduleModal('${activeUrl}', '${item.title.replace(/'/g, "\\'")}', '')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="جدولة ونشر المقطع عبر Buffer">
+          <span>📅</span> Buffer
         </button>
         <button type="button" onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
           <span>🗑️</span>
@@ -4835,121 +4835,103 @@ async function saveSystemKeysBackend() {
 document.addEventListener('DOMContentLoaded', () => { 
   renderTemplateList(); 
   loadKeysFromFirebase();
-  const savedZernioKey = localStorage.getItem('zernio_api_key');
-  const zernioInput = document.getElementById('zernio-api-key-input');
-  if (savedZernioKey && zernioInput) {
-    zernioInput.value = savedZernioKey;
+  const savedBufferKey = localStorage.getItem('buffer_api_key');
+  const bufferInput = document.getElementById('buffer-api-key-input');
+  if (savedBufferKey && bufferInput) {
+    bufferInput.value = savedBufferKey;
   }
 });
 
-// ==================== Zernio TikTok Scheduling & Posting Logic ====================
+// ==================== Buffer Social Media Scheduling & Posting Logic ====================
 
-window.saveZernioApiKey = function(val) {
+window.saveBufferApiKey = function(val) {
   if (val !== undefined && val !== null) {
-    localStorage.setItem('zernio_api_key', val.trim());
+    localStorage.setItem('buffer_api_key', val.trim());
   }
 };
 
-window.getZernioApiKey = function() {
-  const input = document.getElementById('zernio-api-key-input');
+window.getBufferApiKey = function() {
+  const input = document.getElementById('buffer-api-key-input');
   if (input && input.value.trim()) {
     return input.value.trim();
   }
-  return localStorage.getItem('zernio_api_key') || '';
+  return localStorage.getItem('buffer_api_key') || '';
 };
 
-window.initZernioTab = function() {
-  const savedKey = localStorage.getItem('zernio_api_key') || '';
-  const input = document.getElementById('zernio-api-key-input');
+window.initBufferTab = function() {
+  const savedKey = localStorage.getItem('buffer_api_key') || '';
+  const input = document.getElementById('buffer-api-key-input');
   if (input && savedKey) {
     input.value = savedKey;
   }
-  if (typeof populateZernioVideoSources === 'function') {
-    populateZernioVideoSources();
+  if (typeof populateBufferVideoSources === 'function') {
+    populateBufferVideoSources();
   }
   if (savedKey) {
-    testZernioConnection(true);
+    testBufferConnection(true);
   }
 };
 
-window.testZernioConnection = async function(isSilent = false) {
-  const apiKey = getZernioApiKey();
+window.currentBufferChannels = [];
+
+window.testBufferConnection = async function(isSilent = false) {
+  const apiKey = getBufferApiKey();
   if (!apiKey) {
-    if (!isSilent) alert('يرجى إدخال مفتاح Zernio API Key أولاً.');
+    if (!isSilent) alert('يرجى إدخال مفتاح Buffer API Key أولاً.');
     return;
   }
 
-  const statusBox = document.getElementById('zernio-account-status-box');
-  const profilesList = document.getElementById('zernio-profiles-list');
+  const statusBox = document.getElementById('buffer-account-status-box');
+  const channelsList = document.getElementById('buffer-channels-list');
+  const channelSelect = document.getElementById('buffer-channel-select');
+  const modalChannelSelect = document.getElementById('modal-buffer-channel-select');
 
   try {
-    let accountsData = null;
     const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
     
-    // 1. Try via backend accounts endpoint
-    try {
-      const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/zernio/accounts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKey })
-      });
-      if (res.ok) {
-        accountsData = await res.json();
-      }
-    } catch (proxyErr) {
-      console.warn('Backend Zernio accounts proxy failed, attempting direct fetch:', proxyErr);
+    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/channels`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: apiKey })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'فشل الاتصال بـ Buffer API' }));
+      throw new Error(err.detail || err.message || `خطأ (${res.status})`);
     }
 
-    // Direct fallback if proxy unavailable
-    if (!accountsData) {
-      const directRes = await fetch('https://zernio.com/api/v1/accounts', {
-        headers: { 'Authorization': `Bearer ${apiKey}` }
-      });
-      if (directRes.ok) {
-        accountsData = await directRes.json();
-      } else {
-        // Try profiles as fallback
-        const profRes = await fetch('https://zernio.com/api/v1/profiles', {
-          headers: { 'Authorization': `Bearer ${apiKey}` }
-        });
-        if (!profRes.ok) {
-          const errText = await profRes.text();
-          throw new Error(`فشل الاتصال بـ Zernio (${profRes.status}): ${errText}`);
-        }
-        accountsData = await profRes.json();
-      }
-    }
+    const data = await res.json();
+    const channels = data.channels || [];
+    window.currentBufferChannels = channels;
 
-    const accountsList = accountsData.accounts || accountsData.data || accountsData.profiles || (Array.isArray(accountsData) ? accountsData : []);
-    
-    if (accountsList.length > 0) {
-      const firstAcc = accountsList[0];
-      window.currentZernioAccountId = firstAcc._id || firstAcc.id || firstAcc.accountId;
-      if (window.currentZernioAccountId) {
-        localStorage.setItem('zernio_account_id', window.currentZernioAccountId);
-      }
-    }
+    // Populate channel selects
+    [channelSelect, modalChannelSelect].forEach(sel => {
+      if (!sel) return;
+      sel.innerHTML = channels.length === 0 
+        ? '<option value="">-- لم يتم العثور على قنوات متصلة --</option>'
+        : channels.map(ch => `<option value="${ch.id}" ${ch.service === 'tiktok' ? 'selected' : ''}>[${ch.service.toUpperCase()}] ${ch.displayName || ch.name || ch.id}</option>`).join('');
+    });
 
-    if (statusBox && profilesList) {
+    if (statusBox && channelsList) {
       statusBox.style.display = 'block';
-      if (accountsList.length === 0) {
-        profilesList.innerHTML = `
+      if (channels.length === 0) {
+        channelsList.innerHTML = `
           <div style="font-size: 12px; color: #fbbf24;">
-            ⚠️ تم التحقق من المفتاح، ولكن لم يتم العثور على حسابات متصلة. يرجى ربط حسابك التيك توك من لوحة تحكم Zernio.
+            ⚠️ تم التحقق من المفتاح بنجاح، ولكن لم يتم العثور على قنوات متصلة في حسابك على Buffer. يرجى الدخول إلى <a href="https://buffer.com" target="_blank" style="color: #c084fc; text-decoration: underline;">Buffer Channels</a> وربط حسابك (TikTok أو Instagram أو YouTube).
           </div>
         `;
       } else {
-        profilesList.innerHTML = accountsList.map(p => {
-          const accId = p._id || p.id || p.accountId || 'Active';
-          const accName = p.name || p.username || p.displayName || 'حساب TikTok';
-          const platform = (p.platform || 'tiktok').toUpperCase();
+        channelsList.innerHTML = channels.map(ch => {
+          const sName = (ch.service || 'channel').toUpperCase();
+          const dName = ch.displayName || ch.name || 'قناة تواصل';
+          const icon = ch.service === 'tiktok' ? '🎵' : (ch.service === 'instagram' ? '📷' : (ch.service === 'youtube' ? '▶️' : '🌐'));
           return `
             <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 16px;">📱</span>
+                <span style="font-size: 16px;">${icon}</span>
                 <div>
-                  <span style="font-size: 13px; font-weight: 700; color: #fff;">${accName} (${platform})</span>
-                  <span style="display: block; font-size: 10px; color: var(--text-muted); direction: ltr; text-align: right;">ID: ${accId}</span>
+                  <span style="font-size: 13px; font-weight: 700; color: #fff;">${dName} (${sName})</span>
+                  <span style="display: block; font-size: 10px; color: var(--text-muted); direction: ltr; text-align: right;">ID: ${ch.id}</span>
                 </div>
               </div>
               <span style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;">متصل وجاهز</span>
@@ -4959,22 +4941,22 @@ window.testZernioConnection = async function(isSilent = false) {
       }
     }
 
-    saveZernioApiKey(apiKey);
-    loadZernioScheduledPosts();
+    saveBufferApiKey(apiKey);
+    loadBufferScheduledPosts();
 
     if (!isSilent) {
-      alert('🎉 تم الاتصال بـ Zernio بنجاح والحساب جاهز للنشر والجدولة!');
+      alert('🎉 تم الاتصال بـ Buffer بنجاح والحسابات جاهزة للنشر والجدولة بدون أي قيود كوتا!');
     }
   } catch (err) {
-    console.error('Zernio connection test error:', err);
+    console.error('Buffer connection test error:', err);
     if (!isSilent) {
-      alert(`⚠️ خطأ في الاتصال بـ Zernio:\n${err.message}\nتأكد من صحة المفتاح.`);
+      alert(`⚠️ خطأ في الاتصال بـ Buffer:\n${err.message}\nتأكد من صحة الـ API Key في حسابك على Buffer.`);
     }
   }
 };
 
-window.populateZernioVideoSources = function() {
-  const select = document.getElementById('zernio-video-source-select');
+window.populateBufferVideoSources = function() {
+  const select = document.getElementById('buffer-video-source-select');
   if (!select) return;
 
   const entries = (typeof getHistoryEntries === 'function') ? getHistoryEntries() : [];
@@ -4991,14 +4973,14 @@ window.populateZernioVideoSources = function() {
 
   const customOpt = document.createElement('option');
   customOpt.value = 'custom';
-  customOpt.textContent = '🔗 إدخال رابط فيديو مخصص (Direct MP4 URL)';
+  customOpt.textContent = '🔗 إدخال رابط فيديو مباشر (Direct MP4 URL)';
   select.appendChild(customOpt);
 };
 
-window.onZernioVideoSourceChange = function() {
-  const select = document.getElementById('zernio-video-source-select');
-  const customWrapper = document.getElementById('zernio-custom-url-wrapper');
-  const captionInput = document.getElementById('zernio-post-caption');
+window.onBufferVideoSourceChange = function() {
+  const select = document.getElementById('buffer-video-source-select');
+  const customWrapper = document.getElementById('buffer-custom-url-wrapper');
+  const captionInput = document.getElementById('buffer-post-caption');
 
   if (!select) return;
   const val = select.value;
@@ -5014,12 +4996,12 @@ window.onZernioVideoSourceChange = function() {
   }
 };
 
-window.toggleZernioScheduleInput = function(show) {
-  const wrapper = document.getElementById('zernio-datetime-picker-wrapper');
+window.toggleBufferScheduleInput = function(show) {
+  const wrapper = document.getElementById('buffer-datetime-picker-wrapper');
   if (wrapper) {
     wrapper.style.display = show ? 'block' : 'none';
     if (show) {
-      const dtInput = document.getElementById('zernio-schedule-datetime');
+      const dtInput = document.getElementById('buffer-schedule-datetime');
       if (dtInput && !dtInput.value) {
         const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
         dtInput.value = tomorrow.toISOString().slice(0, 16);
@@ -5028,15 +5010,18 @@ window.toggleZernioScheduleInput = function(show) {
   }
 };
 
-window.submitZernioSchedule = async function() {
-  const apiKey = getZernioApiKey();
+window.submitBufferSchedule = async function() {
+  const apiKey = getBufferApiKey();
   if (!apiKey) {
-    alert('يرجى إدخال مفتاح Zernio API Key والتحقق منه أولاً.');
+    alert('يرجى إدخال مفتاح Buffer API Key والتحقق منه أولاً.');
     return;
   }
 
-  const select = document.getElementById('zernio-video-source-select');
-  const customUrlInput = document.getElementById('zernio-custom-video-url');
+  const channelSelect = document.getElementById('buffer-channel-select');
+  const selectedChannelId = channelSelect ? channelSelect.value : null;
+
+  const select = document.getElementById('buffer-video-source-select');
+  const customUrlInput = document.getElementById('buffer-custom-video-url');
   let videoUrl = select ? select.value : '';
 
   if (videoUrl === 'custom') {
@@ -5048,24 +5033,24 @@ window.submitZernioSchedule = async function() {
     return;
   }
 
-  // Format URL if relative
   const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
   if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
     videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
   }
 
-  const caption = (document.getElementById('zernio-post-caption')?.value || '').trim();
+  const caption = (document.getElementById('buffer-post-caption')?.value || '').trim();
   if (!caption) {
     alert('يرجى كتابة نص المنشور (Caption).');
     return;
   }
 
-  const modeRadio = document.querySelector('input[name="zernio-publish-mode"]:checked');
-  const isPublishNow = modeRadio ? (modeRadio.value === 'now') : true;
+  const modeRadio = document.querySelector('input[name="buffer-publish-mode"]:checked');
+  const modeVal = modeRadio ? modeRadio.value : 'now';
+  const isPublishNow = (modeVal === 'now');
   let scheduledForIso = null;
 
-  if (!isPublishNow) {
-    const dtVal = document.getElementById('zernio-schedule-datetime')?.value;
+  if (modeVal === 'schedule') {
+    const dtVal = document.getElementById('buffer-schedule-datetime')?.value;
     if (!dtVal) {
       alert('يرجى تحديد تاريخ ووقت الجدولة.');
       return;
@@ -5078,47 +5063,45 @@ window.submitZernioSchedule = async function() {
     scheduledForIso = chosenDate.toISOString();
   }
 
-  const submitBtn = document.getElementById('zernio-submit-btn');
+  const submitBtn = document.getElementById('buffer-submit-btn');
   const originalText = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳</span> جاري الإرسال والمعالجة عبر Zernio...';
+    submitBtn.innerHTML = '<span>⏳</span> جاري النشر والجدولة عبر Buffer...';
   }
 
   try {
-    const targetAccountId = window.currentZernioAccountId || localStorage.getItem('zernio_account_id') || undefined;
     const postPayload = {
       apiKey: apiKey,
+      channelId: selectedChannelId || undefined,
       videoUrl: videoUrl,
       content: caption,
       publishNow: isPublishNow,
       scheduledFor: scheduledForIso,
-      accountId: targetAccountId,
-      platform: 'tiktok'
+      saveToDraft: false
     };
 
-    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/zernio/schedule-post`, {
+    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/create-post`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(postPayload)
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'حدث خطأ أثناء الاتصال بـ Zernio' }));
-      throw new Error(err.detail || err.message || 'فشلت عملية الجدولة');
+      const err = await res.json().catch(() => ({ detail: 'حدث خطأ أثناء الاتصال بـ Buffer' }));
+      throw new Error(err.detail || err.message || 'فشلت عملية النشر');
     }
 
     const result = await res.json();
-    alert(isPublishNow ? '🎉 تم إرسال الفيديو لـ TikTok بنجاح!' : '🎉 تمت جدولة الفيديو على TikTok بنجاح!');
+    alert(result.message || '🎉 تمت العملية بنجاح عبر Buffer!');
     
-    // Clear caption
-    const captionEl = document.getElementById('zernio-post-caption');
+    const captionEl = document.getElementById('buffer-post-caption');
     if (captionEl) captionEl.value = '';
 
-    loadZernioScheduledPosts();
+    loadBufferScheduledPosts();
   } catch (err) {
-    console.error('Zernio submit error:', err);
-    alert(`❌ خطأ في النشر أو الجدولة:\n${err.message}`);
+    console.error('Buffer submit error:', err);
+    alert(`❌ خطأ في النشر عبر Buffer:\n${err.message}`);
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -5127,55 +5110,55 @@ window.submitZernioSchedule = async function() {
   }
 };
 
-window.loadZernioScheduledPosts = async function() {
-  const apiKey = getZernioApiKey();
+window.loadBufferScheduledPosts = async function() {
+  const apiKey = getBufferApiKey();
   if (!apiKey) return;
 
-  const container = document.getElementById('zernio-posts-list-container');
+  const container = document.getElementById('buffer-posts-list-container');
   if (!container) return;
 
-  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted);">جاري جلب قائمة المنشورات...</div>';
+  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted);">جاري جلب المنشورات المجدولة من Buffer...</div>';
 
   try {
     const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/zernio/posts`, {
+    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/posts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apiKey: apiKey })
     });
 
     if (!res.ok) {
-      throw new Error('فشل جلب المنشورات من Zernio.');
+      throw new Error('فشل جلب المنشورات من Buffer.');
     }
 
     const data = await res.json();
-    const posts = data.posts || (Array.isArray(data) ? data : []);
+    const posts = data.posts || [];
 
     if (posts.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 25px; color: var(--text-muted); font-size: 13px; background: rgba(255,255,255,0.02); border-radius: 12px;">
-          لا توجد منشورات مجدولة حالياً على حسابك.
+          لا توجد منشورات مجدولة حالياً في طابور Buffer الخاص بك.
         </div>
       `;
       return;
     }
 
     container.innerHTML = posts.map(post => {
-      const isPublished = post.isPublished || post.status === 'published' || post.publishedAt;
-      const statusBadge = isPublished
+      const isSent = post.status === 'sent' || post.status === 'published';
+      const statusBadge = isSent
         ? `<span style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">✅ تم النشر</span>`
         : `<span style="background: rgba(139,92,246,0.15); color: #c084fc; border: 1px solid rgba(139,92,246,0.3); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">⏱️ مجدول</span>`;
       
-      const timeDisplay = post.scheduledFor 
-        ? `📅 موعد النشر: ${new Date(post.scheduledFor).toLocaleString('ar-EG')}`
-        : (post.publishedAt ? `✅ نُشر في: ${new Date(post.publishedAt).toLocaleString('ar-EG')}` : '');
+      const timeDisplay = post.dueAt 
+        ? `📅 موعد النشر: ${new Date(post.dueAt).toLocaleString('ar-EG')}`
+        : (post.createdAt ? `📅 أُضيف في: ${new Date(post.createdAt).toLocaleString('ar-EG')}` : '');
 
       return `
         <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div style="display: flex; flex-direction: column; gap: 4px; max-width: 80%;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span>📱</span>
-              <span style="font-size: 13px; font-weight: 700; color: #fff;">${(post.content || '').substring(0, 70)}${(post.content || '').length > 70 ? '...' : ''}</span>
+              <span>🚀</span>
+              <span style="font-size: 13px; font-weight: 700; color: #fff;">${(post.text || '').substring(0, 70)}${(post.text || '').length > 70 ? '...' : ''}</span>
             </div>
             ${timeDisplay ? `<span style="font-size: 11px; color: var(--purple-accent); font-weight: 600;">${timeDisplay}</span>` : ''}
           </div>
@@ -5184,7 +5167,7 @@ window.loadZernioScheduledPosts = async function() {
       `;
     }).join('');
   } catch (e) {
-    console.warn('Error fetching Zernio posts:', e);
+    console.warn('Error fetching Buffer posts:', e);
     container.innerHTML = `
       <div style="text-align: center; padding: 20px; color: #f87171; font-size: 12px;">
         تعذر تحميل المنشورات المجدولة حالياً (${e.message}).
@@ -5193,15 +5176,16 @@ window.loadZernioScheduledPosts = async function() {
   }
 };
 
-// Quick Schedule Modal Helpers
-window.openTikTokScheduleModal = function(videoUrl, title = '', hook = '') {
-  const modal = document.getElementById('tiktok-schedule-modal');
+// 1-Click Buffer Modal Helpers
+window.openBufferScheduleModal = function(videoUrl, title = '', hook = '') {
+  const modal = document.getElementById('buffer-schedule-modal');
   if (!modal) return;
 
-  const urlInput = document.getElementById('modal-tiktok-video-url');
-  const captionInput = document.getElementById('modal-tiktok-caption');
-  const dtInput = document.getElementById('modal-tiktok-datetime');
-  const statusMsg = document.getElementById('modal-tiktok-status-msg');
+  const urlInput = document.getElementById('modal-buffer-video-url');
+  const captionInput = document.getElementById('modal-buffer-caption');
+  const dtInput = document.getElementById('modal-buffer-datetime');
+  const statusMsg = document.getElementById('modal-buffer-status-msg');
+  const chSelect = document.getElementById('modal-buffer-channel-select');
 
   if (urlInput) urlInput.value = videoUrl || '';
   if (captionInput) {
@@ -5216,42 +5200,62 @@ window.openTikTokScheduleModal = function(videoUrl, title = '', hook = '') {
   }
   if (statusMsg) statusMsg.style.display = 'none';
 
+  if (chSelect && window.currentBufferChannels && window.currentBufferChannels.length > 0) {
+    chSelect.innerHTML = window.currentBufferChannels.map(ch => 
+      `<option value="${ch.id}" ${ch.service === 'tiktok' ? 'selected' : ''}>[${ch.service.toUpperCase()}] ${ch.displayName || ch.name || ch.id}</option>`
+    ).join('');
+  } else {
+    testBufferConnection(true);
+  }
+
   modal.style.display = 'flex';
 };
 
-window.closeTikTokScheduleModal = function() {
-  const modal = document.getElementById('tiktok-schedule-modal');
+window.closeBufferScheduleModal = function() {
+  const modal = document.getElementById('buffer-schedule-modal');
   if (modal) modal.style.display = 'none';
 };
 
-window.toggleModalScheduleInput = function(show) {
-  const box = document.getElementById('modal-schedule-datetime-box');
+window.toggleModalBufferScheduleInput = function(show) {
+  const box = document.getElementById('modal-buffer-datetime-box');
   if (box) box.style.display = show ? 'block' : 'none';
 };
 
-window.submitModalTikTokSchedule = async function() {
-  const apiKey = getZernioApiKey();
+window.openCurrentVideoBufferModal = function() {
+  const vid = document.getElementById('main-preview-video');
+  const src = vid ? (vid.currentSrc || vid.src) : '';
+  if (!src) {
+    alert('لا يوجد فيديو معروض حالياً في المعاينة للجدولة.');
+    return;
+  }
+  openBufferScheduleModal(src, 'فيديو شورتس جديد', '');
+};
+
+window.submitModalBufferSchedule = async function() {
+  const apiKey = getBufferApiKey();
   if (!apiKey) {
-    alert('يرجى الانتقال لتابة "جدولة ونشر تيك توك" وتعيين مفتاح Zernio API أولاً.');
+    alert('يرجى الانتقال لتابة "جدولة ونشر (Buffer)" وتعيين مفتاح Buffer API أولاً.');
     return;
   }
 
-  const videoUrl = document.getElementById('modal-tiktok-video-url')?.value;
-  const caption = (document.getElementById('modal-tiktok-caption')?.value || '').trim();
-  const statusMsg = document.getElementById('modal-tiktok-status-msg');
-  const submitBtn = document.getElementById('modal-tiktok-submit-btn');
+  const videoUrl = document.getElementById('modal-buffer-video-url')?.value;
+  const caption = (document.getElementById('modal-buffer-caption')?.value || '').trim();
+  const channelId = document.getElementById('modal-buffer-channel-select')?.value;
+  const statusMsg = document.getElementById('modal-buffer-status-msg');
+  const submitBtn = document.getElementById('modal-buffer-submit-btn');
 
   if (!videoUrl) {
     alert('رابط الفيديو غير متوفر.');
     return;
   }
 
-  const modeRadio = document.querySelector('input[name="modal-zernio-mode"]:checked');
-  const isPublishNow = modeRadio ? (modeRadio.value === 'now') : true;
+  const modeRadio = document.querySelector('input[name="modal-buffer-mode"]:checked');
+  const modeVal = modeRadio ? modeRadio.value : 'now';
+  const isPublishNow = (modeVal === 'now');
   let scheduledForIso = null;
 
-  if (!isPublishNow) {
-    const dtVal = document.getElementById('modal-tiktok-datetime')?.value;
+  if (modeVal === 'schedule') {
+    const dtVal = document.getElementById('modal-buffer-datetime')?.value;
     if (!dtVal) {
       alert('يرجى تحديد تاريخ ووقت الجدولة.');
       return;
@@ -5272,22 +5276,21 @@ window.submitModalTikTokSchedule = async function() {
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ جاري المعالجة...';
+    submitBtn.textContent = '⏳ جاري المعالجة والنشر عبر Buffer...';
   }
 
   try {
-    const targetAccountId = window.currentZernioAccountId || localStorage.getItem('zernio_account_id') || undefined;
     const postPayload = {
       apiKey: apiKey,
+      channelId: channelId || undefined,
       videoUrl: fullVideoUrl,
       content: caption,
       publishNow: isPublishNow,
       scheduledFor: scheduledForIso,
-      accountId: targetAccountId,
-      platform: 'tiktok'
+      saveToDraft: false
     };
 
-    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/zernio/schedule-post`, {
+    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/create-post`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(postPayload)
@@ -5295,20 +5298,22 @@ window.submitModalTikTokSchedule = async function() {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'حدث خطأ في طلب الجدولة' }));
-      throw new Error(err.detail || err.message || 'فشلت عملية النشر');
+      throw new Error(err.detail || err.message || 'فشلت عملية النشر عبر Buffer');
     }
+
+    const result = await res.json();
 
     if (statusMsg) {
       statusMsg.style.display = 'block';
       statusMsg.style.background = 'rgba(16,185,129,0.15)';
       statusMsg.style.color = '#10b981';
       statusMsg.style.border = '1px solid #10b981';
-      statusMsg.textContent = isPublishNow ? '✅ تم إرسال الفيديو لـ TikTok بنجاح!' : '✅ تمت جدولة الفيديو على TikTok بنجاح!';
+      statusMsg.textContent = result.message || '✅ تم الإرسال بنجاح عبر Buffer!';
     }
 
     setTimeout(() => {
-      closeTikTokScheduleModal();
-    }, 1800);
+      closeBufferScheduleModal();
+    }, 2200);
 
   } catch (err) {
     if (statusMsg) {
@@ -5321,7 +5326,8 @@ window.submitModalTikTokSchedule = async function() {
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = '🚀 تأكيد الإرسال';
+      submitBtn.textContent = '🚀 تأكيد الإرسال عبر Buffer';
     }
   }
 };
+
