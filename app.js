@@ -189,9 +189,9 @@ const progressMsg = document.getElementById('progress-msg');
 const errorMsg = document.getElementById('error-msg');
 const outputVideo = document.getElementById('output-video');
 const downloadLink = document.getElementById('download-link');
-let apiUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin.includes('railway.app') || window.location.origin.includes('hf.space')
+let apiUrl = window.location.origin.includes('hf.space')
   ? window.location.origin
-  : 'https://rekaption2-production.up.railway.app';
+  : 'https://backenf-production.up.railway.app';
 let audioApiUrl = 'https://youtube-audio-backend-production-a2d5.up.railway.app';
 const apiUrlInput = document.getElementById('api-url');
 if (apiUrlInput) {
@@ -4965,10 +4965,7 @@ window.populateBufferVideoSources = function() {
   
   entries.forEach((item, idx) => {
     const opt = document.createElement('option');
-    let sUrl = item.serverUrl || '';
-    if (sUrl.includes('backenf-production.up.railway.app')) {
-      sUrl = sUrl.replace('backenf-production.up.railway.app', 'rekaption2-production.up.railway.app');
-    }
+    const sUrl = item.serverUrl || '';
     opt.value = sUrl || item.videoUrl || item.id;
     opt.dataset.id = item.id;
     opt.dataset.serverUrl = sUrl;
@@ -5042,11 +5039,6 @@ window.submitBufferSchedule = async function() {
   }
 
   const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-
-  // Fix domain typos if any
-  if (videoUrl.includes('backenf-production.up.railway.app')) {
-    videoUrl = videoUrl.replace('backenf-production.up.railway.app', 'rekaption2-production.up.railway.app');
-  }
 
   const submitBtn = document.getElementById('buffer-submit-btn');
   const originalText = submitBtn ? submitBtn.innerHTML : '';
@@ -5318,10 +5310,6 @@ window.submitModalBufferSchedule = async function() {
   }
 
   const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-  
-  if (videoUrl.includes('backenf-production.up.railway.app')) {
-    videoUrl = videoUrl.replace('backenf-production.up.railway.app', 'rekaption2-production.up.railway.app');
-  }
 
   if (submitBtn) {
     submitBtn.disabled = true;
