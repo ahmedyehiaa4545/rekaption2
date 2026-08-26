@@ -189,9 +189,9 @@ const progressMsg = document.getElementById('progress-msg');
 const errorMsg = document.getElementById('error-msg');
 const outputVideo = document.getElementById('output-video');
 const downloadLink = document.getElementById('download-link');
-let apiUrl = window.location.origin.includes('hf.space')
+let apiUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin.includes('railway.app') || window.location.origin.includes('hf.space')
   ? window.location.origin
-  : 'https://backenf-production.up.railway.app';
+  : 'https://rekaption2-production.up.railway.app';
 let audioApiUrl = 'https://youtube-audio-backend-production-a2d5.up.railway.app';
 const apiUrlInput = document.getElementById('api-url');
 if (apiUrlInput) {
@@ -3817,7 +3817,7 @@ window.renderHistoryModal = async function() {
         <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
           <span>📥</span> تنزيل
         </a>
-        <button type="button" onclick="openBufferScheduleModal('${activeUrl}', '${item.title.replace(/'/g, "\\'")}', '')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="جدولة ونشر المقطع عبر Buffer">
+        <button type="button" onclick="openBufferScheduleModal('${activeUrl}', '${item.title.replace(/'/g, "\\'")}', '', '${item.id}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="جدولة ونشر المقطع عبر Buffer">
           <span>📅</span> Buffer
         </button>
         <button type="button" onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
@@ -4965,7 +4965,14 @@ window.populateBufferVideoSources = function() {
   
   entries.forEach((item, idx) => {
     const opt = document.createElement('option');
-    opt.value = item.serverUrl || item.videoUrl || item.id;
+    let sUrl = item.serverUrl || '';
+    if (sUrl.includes('backenf-production.up.railway.app')) {
+      sUrl = sUrl.replace('backenf-production.up.railway.app', 'rekaption2-production.up.railway.app');
+    }
+    opt.value = sUrl || item.videoUrl || item.id;
+    opt.dataset.id = item.id;
+    opt.dataset.serverUrl = sUrl;
+    opt.dataset.videoUrl = item.videoUrl || '';
     opt.textContent = `🎬 [${idx + 1}] ${item.title}`;
     opt.dataset.title = item.title;
     select.appendChild(opt);
@@ -5023,6 +5030,7 @@ window.submitBufferSchedule = async function() {
   const select = document.getElementById('buffer-video-source-select');
   const customUrlInput = document.getElementById('buffer-custom-video-url');
   let videoUrl = select ? select.value : '';
+  const selectedOpt = select ? select.options[select.selectedIndex] : null;
 
   if (videoUrl === 'custom') {
     videoUrl = customUrlInput ? customUrlInput.value.trim() : '';
@@ -5034,43 +5042,81 @@ window.submitBufferSchedule = async function() {
   }
 
   const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-  if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
-    videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
-  }
 
-  const caption = (document.getElementById('buffer-post-caption')?.value || '').trim();
-  if (!caption) {
-    alert('يرجى كتابة نص المنشور (Caption).');
-    return;
-  }
-
-  const modeRadio = document.querySelector('input[name="buffer-publish-mode"]:checked');
-  const modeVal = modeRadio ? modeRadio.value : 'now';
-  const isPublishNow = (modeVal === 'now');
-  let scheduledForIso = null;
-
-  if (modeVal === 'schedule') {
-    const dtVal = document.getElementById('buffer-schedule-datetime')?.value;
-    if (!dtVal) {
-      alert('يرجى تحديد تاريخ ووقت الجدولة.');
-      return;
-    }
-    const chosenDate = new Date(dtVal);
-    if (isNaN(chosenDate.getTime()) || chosenDate.getTime() <= Date.now()) {
-      alert('تاريخ الجدولة يجب أن يكون في المستقبل.');
-      return;
-    }
-    scheduledForIso = chosenDate.toISOString();
+  // Fix domain typos if any
+  if (videoUrl.includes('backenf-production.up.railway.app')) {
+    videoUrl = videoUrl.replace('backenf-production.up.railway.app', 'rekaption2-production.up.railway.app');
   }
 
   const submitBtn = document.getElementById('buffer-submit-btn');
   const originalText = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳</span> جاري النشر والجدولة عبر Buffer...';
+    submitBtn.innerHTML = '<span>⏳</span> جاري معالجة وتجهيز الفيديو لـ Buffer...';
   }
 
   try {
+    // Check if we should upload the blob from IndexedDB for 100% reliability
+    const historyId = selectedOpt ? selectedOpt.dataset.id : null;
+    let localBlob = null;
+    if (historyId && typeof getVideoBlobFromIDB === 'function') {
+      try {
+        localBlob = await getVideoBlobFromIDB(historyId);
+      } catch (e) {
+        console.warn('IDB fetch blob error:', e);
+      }
+    }
+    if (!localBlob && videoUrl.startsWith('blob:')) {
+      try {
+        localBlob = await fetch(videoUrl).then(r => r.blob());
+      } catch (e) {
+        console.warn('Blob fetch error:', e);
+      }
+    }
+
+    if (localBlob && (videoUrl.startsWith('blob:') || !videoUrl.startsWith('http') || videoUrl.includes('localhost') || videoUrl.includes('127.0.0.1'))) {
+      if (submitBtn) submitBtn.innerHTML = '<span>📤</span> جاري رفع الفيديو للسيرفر لتجهيز الرابط لـ Buffer...';
+      const fd = new FormData();
+      fd.append('file', localBlob, 'buffer_post.mp4');
+      const upRes = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
+        method: 'POST',
+        body: fd
+      });
+      if (upRes.ok) {
+        const upData = await upRes.json();
+        if (upData.videoUrl) {
+          videoUrl = upData.videoUrl;
+          console.log('✅ Fresh public video URL created for Buffer:', videoUrl);
+        }
+      }
+    } else if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
+      videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
+    }
+
+    const caption = (document.getElementById('buffer-post-caption')?.value || '').trim();
+    if (!caption) {
+      throw new Error('يرجى كتابة نص المنشور (Caption).');
+    }
+
+    const modeRadio = document.querySelector('input[name="buffer-publish-mode"]:checked');
+    const modeVal = modeRadio ? modeRadio.value : 'now';
+    const isPublishNow = (modeVal === 'now');
+    let scheduledForIso = null;
+
+    if (modeVal === 'schedule') {
+      const dtVal = document.getElementById('buffer-schedule-datetime')?.value;
+      if (!dtVal) {
+        throw new Error('يرجى تحديد تاريخ ووقت الجدولة.');
+      }
+      const chosenDate = new Date(dtVal);
+      if (isNaN(chosenDate.getTime()) || chosenDate.getTime() <= Date.now()) {
+        throw new Error('تاريخ الجدولة يجب أن يكون في المستقبل.');
+      }
+      scheduledForIso = chosenDate.toISOString();
+    }
+
+    if (submitBtn) submitBtn.innerHTML = '<span>⏳</span> جاري إرسال المنشور إلى Buffer...';
+
     const postPayload = {
       apiKey: apiKey,
       channelId: selectedChannelId || undefined,
@@ -5177,10 +5223,11 @@ window.loadBufferScheduledPosts = async function() {
 };
 
 // 1-Click Buffer Modal Helpers
-window.openBufferScheduleModal = function(videoUrl, title = '', hook = '') {
+window.openBufferScheduleModal = function(videoUrl, title = '', hook = '', historyId = '') {
   const modal = document.getElementById('buffer-schedule-modal');
   if (!modal) return;
 
+  modal.dataset.historyId = historyId || '';
   const urlInput = document.getElementById('modal-buffer-video-url');
   const captionInput = document.getElementById('modal-buffer-caption');
   const dtInput = document.getElementById('modal-buffer-datetime');
@@ -5238,7 +5285,9 @@ window.submitModalBufferSchedule = async function() {
     return;
   }
 
-  const videoUrl = document.getElementById('modal-buffer-video-url')?.value;
+  const modal = document.getElementById('buffer-schedule-modal');
+  const historyId = modal?.dataset?.historyId || '';
+  let videoUrl = document.getElementById('modal-buffer-video-url')?.value;
   const caption = (document.getElementById('modal-buffer-caption')?.value || '').trim();
   const channelId = document.getElementById('modal-buffer-channel-select')?.value;
   const statusMsg = document.getElementById('modal-buffer-status-msg');
@@ -5268,22 +5317,58 @@ window.submitModalBufferSchedule = async function() {
     scheduledForIso = chosenDate.toISOString();
   }
 
-  let fullVideoUrl = videoUrl;
   const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-  if (fullVideoUrl && !fullVideoUrl.startsWith('http') && !fullVideoUrl.startsWith('blob:')) {
-    fullVideoUrl = `${baseBackend.replace(/\/$/, '')}/${fullVideoUrl.replace(/^\//, '')}`;
+  
+  if (videoUrl.includes('backenf-production.up.railway.app')) {
+    videoUrl = videoUrl.replace('backenf-production.up.railway.app', 'rekaption2-production.up.railway.app');
   }
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ جاري المعالجة والنشر عبر Buffer...';
+    submitBtn.textContent = '⏳ جاري تجهيز الفيديو لـ Buffer...';
   }
 
   try {
+    let localBlob = null;
+    if (historyId && typeof getVideoBlobFromIDB === 'function') {
+      try {
+        localBlob = await getVideoBlobFromIDB(historyId);
+      } catch (e) {
+        console.warn('IDB fetch blob error:', e);
+      }
+    }
+    if (!localBlob && videoUrl.startsWith('blob:')) {
+      try {
+        localBlob = await fetch(videoUrl).then(r => r.blob());
+      } catch (e) {
+        console.warn('Blob fetch error:', e);
+      }
+    }
+
+    if (localBlob && (videoUrl.startsWith('blob:') || !videoUrl.startsWith('http') || videoUrl.includes('localhost') || videoUrl.includes('127.0.0.1'))) {
+      if (submitBtn) submitBtn.textContent = '📤 جاري رفع الفيديو للسيرفر لـ Buffer...';
+      const fd = new FormData();
+      fd.append('file', localBlob, 'buffer_modal_post.mp4');
+      const upRes = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
+        method: 'POST',
+        body: fd
+      });
+      if (upRes.ok) {
+        const upData = await upRes.json();
+        if (upData.videoUrl) {
+          videoUrl = upData.videoUrl;
+        }
+      }
+    } else if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
+      videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
+    }
+
+    if (submitBtn) submitBtn.textContent = '⏳ جاري إرسال المنشور إلى Buffer...';
+
     const postPayload = {
       apiKey: apiKey,
       channelId: channelId || undefined,
-      videoUrl: fullVideoUrl,
+      videoUrl: videoUrl,
       content: caption,
       publishNow: isPublishNow,
       scheduledFor: scheduledForIso,
