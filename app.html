@@ -126,6 +126,9 @@
         <span>📁</span> أرشيف الفيديوهات (48h)
         <span id="history-badge" style="background: #8b5cf6; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 20px;">0</span>
       </button>
+      <button type="button" id="main-nav-schedule" class="nav-tab" onclick="switchMainTab('schedule')" style="padding: 10px 20px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+        <span>📅</span> جدولة ونشر تيك توك
+      </button>
     </div>
 
     <!-- Main Dashboard Grid -->
@@ -781,6 +784,114 @@
       </div>
     </div>
 
+    <!-- TIKTOK SCHEDULER & ZERNIO DASHBOARD PANEL -->
+    <div id="schedule-tiktok-panel" class="panel hidden" style="margin-top: 10px; direction: rtl; text-align: right;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h2 class="panel-title" style="margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+            <span>📅</span> جدولة ونشر المقاطع على TikTok (Zernio API)
+          </h2>
+          <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
+            انشر أو جدول مقاطع الشورتس الجاهزة تلقائياً على حسابك في TikTok بضغطة زر وبدون مراجعات معقدة.
+          </p>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <!-- Left: Zernio API Configuration -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 15px;">
+          <h3 style="font-size: 15px; color: var(--purple-accent); margin: 0; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+            <span>🔑</span> مفتاح وحساب Zernio API
+          </h3>
+          
+          <div style="background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.25); border-radius: 12px; padding: 14px;">
+            <label for="zernio-api-key-input" style="display: block; font-size: 12px; color: #c084fc; margin-bottom: 8px; font-weight: 700;">
+              مفتاح Zernio API Key:
+            </label>
+            <div style="display: flex; gap: 8px;">
+              <input type="password" id="zernio-api-key-input" placeholder="أدخل مفتاح Zernio الخاص بك..." style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(139,92,246,0.4); background: rgba(15,23,42,0.8); color: #fff; font-size: 12px; font-family: monospace; outline: none; box-sizing: border-box; text-align: left; direction: ltr;" onchange="saveZernioApiKey(this.value)" />
+              <button type="button" onclick="testZernioConnection()" class="btn-primary" style="padding: 9px 14px; font-size: 12px; font-weight: bold; white-space: nowrap;">
+                <span>🔄</span> تحقق والربط
+              </button>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 6px;">
+              يتم حفظ المفتاح بأمان في متصفحك. احصل عليه من حسابك في <a href="https://zernio.com" target="_blank" style="color: #c084fc; text-decoration: underline;">Zernio Dashboard</a>.
+            </span>
+          </div>
+
+          <!-- Connected Account Status Card -->
+          <div id="zernio-account-status-box" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px; display: none;">
+            <div style="font-size: 12px; color: #fff; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span style="color: #10b981;">●</span> الحسابات المتصلة بـ Zernio:
+            </div>
+            <div id="zernio-profiles-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+        </div>
+
+        <!-- Right: Create / Schedule Post directly -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 15px;">
+          <h3 style="font-size: 15px; color: #fff; margin: 0; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+            <span>📤</span> إنشاء وجدولة منشور جديد
+          </h3>
+
+          <div>
+            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">اختر الفيديو المراد نشره:</label>
+            <select id="zernio-video-source-select" onchange="onZernioVideoSourceChange()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; font-family: Cairo, sans-serif;">
+              <option value="">-- اختر من الفيديوهات الجاهزة في الأرشيف --</option>
+            </select>
+          </div>
+
+          <div id="zernio-custom-url-wrapper" style="display: none;">
+            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">أو رابط الفيديو المباشر (MP4 URL):</label>
+            <input type="text" id="zernio-custom-video-url" placeholder="https://..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; direction: ltr; text-align: left;" />
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">نص المنشور والهاشتاجات (Caption):</label>
+            <textarea id="zernio-post-caption" placeholder="اكتب عنواناً جذاباً والهاشتاجات (مثال: قصة لا تصدق! #fyp #shorts #viral)..." style="width: 100%; height: 80px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; resize: none; font-family: Cairo, sans-serif; box-sizing: border-box;"></textarea>
+          </div>
+
+          <!-- Schedule Options -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 10px 14px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; color: #fff;">
+              <input type="radio" name="zernio-publish-mode" value="now" checked onchange="toggleZernioScheduleInput(false)" style="accent-color: #ec4899;" />
+              <span>⚡ نشر فوري الآن</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 10px 14px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; color: #fff;">
+              <input type="radio" name="zernio-publish-mode" value="schedule" onchange="toggleZernioScheduleInput(true)" style="accent-color: #8b5cf6;" />
+              <span>📅 جدولة لموعد لاحق</span>
+            </label>
+          </div>
+
+          <div id="zernio-datetime-picker-wrapper" style="display: none;">
+            <label style="display: block; font-size: 12px; color: #c084fc; margin-bottom: 6px; font-weight: 700;">تاريخ ووقت النشر (بتوقيت جهازك):</label>
+            <input type="datetime-local" id="zernio-schedule-datetime" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(139,92,246,0.4); background: rgba(0,0,0,0.4); color: #fff; font-size: 13px; font-family: Cairo, sans-serif; box-sizing: border-box; color-scheme: dark;" />
+          </div>
+
+          <button type="button" id="zernio-submit-btn" onclick="submitZernioSchedule()" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px; font-weight: 800; background: linear-gradient(135deg, #8b5cf6, #ec4899); border: none; box-shadow: 0 4px 15px rgba(139,92,246,0.35);">
+            <span>🚀</span> إرسال ونشر على TikTok
+          </button>
+        </div>
+      </div>
+
+      <!-- Scheduled Queue View -->
+      <div style="margin-top: 25px; border-top: 1px solid var(--border-subtle); padding-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="font-size: 15px; color: #fff; margin: 0; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+            <span>📋</span> قائمة الفيديوهات المجدولة والمنشورة عبر Zernio
+          </h3>
+          <button type="button" onclick="loadZernioScheduledPosts()" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;">
+            <span>🔄</span> تحديث القائمة
+          </button>
+        </div>
+        <div id="zernio-posts-list-container" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px; background: rgba(255,255,255,0.02); border-radius: 12px;">
+            اضغط على "تحقق والربط" لعرض المنشورات المجدولة.
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="editor-state" class="panel hidden" style="margin-top: 10px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px;">
         <h2 class="panel-title" style="margin-bottom: 0;">محرر النصوص والتفريغ التفاعلي ✏️</h2>
@@ -1431,12 +1542,55 @@
         <div style="background: rgba(255,255,255,0.08); height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 12px;">
           <div id="batch-modal-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.3s ease;"></div>
         </div>
-        <p id="batch-modal-status-desc" style="font-size: 12px; color: rgba(255,255,255,0.7); margin: 0; line-height: 1.5;">جارٍ قص المقطع وتحليله بالذكاء الاصطناعي وتجهيز الكابشن...</p>
+    <!-- ====== Modal: جدولة ونشر تيك توك بنقرة واحدة ====== -->
+    <div id="tiktok-schedule-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:11000; justify-content:center; align-items:center; padding:20px; direction:rtl; font-family:Cairo,sans-serif;">
+      <div style="background:#0e0c1b; border:1px solid rgba(139,92,246,0.4); border-radius:20px; width:100%; max-width:500px; padding:26px; box-shadow:0 20px 50px rgba(0,0,0,0.7); color:#fff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
+          <h3 style="margin:0; font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px;">
+            <span>📱</span> جدولة ونشر المقطع على TikTok
+          </h3>
+          <button type="button" onclick="closeTikTokScheduleModal()" style="background:transparent; border:none; color:rgba(255,255,255,0.5); font-size:18px; cursor:pointer;">✕</button>
+        </div>
+
+        <input type="hidden" id="modal-tiktok-video-url" />
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div>
+            <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; font-weight:700;">العنوان والكابشن (مع الهاشتاجات):</label>
+            <textarea id="modal-tiktok-caption" placeholder="اكتب عنواناً ووصفاً جذاباً..." style="width:100%; height:80px; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.3); color:#fff; font-size:13px; resize:none; font-family:inherit; box-sizing:border-box;"></textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700;">
+              <input type="radio" name="modal-zernio-mode" value="now" checked onchange="toggleModalScheduleInput(false)" style="accent-color: #ec4899;" />
+              <span>⚡ نشر فوري الآن</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700;">
+              <input type="radio" name="modal-zernio-mode" value="schedule" onchange="toggleModalScheduleInput(true)" style="accent-color: #8b5cf6;" />
+              <span>📅 تحديد موعد</span>
+            </label>
+          </div>
+
+          <div id="modal-schedule-datetime-box" style="display:none;">
+            <label style="display:block; font-size:11px; color:#c084fc; margin-bottom:4px; font-weight:700;">موعد النشر المجدول (بتوقيت جهازك):</label>
+            <input type="datetime-local" id="modal-tiktok-datetime" style="width:100%; padding:9px; border-radius:8px; border:1px solid rgba(139,92,246,0.4); background:rgba(0,0,0,0.4); color:#fff; font-size:12px; box-sizing:border-box; color-scheme:dark;" />
+          </div>
+
+          <div id="modal-tiktok-status-msg" style="display:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;"></div>
+
+          <div style="display:flex; gap:10px; margin-top:8px;">
+            <button type="button" id="modal-tiktok-submit-btn" onclick="submitModalTikTokSchedule()" style="flex:1; background:linear-gradient(135deg,#8b5cf6,#ec4899); color:#fff; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(139,92,246,0.35);">
+              🚀 تأكيد الإرسال
+            </button>
+            <button type="button" onclick="closeTikTokScheduleModal()" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:12px 18px; font-size:13px; cursor:pointer; font-family:inherit;">
+              إلغاء
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-
   </div>
-  <script src="app.js?v=2.1"></script>
+  <script src="app.js?v=2.2"></script>
 </body>
 </html>
