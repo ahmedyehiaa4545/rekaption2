@@ -5066,11 +5066,12 @@ window.submitBufferSchedule = async function() {
       }
     }
 
-    if (localBlob && (videoUrl.startsWith('blob:') || !videoUrl.startsWith('http') || videoUrl.includes('localhost') || videoUrl.includes('127.0.0.1'))) {
+    if (localBlob) {
       if (submitBtn) submitBtn.innerHTML = '<span>📤</span> جاري رفع الفيديو للسيرفر لتجهيز الرابط لـ Buffer...';
       const fd = new FormData();
       fd.append('file', localBlob, 'buffer_post.mp4');
-      const upRes = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
+      const upBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : baseBackend;
+      const upRes = await fetch(`${upBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
         method: 'POST',
         body: fd
       });
@@ -5333,11 +5334,12 @@ window.submitModalBufferSchedule = async function() {
       }
     }
 
-    if (localBlob && (videoUrl.startsWith('blob:') || !videoUrl.startsWith('http') || videoUrl.includes('localhost') || videoUrl.includes('127.0.0.1'))) {
+    if (localBlob) {
       if (submitBtn) submitBtn.textContent = '📤 جاري رفع الفيديو للسيرفر لـ Buffer...';
       const fd = new FormData();
       fd.append('file', localBlob, 'buffer_modal_post.mp4');
-      const upRes = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
+      const upBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : baseBackend;
+      const upRes = await fetch(`${upBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
         method: 'POST',
         body: fd
       });
