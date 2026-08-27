@@ -2489,6 +2489,10 @@ window.startAudioDownloadOnly = async function() {
       transcriptionContainer.style.display = 'flex';
       transcriptionText.value = resData.transcription;
 
+      if (resData.videoTitle) {
+        window.currentSourceVideoTitle = resData.videoTitle;
+      }
+
       // Update Client Cache
       lastGeminiYtUrl = youtubeUrl;
       lastGeminiTranscription = resData.transcription;
@@ -2587,7 +2591,8 @@ window.fetchShortsSuggestions = async function() {
           openrouterModel: openrouterModel,
           customPrompt: customPrompt,
           titleStyle: titleStyle,
-          numShorts: numShorts
+          numShorts: numShorts,
+          sourceTitle: window.currentSourceVideoTitle || ''
         })
       });
     } catch (e) {
@@ -2640,7 +2645,8 @@ window.fetchShortsSuggestions = async function() {
           openrouterModel: openrouterModel,
           customPrompt: customPrompt,
           titleStyle: titleStyle,
-          numShorts: numShorts
+          numShorts: numShorts,
+          sourceTitle: window.currentSourceVideoTitle || ''
         })
       });
 
@@ -2666,7 +2672,9 @@ window.fetchShortsSuggestions = async function() {
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
       shortsList.forEach((short, idx) => {
-        const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
+        const pureTitle = (typeof window.cleanPureTitle === 'function') ? window.cleanPureTitle(short.title) : short.title;
+        short.title = pureTitle;
+        const copyText = `عنوان المقطع: ${pureTitle}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         
         cardsHtml += `
@@ -3500,7 +3508,9 @@ window.processBatchCaption = async function() {
       if (typeof window.saveHistoryEntry === 'function') {
         try {
           await window.saveHistoryEntry({
-            title: `🎬 ${short.title} (${short.start_time} - ${short.end_time})`,
+            title: window.cleanPureTitle ? window.cleanPureTitle(short.title) : short.title,
+            summary: short.summary || short.hook || '',
+            sourceTitle: window.currentSourceVideoTitle || '',
             videoUrl: finalUrl,
             serverUrl: `${apiUrl.replace(/\/$/, '')}/${renderTaskStatus.videoUrl}`,
             blob: finalVideoBlob,
@@ -3680,9 +3690,12 @@ window.saveHistoryEntry = async function(entry) {
   try {
     let entries = getHistoryEntries();
     const now = Date.now();
+    const pure = (typeof window.cleanPureTitle === 'function') ? window.cleanPureTitle(entry.title) : entry.title;
     const newEntry = {
       id: id,
-      title: entry.title || 'فيديو كابشن مجهز',
+      title: pure || entry.title || 'فيديو كابشن مجهز',
+      summary: entry.summary || '',
+      sourceTitle: entry.sourceTitle || window.currentSourceVideoTitle || '',
       serverUrl: serverUrl,
       videoUrl: entry.videoUrl || '',
       timestamp: now,
@@ -3817,7 +3830,7 @@ window.renderHistoryModal = async function() {
         <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
           <span>📥</span> تنزيل
         </a>
-        <button type="button" onclick="openBufferScheduleModal('${activeUrl}', '${item.title.replace(/'/g, "\\'")}', '', '${item.id}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="جدولة ونشر المقطع عبر Buffer">
+        <button type="button" onclick="openBufferScheduleModal('${activeUrl}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.id}', '${(item.sourceTitle || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="جدولة ونشر المقطع عبر Buffer">
           <span>📅</span> Buffer
         </button>
         <button type="button" onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
@@ -4960,6 +4973,40 @@ window.testBufferConnection = async function(isSilent = false) {
   }
 };
 
+window.cleanPureTitle = function(title) {
+  if (!title) return '';
+  let t = title.toString()
+    .replace(/^[🎬🎥✂️\s]+/, '')
+    .replace(/^\[\d+\]\s*/, '')
+    .replace(/^[🎬🎥✂️\s]+/, '')
+    .replace(/^مقطع\s*#?\d+[:\s-]*/i, '')
+    .replace(/^Shorts?\s*#?\d+[:\s-]*/i, '')
+    .replace(/\s*\(\d{1,2}:\d{2}.*?\)$/, '')
+    .trim();
+  return t;
+};
+
+window.buildTikTokCaption = function(title, summary, sourceTitle) {
+  const pureTitle = window.cleanPureTitle(title);
+  let parts = [];
+  if (pureTitle) {
+    parts.push(pureTitle);
+  }
+  
+  if (summary && summary.trim()) {
+    parts.push(summary.trim());
+  }
+  
+  parts.push('#shorts #fyp #viral #اكسبلور #تيك_توك');
+  
+  const epTitle = sourceTitle || window.currentSourceVideoTitle || '';
+  if (epTitle && epTitle.trim()) {
+    parts.push(`من حلقة: ${epTitle.trim()}`);
+  }
+  
+  return parts.join('\n\n');
+};
+
 window.populateBufferVideoSources = function() {
   const select = document.getElementById('buffer-video-source-select');
   if (!select) return;
@@ -4975,8 +5022,11 @@ window.populateBufferVideoSources = function() {
     opt.dataset.id = item.id;
     opt.dataset.serverUrl = sUrl;
     opt.dataset.videoUrl = item.videoUrl || '';
-    opt.textContent = `🎬 [${idx + 1}] ${item.title}`;
-    opt.dataset.title = item.title;
+    const pure = window.cleanPureTitle(item.title);
+    opt.textContent = `🎬 [${idx + 1}] ${pure || item.title}`;
+    opt.dataset.title = pure || item.title;
+    opt.dataset.summary = item.summary || '';
+    opt.dataset.sourceTitle = item.sourceTitle || '';
     select.appendChild(opt);
   });
 
@@ -4999,8 +5049,8 @@ window.onBufferVideoSourceChange = function() {
   } else {
     if (customWrapper) customWrapper.style.display = 'none';
     const selectedOpt = select.options[select.selectedIndex];
-    if (selectedOpt && selectedOpt.dataset.title && captionInput && !captionInput.value) {
-      captionInput.value = `${selectedOpt.dataset.title}\n\n#shorts #fyp #viral #rekaption`;
+    if (selectedOpt && selectedOpt.dataset.title && captionInput) {
+      captionInput.value = window.buildTikTokCaption(selectedOpt.dataset.title, selectedOpt.dataset.summary, selectedOpt.dataset.sourceTitle);
     }
   }
 };
@@ -5250,7 +5300,7 @@ window.loadBufferScheduledPosts = async function() {
 };
 
 // 1-Click Buffer Modal Helpers
-window.openBufferScheduleModal = function(videoUrl, title = '', hook = '', historyId = '') {
+window.openBufferScheduleModal = function(videoUrl, title = '', summary = '', historyId = '', sourceTitle = '') {
   const modal = document.getElementById('buffer-schedule-modal');
   if (!modal) return;
 
@@ -5263,10 +5313,7 @@ window.openBufferScheduleModal = function(videoUrl, title = '', hook = '', histo
 
   if (urlInput) urlInput.value = videoUrl || '';
   if (captionInput) {
-    let cap = title ? `${title}` : '';
-    if (hook) cap += `\n${hook}`;
-    cap += '\n\n#shorts #fyp #viral #rekaption';
-    captionInput.value = cap;
+    captionInput.value = window.buildTikTokCaption(title, summary, sourceTitle);
   }
   if (dtInput) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
