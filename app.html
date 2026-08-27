@@ -819,6 +819,20 @@
             </span>
           </div>
 
+          <!-- Cloudinary CDN Option (Guarantees 100% Buffer acceptance) -->
+          <div style="background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.25); border-radius: 12px; padding: 12px; margin-top: -5px;">
+            <label style="display: block; font-size: 12px; color: #60a5fa; margin-bottom: 6px; font-weight: 700;">
+              ☁️ سحابة Cloudinary المباشرة (اختياري لتسريع وسحب الفيديو بنسبة 100%):
+            </label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <input type="text" id="cloudinary-cloud-name" placeholder="Cloud Name (مثال: mycloud)" style="padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(59,130,246,0.4); background: rgba(15,23,42,0.8); color: #fff; font-size: 12px; direction: ltr; font-family: monospace;" onchange="localStorage.setItem('cld_name', this.value.trim())" />
+              <input type="text" id="cloudinary-upload-preset" placeholder="Upload Preset (Unsigned)" style="padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(59,130,246,0.4); background: rgba(15,23,42,0.8); color: #fff; font-size: 12px; direction: ltr; font-family: monospace;" onchange="localStorage.setItem('cld_preset', this.value.trim())" />
+            </div>
+            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">
+              حساب Cloudinary مجاني 100% (25GB). إذا تم إدخالهما سيتم رفع الفيديو فوراً لـ Cloudinary وضمان قراءته من تيك توك.
+            </span>
+          </div>
+
           <!-- Connected Channels Status Card -->
           <div id="buffer-account-status-box" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px; display: none;">
             <div style="font-size: 12px; color: #fff; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">

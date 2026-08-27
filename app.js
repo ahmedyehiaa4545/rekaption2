@@ -4864,6 +4864,11 @@ window.initBufferTab = function() {
   if (input && savedKey) {
     input.value = savedKey;
   }
+  const cldNameInput = document.getElementById('cloudinary-cloud-name');
+  if (cldNameInput) cldNameInput.value = localStorage.getItem('cld_name') || '';
+  const cldPresetInput = document.getElementById('cloudinary-upload-preset');
+  if (cldPresetInput) cldPresetInput.value = localStorage.getItem('cld_preset') || '';
+
   if (typeof populateBufferVideoSources === 'function') {
     populateBufferVideoSources();
   }
@@ -5066,7 +5071,32 @@ window.submitBufferSchedule = async function() {
       }
     }
 
-    if (localBlob) {
+    const cldName = (localStorage.getItem('cld_name') || document.getElementById('cloudinary-cloud-name')?.value || '').trim();
+    const cldPreset = (localStorage.getItem('cld_preset') || document.getElementById('cloudinary-upload-preset')?.value || '').trim();
+
+    if (localBlob && cldName && cldPreset) {
+      if (submitBtn) submitBtn.innerHTML = '<span>☁️</span> جاري رفع الفيديو لسحابة Cloudinary...';
+      try {
+        const cldFd = new FormData();
+        cldFd.append('file', localBlob);
+        cldFd.append('upload_preset', cldPreset);
+        const cldRes = await fetch(`https://api.cloudinary.com/v1_1/${cldName}/video/upload`, {
+          method: 'POST',
+          body: cldFd
+        });
+        if (cldRes.ok) {
+          const cldData = await cldRes.json();
+          if (cldData.secure_url) {
+            videoUrl = cldData.secure_url;
+            console.log('🌟 Uploaded directly to Cloudinary for Buffer:', videoUrl);
+          }
+        }
+      } catch (cldErr) {
+        console.warn('Cloudinary direct upload failed, fallback to Railway:', cldErr);
+      }
+    }
+
+    if (localBlob && (!videoUrl || videoUrl.startsWith('blob:'))) {
       if (submitBtn) submitBtn.innerHTML = '<span>📤</span> جاري رفع الفيديو للسيرفر لتجهيز الرابط لـ Buffer...';
       const fd = new FormData();
       fd.append('file', localBlob, 'buffer_post.mp4');
@@ -5336,7 +5366,31 @@ window.submitModalBufferSchedule = async function() {
       }
     }
 
-    if (localBlob) {
+    const cldName = (localStorage.getItem('cld_name') || document.getElementById('cloudinary-cloud-name')?.value || '').trim();
+    const cldPreset = (localStorage.getItem('cld_preset') || document.getElementById('cloudinary-upload-preset')?.value || '').trim();
+
+    if (localBlob && cldName && cldPreset) {
+      if (submitBtn) submitBtn.textContent = '☁️ جاري رفع الفيديو لسحابة Cloudinary...';
+      try {
+        const cldFd = new FormData();
+        cldFd.append('file', localBlob);
+        cldFd.append('upload_preset', cldPreset);
+        const cldRes = await fetch(`https://api.cloudinary.com/v1_1/${cldName}/video/upload`, {
+          method: 'POST',
+          body: cldFd
+        });
+        if (cldRes.ok) {
+          const cldData = await cldRes.json();
+          if (cldData.secure_url) {
+            videoUrl = cldData.secure_url;
+          }
+        }
+      } catch (cldErr) {
+        console.warn('Cloudinary direct upload failed, fallback to Railway:', cldErr);
+      }
+    }
+
+    if (localBlob && (!videoUrl || videoUrl.startsWith('blob:'))) {
       if (submitBtn) submitBtn.textContent = '📤 جاري رفع الفيديو للسيرفر لـ Buffer...';
       const fd = new FormData();
       fd.append('file', localBlob, 'buffer_modal_post.mp4');
