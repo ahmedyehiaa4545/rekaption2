@@ -5082,6 +5082,8 @@ window.submitBufferSchedule = async function() {
           console.log('✅ Fresh public video URL created for Buffer:', videoUrl);
         }
       }
+      if (submitBtn) submitBtn.innerHTML = '<span>⏳</span> جاري مزامنة رابط الفيديو مع خوادم النشر...';
+      await new Promise(r => setTimeout(r, 2500));
     } else if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
       videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
     }
@@ -5349,6 +5351,8 @@ window.submitModalBufferSchedule = async function() {
           videoUrl = upData.videoUrl;
         }
       }
+      if (submitBtn) submitBtn.textContent = '⏳ جاري مزامنة رابط الفيديو مع خوادم النشر...';
+      await new Promise(r => setTimeout(r, 2500));
     } else if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
       videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
     }
