@@ -5149,7 +5149,9 @@ window.submitBufferSchedule = async function() {
       content: caption,
       publishNow: isPublishNow,
       scheduledFor: scheduledForIso,
-      saveToDraft: false
+      saveToDraft: false,
+      cloudinaryCloudName: cldName || undefined,
+      cloudinaryUploadPreset: cldPreset || undefined
     };
 
     const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/create-post`, {
@@ -5420,7 +5422,9 @@ window.submitModalBufferSchedule = async function() {
       content: caption,
       publishNow: isPublishNow,
       scheduledFor: scheduledForIso,
-      saveToDraft: false
+      saveToDraft: false,
+      cloudinaryCloudName: cldName || undefined,
+      cloudinaryUploadPreset: cldPreset || undefined
     };
 
     const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/create-post`, {
