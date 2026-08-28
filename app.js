@@ -5748,16 +5748,24 @@ window.executeModalTikTokPublish = async function() {
 };
 
 window.openTikTokPublishModalForArchiveVideo = async function(id) {
+  console.log('[TIKTOK MODAL] openTikTokPublishModalForArchiveVideo called with id:', id);
+  try {
   const entries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
+  console.log('[TIKTOK MODAL] Found entries:', entries.length);
   const item = entries.find(e => e.id === id);
   if (!item) {
     alert('فيديو الأرشيف غير موجود.');
     return;
   }
+  console.log('[TIKTOK MODAL] Found item:', item.title);
 
   let blob = null;
-  if (typeof getVideoBlobFromIDB === 'function') {
-    blob = await getVideoBlobFromIDB(item.id);
+  try {
+    if (typeof getVideoBlobFromIDB === 'function') {
+      blob = await getVideoBlobFromIDB(item.id);
+    }
+  } catch(blobErr) {
+    console.warn('[TIKTOK MODAL] Could not get blob from IDB:', blobErr);
   }
 
   let activeUrl = '';
@@ -5847,7 +5855,12 @@ window.openTikTokPublishModalForArchiveVideo = async function(id) {
   // Load Channels
   loadChannelsForModal();
 
+  console.log('[TIKTOK MODAL] Showing modal now.');
   modal.style.display = 'flex';
+  } catch(outerErr) {
+    console.error('[TIKTOK MODAL] FATAL ERROR - Modal failed to open:', outerErr);
+    alert('حدث خطأ أثناء فتح نافذة النشر: ' + outerErr.message);
+  }
 };
 
 window.renderTikTokTabArchiveVideos = async function() {
