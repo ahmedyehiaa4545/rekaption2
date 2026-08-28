@@ -1796,8 +1796,6 @@ window.renderVideo = async function() {
     
     outputVideo.src = url;
     downloadLink.href = url;
-    window.lastRenderedVideoBlob = blob;
-    window.lastRenderedVideoUrl = url;
     showState(successState);
     playSuccessSound();
 
@@ -2039,8 +2037,8 @@ window.switchMainTab = function(tab) {
   const geminiBtn = document.getElementById('main-nav-gemini');
   const convertBtn = document.getElementById('main-nav-convert');
   const historyBtn = document.getElementById('main-nav-history');
-  const tiktokBtn = document.getElementById('main-nav-tiktok');
   const cohereBtn = document.getElementById('main-nav-cohere');
+  const tiktokBtn = document.getElementById('main-nav-tiktok');
   const coherePanel = document.getElementById('cohere-dashboard-panel');
   const dashboard = document.getElementById('main-dashboard');
   const geminiPanel = document.getElementById('gemini-transcribe-panel');
@@ -2054,8 +2052,8 @@ window.switchMainTab = function(tab) {
     { name: 'gemini', btn: geminiBtn, el: geminiPanel },
     { name: 'convert', btn: convertBtn, el: convertPanel },
     { name: 'history', btn: historyBtn, el: historyPanel },
-    { name: 'tiktok', btn: tiktokBtn, el: tiktokPanel },
-    { name: 'cohere', btn: cohereBtn, el: coherePanel }
+    { name: 'cohere', btn: cohereBtn, el: coherePanel },
+    { name: 'tiktok', btn: tiktokBtn, el: tiktokPanel }
   ];
 
   tabs.forEach(t => {
@@ -2090,16 +2088,14 @@ window.switchMainTab = function(tab) {
     }
   }
 
-  if (tab === 'history') {
-    renderHistoryModal();
+  if (tab === 'tiktok') {
+    if (typeof loadBufferTabSettings === 'function') {
+      loadBufferTabSettings();
+    }
   }
 
-  if (tab === 'tiktok') {
-    if (typeof window.initTikTokDashboardTab === 'function') {
-      window.initTikTokDashboardTab();
-    } else if (window.BufferCloudinaryService?.initTikTokDashboardTab) {
-      window.BufferCloudinaryService.initTikTokDashboardTab();
-    }
+  if (tab === 'history') {
+    renderHistoryModal();
   }
 };
 
@@ -2236,7 +2232,6 @@ window.startVerticalConversion = async function() {
     }
 
     lastConvertedBlob = await videoBlobRes.blob();
-    window.lastConvertedBlob = lastConvertedBlob;
     const localVideoUrl = URL.createObjectURL(lastConvertedBlob);
 
     videoPlayer.src = localVideoUrl;
@@ -2321,16 +2316,6 @@ window.startAudioDownloadOnly = async function() {
   if (!youtubeUrl) {
     alert('الرجاء إدخال رابط فيديو يوتيوب صالح!');
     return;
-  }
-
-  // Auto-fetch YouTube official video title for copyright attribution
-  if (window.BufferCloudinaryService?.fetchYoutubeOEmbedTitle) {
-    window.BufferCloudinaryService.fetchYoutubeOEmbedTitle(youtubeUrl).then(t => {
-      if (t) {
-        window.currentYoutubeTitle = t;
-        console.log('✅ YouTube Official Episode Title:', t);
-      }
-    });
   }
 
   // Check client-side cache first!
@@ -3702,9 +3687,7 @@ window.saveHistoryEntry = async function(entry) {
       videoUrl: entry.videoUrl || '',
       timestamp: now,
       expiryTime: now + EXPIRE_DURATION_MS,
-      duration: entry.duration || '',
-      originalYoutubeTitle: window.currentYoutubeTitle || entry.originalYoutubeTitle || '',
-      script: entry.script || (document.getElementById('transcription-text')?.value || '')
+      duration: entry.duration || ''
     };
     entries = entries.filter(item => item.id !== id);
     entries.unshift(newEntry);
@@ -3830,13 +3813,10 @@ window.renderHistoryModal = async function() {
         <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${item.title}</h4>
         <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
       </div>
-      <div style="display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 8px; margin-top: 4px;">
         <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
           <span>📥</span> تنزيل
         </a>
-        <button onclick="openTikTokPublishFromHistory('${item.id}', '${item.title.replace(/'/g, "\\'")}')" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; background: linear-gradient(135deg, #000000, #25F4EE 45%, #FE2C55); color: #fff; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; border-radius: 8px;">
-          <span>📱</span> نشر TikTok ✨
-        </button>
         <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
           <span>🗑️</span>
         </button>
@@ -4852,4 +4832,353 @@ async function saveSystemKeysBackend() {
 document.addEventListener('DOMContentLoaded', () => { 
   renderTemplateList(); 
   loadKeysFromFirebase();
+  if (typeof loadBufferTabSettings === 'function') {
+    loadBufferTabSettings();
+  }
 });
+
+// ==================== Buffer & Cloudinary Integration Logic ====================
+
+window.toggleBufferTokenVisibility = function() {
+  const input = document.getElementById('buffer-token-input');
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+};
+
+window.saveBufferTabSettings = function(showMessage = true) {
+  const token = document.getElementById('buffer-token-input')?.value.trim() || '';
+  const cloudName = document.getElementById('cloudinary-cloud-name-input')?.value.trim() || '';
+  const uploadPreset = document.getElementById('cloudinary-upload-preset-input')?.value.trim() || '';
+
+  if (token) localStorage.setItem('rekaption_buffer_token', token);
+  if (cloudName) localStorage.setItem('rekaption_cloudinary_cloud_name', cloudName);
+  if (uploadPreset) localStorage.setItem('rekaption_cloudinary_upload_preset', uploadPreset);
+
+  if (showMessage) {
+    alert('✅ تم حفظ الإعدادات بنجاح في المتصفح!');
+  }
+};
+
+window.loadBufferTabSettings = function() {
+  const tokenInput = document.getElementById('buffer-token-input');
+  const cloudNameInput = document.getElementById('cloudinary-cloud-name-input');
+  const uploadPresetInput = document.getElementById('cloudinary-upload-preset-input');
+
+  const savedToken = localStorage.getItem('rekaption_buffer_token') || '';
+  const savedCloudName = localStorage.getItem('rekaption_cloudinary_cloud_name') || '';
+  const savedUploadPreset = localStorage.getItem('rekaption_cloudinary_upload_preset') || '';
+
+  if (tokenInput && !tokenInput.value && savedToken) tokenInput.value = savedToken;
+  if (cloudNameInput && !cloudNameInput.value && savedCloudName) cloudNameInput.value = savedCloudName;
+  if (uploadPresetInput && !uploadPresetInput.value && savedUploadPreset) uploadPresetInput.value = savedUploadPreset;
+};
+
+// Helper: Multi-Tier Buffer GraphQL Requester (Backend Proxy -> Direct -> Fast CORS Proxies)
+async function requestBufferGraphQL(query, variables, token) {
+  const payload = JSON.stringify({ query, variables: variables || {} });
+  const authHeader = `Bearer ${token.trim()}`;
+
+  // Strategy 1: Backend API Proxy (Railway/Local)
+  const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
+  const proxyEndpoints = [
+    backendBase ? `${backendBase}/api/buffer/graphql` : '',
+    '/api/buffer/graphql'
+  ].filter(Boolean);
+
+  for (const ep of proxyEndpoints) {
+    if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
+    try {
+      const res = await fetch(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token.trim(), query, variables: variables || {} })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.data || data.errors)) return data;
+      }
+    } catch (_) {}
+  }
+
+  // Strategy 2: Direct browser fetch to https://api.buffer.com
+  try {
+    const res = await fetch('https://api.buffer.com', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: payload
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.data || data.errors)) return data;
+    }
+  } catch (_) {}
+
+  // Strategy 3: Fast CORS Proxy (corsproxy.io)
+  try {
+    const res = await fetch('https://corsproxy.io/?url=https://api.buffer.com', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: payload
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.data || data.errors)) return data;
+    }
+  } catch (_) {}
+
+  // Strategy 4: AllOrigins proxy fallback
+  try {
+    const res = await fetch('https://api.allorigins.win/raw?url=https://api.buffer.com', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: payload
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.data || data.errors)) return data;
+    }
+  } catch (_) {}
+
+  throw new Error('تعذر الاتصال بخوادم Buffer API. يرجى التأكد من اتصال الإنترنت وصحة المفتاح.');
+}
+
+window.fetchAndDisplayBufferChannels = async function() {
+  const tokenInput = document.getElementById('buffer-token-input');
+  const token = (tokenInput?.value || localStorage.getItem('rekaption_buffer_token') || '').trim();
+
+  if (!token) {
+    alert('يرجى إدخال مفتاح Buffer API Key أولاً!');
+    tokenInput?.focus();
+    return;
+  }
+
+  // Auto-save the token
+  saveBufferTabSettings(false);
+
+  // UI Elements
+  const loadingEl = document.getElementById('buffer-channels-loading');
+  const errorEl = document.getElementById('buffer-channels-error');
+  const errorTitle = document.getElementById('buffer-error-title');
+  const errorDesc = document.getElementById('buffer-error-desc');
+  const emptyEl = document.getElementById('buffer-channels-empty');
+  const gridEl = document.getElementById('buffer-channels-grid');
+  const statusText = document.getElementById('buffer-channels-status-text');
+  const countBadge = document.getElementById('buffer-channels-count-badge');
+  const fetchBtn = document.getElementById('fetch-buffer-channels-btn');
+
+  // Reset UI to Loading State
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (errorEl) errorEl.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (gridEl) {
+    gridEl.style.display = 'none';
+    gridEl.innerHTML = '';
+  }
+  if (fetchBtn) {
+    fetchBtn.disabled = true;
+    fetchBtn.style.opacity = '0.7';
+  }
+  if (statusText) statusText.textContent = 'جاري التحقق من المفتاح وجلب المنظمات والقنوات...';
+
+  try {
+    // 1. Try Backend Channels Proxy first if available
+    let allChannels = [];
+    let backendFetched = false;
+    const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
+    const backendEndpoints = [
+      backendBase ? `${backendBase}/api/buffer/channels` : '',
+      '/api/buffer/channels'
+    ].filter(Boolean);
+
+    for (const ep of backendEndpoints) {
+      if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.channels && data.channels.length > 0) {
+            allChannels = data.channels;
+            backendFetched = true;
+            break;
+          } else if (data && data.error) {
+            throw new Error(data.error);
+          }
+        }
+      } catch (err) {
+        if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed to fetch')) {
+          throw err;
+        }
+      }
+    }
+
+    // 2. If Backend Proxy wasn't used/available, do direct GraphQL multi-step fetch
+    if (!backendFetched) {
+      // Step 1: Query Organizations
+      const orgQuery = `
+        query GetOrganizations {
+          account {
+            organizations {
+              id
+              name
+            }
+          }
+        }
+      `;
+
+      const orgRes = await requestBufferGraphQL(orgQuery, {}, token);
+      if (orgRes.errors && orgRes.errors.length > 0) {
+        throw new Error(orgRes.errors[0].message || 'خطأ في استعلام حساب Buffer');
+      }
+
+      const orgs = orgRes?.data?.account?.organizations || [];
+      if (!orgs || orgs.length === 0) {
+        throw new Error('لم يتم العثور على أي منظمة أو حساب (Organization) في حساب Buffer المدخل.');
+      }
+
+      // Step 2: Query Channels for each Organization
+      const chanQuery = `
+        query GetChannels($input: ChannelsInput!) {
+          channels(input: $input) {
+            id
+            name
+            displayName
+            service
+            avatar
+          }
+        }
+      `;
+
+      for (const org of orgs) {
+        if (!org.id) continue;
+        try {
+          const cRes = await requestBufferGraphQL(chanQuery, { input: { organizationId: org.id } }, token);
+          const chList = cRes?.data?.channels || [];
+          chList.forEach(ch => {
+            allChannels.push({
+              id: ch.id,
+              name: ch.name || ch.displayName || 'TikTok Channel',
+              displayName: ch.displayName || ch.name,
+              service: ch.service || 'tiktok',
+              avatar: ch.avatar || '',
+              organizationName: org.name
+            });
+          });
+        } catch (e) {
+          console.warn(`Could not fetch channels for org ${org.id}:`, e);
+        }
+      }
+    }
+
+    if (!allChannels || allChannels.length === 0) {
+      throw new Error('تم الاتصال بحسابك في Buffer بنجاح، ولكن لم يتم العثور على أي قنوات مربوطة (مثل TikTok). يرجى التأكد من ربط قناتك في إعدادات Buffer أولاً.');
+    }
+
+    // Success! Render Channels Cards
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (gridEl) {
+      gridEl.style.display = 'grid';
+      gridEl.innerHTML = '';
+
+      allChannels.forEach((ch, idx) => {
+        const isTikTok = (ch.service || '').toLowerCase() === 'tiktok';
+        const serviceBadgeColor = isTikTok ? '#fe2c55' : '#8b5cf6';
+        const serviceIcon = isTikTok ? '🎵' : '📺';
+        const serviceLabel = isTikTok ? 'TikTok Channel' : (ch.service || 'قناة');
+
+        const card = document.createElement('div');
+        card.style.cssText = `
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid ${isTikTok ? 'rgba(254, 44, 85, 0.4)' : 'rgba(139, 92, 246, 0.3)'};
+          border-radius: 14px;
+          padding: 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          transition: transform 0.2s ease, border-color 0.2s ease;
+          position: relative;
+          overflow: hidden;
+        `;
+
+        card.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 12px;">
+            ${ch.avatar ? `
+              <img src="${ch.avatar}" alt="${ch.name}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid ${serviceBadgeColor};" />
+            ` : `
+              <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid ${serviceBadgeColor};">
+                ${serviceIcon}
+              </div>
+            `}
+            <div style="flex: 1; min-width: 0;">
+              <h4 style="font-size: 15px; font-weight: 800; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${ch.displayName || ch.name || 'قناة تيك توك'}
+              </h4>
+              <span style="font-size: 11px; color: rgba(255,255,255,0.5); display: block; margin-top: 2px;">
+                ${ch.organizationName ? `المنظمة: ${ch.organizationName}` : 'حساب Buffer'}
+              </span>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(0,0,0,0.25); border-radius: 8px; font-size: 11px;">
+            <span style="color: rgba(255,255,255,0.7); font-weight: 600;">المنصة:</span>
+            <span style="color: #fff; font-weight: 800; background: ${serviceBadgeColor}22; color: ${serviceBadgeColor}; padding: 2px 8px; border-radius: 6px; border: 1px solid ${serviceBadgeColor}44;">
+              ${serviceIcon} ${serviceLabel}
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.5);">
+            <span>معرف القناة (Channel ID):</span>
+            <code style="font-family: monospace; color: #a855f7; background: rgba(168,85,247,0.1); padding: 2px 6px; border-radius: 4px;">${ch.id || 'N/A'}</code>
+          </div>
+
+          <div style="margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 12px; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+              متصل وجاهز للنشر ✅
+            </span>
+            <span style="font-size: 11px; color: rgba(255,255,255,0.4);">#${idx + 1}</span>
+          </div>
+        `;
+
+        gridEl.appendChild(card);
+      });
+    }
+
+    if (countBadge) {
+      countBadge.textContent = `${allChannels.length} قناة متصلة ✅`;
+      countBadge.style.display = 'inline-block';
+    }
+    if (statusText) {
+      statusText.innerHTML = `✅ تم الاتصال بنجاح بـ Buffer! تم العثور على <strong>${allChannels.length}</strong> قناة مربوطة.`;
+    }
+
+  } catch (err) {
+    console.error('Buffer Channel Fetch Error:', err);
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (errorEl) {
+      errorEl.style.display = 'block';
+      if (errorTitle) errorTitle.textContent = 'تعذر الاتصال بـ Buffer';
+      if (errorDesc) errorDesc.textContent = err.message || 'تأكد من صحة مفتاح الـ API والاتصال بالإنترنت.';
+    }
+    if (statusText) {
+      statusText.textContent = '❌ فشل جلب القنوات المربوطة. تحقق من رسالة الخطأ أدناه.';
+    }
+  } finally {
+    if (fetchBtn) {
+      fetchBtn.disabled = false;
+      fetchBtn.style.opacity = '1';
+    }
+  }
+};
