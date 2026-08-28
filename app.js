@@ -5357,55 +5357,51 @@ async function publishToBuffer({ bufferToken, channelId, text, videoUrl, schedul
   if (!channelId) throw new Error('يرجى اختيار حساب TikTok.');
   if (!videoUrl) throw new Error('رابط الفيديو مفقود.');
 
-  const mutation = `
-    mutation CreatePost($input: CreatePostInput!) {
-      createPost(input: $input) {
-        ... on PostActionSuccess {
-          post {
-            id
-            dueAt
-            status
-            text
-          }
-        }
-        ... on MutationError {
-          message
-        }
-      }
-    }
-  `;
+  const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
+  const publishEndpoints = [
+    backendBase ? `${backendBase}/api/buffer/publish` : '',
+    '/api/buffer/publish'
+  ].filter(Boolean);
 
-  const input = {
+  const payload = {
+    token: bufferToken.trim(),
     channelId: channelId.trim(),
     text: text || '',
-    schedulingType: 'automatic',
-    mode: isNow ? 'shareNow' : 'customScheduled',
-    assets: [
-      {
-        video: {
-          url: videoUrl
-        }
-      }
-    ]
+    videoUrl: videoUrl.trim(),
+    isNow: isNow,
+    scheduledAt: scheduledAt || null
   };
 
-  if (!isNow && scheduledAt) {
-    input.dueAt = new Date(scheduledAt).toISOString();
+  let lastError = null;
+  for (const ep of publishEndpoints) {
+    if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
+    try {
+      const res = await fetch(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success') {
+          return data.post || { id: 'success', status: isNow ? 'published' : 'scheduled' };
+        } else if (data.error) {
+          throw new Error(data.error);
+        }
+      } else {
+        const errJson = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(errJson.detail || errJson.error || `خطأ من الخادم (كود ${res.status})`);
+      }
+    } catch (err) {
+      lastError = err;
+      if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed to fetch')) {
+        throw err;
+      }
+    }
   }
 
-  const resData = await requestBufferGraphQL(mutation, { input }, bufferToken);
-  if (resData.errors && resData.errors.length > 0) {
-    throw new Error(resData.errors[0].message || 'فشل إرسال المنشور إلى Buffer');
-  }
-
-  const postAction = resData.data?.createPost;
-  if (postAction?.message) {
-    throw new Error(postAction.message);
-  }
-  if (postAction?.post) {
-    return postAction.post;
-  }
-  return { id: 'success', status: isNow ? 'published' : 'scheduled' };
+  if (lastError) throw lastError;
+  throw new Error('فشل إرسال المنشور إلى الخادم.');
 }
 
 // Modal Controllers
@@ -5542,30 +5538,36 @@ window.loadChannelsForModal = async function() {
 
   const token = (document.getElementById('buffer-token-input')?.value || localStorage.getItem('rekaption_buffer_token') || '').trim();
   if (!token) {
-    select.innerHTML = '<option value="">⚠️ أدخل مفتاح Buffer API أولاً في تابة TikTok</option>';
+    select.innerHTML = '<option value="">⚠️ أدخل مفتاح Buffer API أولاً في إعدادات تابة TikTok</option>';
     return;
   }
 
   select.innerHTML = '<option value="">⏳ جاري جلب القنوات من Buffer...</option>';
 
   try {
-    let channels = [];
-    const orgQuery = `query { account { organizations { id name } } }`;
-    const orgRes = await requestBufferGraphQL(orgQuery, {}, token);
-    const orgs = orgRes?.data?.account?.organizations || [];
+    const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
+    const endpoints = [
+      backendBase ? `${backendBase}/api/buffer/channels` : '',
+      '/api/buffer/channels'
+    ].filter(Boolean);
 
-    const chanQuery = `query GetChannels($input: ChannelsInput!) { channels(input: $input) { id name displayName service avatar } }`;
-    for (const org of orgs) {
-      if (!org.id) continue;
-      const cRes = await requestBufferGraphQL(chanQuery, { input: { organizationId: org.id } }, token);
-      const chList = cRes?.data?.channels || [];
-      chList.forEach(ch => {
-        channels.push({
-          id: ch.id,
-          name: ch.name || ch.displayName,
-          service: ch.service || 'tiktok'
+    let channels = [];
+    for (const ep of endpoints) {
+      if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token })
         });
-      });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.channels) {
+            channels = data.channels;
+            break;
+          }
+        }
+      } catch (e) {}
     }
 
     if (!channels || channels.length === 0) {
@@ -5579,7 +5581,7 @@ window.loadChannelsForModal = async function() {
       const isTikTok = (ch.service || '').toLowerCase().includes('tiktok');
       const opt = document.createElement('option');
       opt.value = ch.id;
-      opt.textContent = `${isTikTok ? '🎵 [TikTok]' : `[${ch.service}]`} ${ch.name}`;
+      opt.textContent = `${isTikTok ? '🎵 [TikTok]' : `[${ch.service || 'قناة'}]`} ${ch.name || ch.displayName}`;
       if (isTikTok && !hasTikTok) {
         opt.selected = true;
         hasTikTok = true;
@@ -5590,8 +5592,8 @@ window.loadChannelsForModal = async function() {
     if (!hasTikTok && channels.length > 0) {
       select.selectedIndex = 0;
     }
-  } catch(e) {
-    select.innerHTML = `<option value="">⚠️ خطأ: ${e.message || 'فشل جلب القنوات'}</option>`;
+  } catch (err) {
+    select.innerHTML = `<option value="">⚠️ خطأ: ${err.message || 'فشل جلب القنوات'}</option>`;
   }
 };
 
