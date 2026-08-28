@@ -2441,6 +2441,108 @@ window.fetchBufferChannels = async function() {
   }
 };
 
+// ==================== Smart Caption & Contextual Hashtags ====================
+let currentSelectedVideoTitle = '';
+let uploadedVideoCloudinaryUrl = null;
+
+window.generateSmartCaptionAndHashtags = function(rawTitle, rawText = '') {
+  if (!rawTitle && !rawText) return { title: '', caption: '', hashtags: ['#fyp', '#viral', '#shorts', '#tiktok'] };
+  
+  // 1. Clean rawTitle (strip prefixes like "مقطع Shorts #1:", "فيديو كابشن نهائي", date stamps)
+  let cleanTitle = (rawTitle || '')
+    .replace(/مقطع\s*Shorts\s*#?\d+:?\s*/gi, '')
+    .replace(/فيديو\s*كابشن\s*نهائي\s*/gi, '')
+    .replace(/\(\d+.*?\)/g, '')
+    .replace(/[\[\]{}|]/g, '')
+    .trim();
+  
+  if (!cleanTitle && rawText) {
+    cleanTitle = rawText.split('\n')[0].slice(0, 60);
+  }
+  
+  // 2. Extract keywords from cleanTitle & rawText
+  const fullText = (cleanTitle + ' ' + (rawText || '')).toLowerCase();
+  
+  // Common Arabic stop words to exclude from hashtags
+  const stopWords = new Set([
+    'في', 'من', 'على', 'إلى', 'الى', 'عن', 'مع', 'هذا', 'هذه', 'هؤلاء', 'هو', 'هي', 'هم', 'هن',
+    'كان', 'كانت', 'يكون', 'ان', 'أن', 'إن', 'التي', 'الذي', 'الذين', 'ما', 'لا', 'لم', 'لن',
+    'لو', 'قد', 'كل', 'غير', 'بين', 'حيث', 'كيف', 'ماذا', 'لماذا', 'هل', 'يا', 'اي', 'أي',
+    'او', 'أو', 'ثم', 'لكن', 'بل', 'أنا', 'نحن', 'انت', 'أنتم', 'بعد', 'قبل', 'حتى', 'فوق', 'تحت'
+  ]);
+  
+  // Extract words of length >= 3
+  const words = cleanTitle.replace(/[^\u0621-\u064A\w\s]/g, ' ').split(/\s+/).filter(w => w.length >= 3 && !stopWords.has(w));
+  
+  const contextualTags = [];
+  
+  // Topic detection rules
+  if (/(قيامة|جنة|نار|صلاة|دين|اسلام|إسلام|الله|نبي|رسول|قرآن|قران|حديث|موعظة|توبة|حسناء|دعاء|رمضان|عذاب|موت)/.test(fullText)) {
+    contextualTags.push('#يوم_القيامة', '#مواعظ', '#اسلاميات', '#توعية');
+  } else if (/(ذكاء|تقنية|برمجة|ai|كمبيوتر|تطبيق|موقع|هاتف|ايفون|أندرويد|شرح|حاسوب)/.test(fullText)) {
+    contextualTags.push('#تقنية', '#ذكاء_اصطناعي', '#شروحات', '#تطبيقات');
+  } else if (/(قصة|حكاية|سر|عجيب|اغرب|أغرب|حقيقة|تاريخ|وثائقي|غموض|رعب|جريمة)/.test(fullText)) {
+    contextualTags.push('#قصص', '#حقائق', '#غرائب', '#معلومات');
+  } else if (/(نجاح|تطوير|تحفيز|مال|بزنس|ريادة|هدف|طاقة|علم_نفس|ثراء|فلوس)/.test(fullText)) {
+    contextualTags.push('#تطوير_الذات', '#تحفيز', '#بزنس', '#نجاح');
+  } else if (/(صحة|دايت|رياضة|تمرين|جسم|علاج|طب|عضلات|تغذية)/.test(fullText)) {
+    contextualTags.push('#صحة', '#لياقة', '#تمارين', '#تغذية');
+  } else if (/(بودكاست|حوار|لقاء|مقابلة|نقاش|ضيف)/.test(fullText)) {
+    contextualTags.push('#بودكاست', '#حوار', '#نصائح', '#فكرة');
+  }
+  
+  // Add extracted direct word tags from the title
+  words.slice(0, 3).forEach(w => {
+    const tag = '#' + w.replace(/[^\u0621-\u064A\w]/g, '');
+    if (tag.length > 2 && !contextualTags.includes(tag)) {
+      contextualTags.push(tag);
+    }
+  });
+  
+  // Add universal viral tags
+  const viralTags = ['#fyp', '#viral', '#shorts', '#tiktok'];
+  
+  // Combine all unique tags (max 6 tags total)
+  const allTags = Array.from(new Set([...contextualTags, ...viralTags])).slice(0, 6);
+  
+  const formattedCaption = cleanTitle ? `${cleanTitle}\n\n${allTags.join(' ')}` : allTags.join(' ');
+  return {
+    title: cleanTitle,
+    caption: formattedCaption,
+    hashtags: allTags
+  };
+};
+
+window.applySmartCaptionToBufferUI = function(rawTitle, rawText = '') {
+  currentSelectedVideoTitle = rawTitle || '';
+  const { title, caption, hashtags } = generateSmartCaptionAndHashtags(rawTitle, rawText);
+  
+  const captionInput = document.getElementById('buffer-post-caption');
+  if (captionInput) {
+    captionInput.value = caption;
+    const countEl = document.getElementById('buf-caption-count');
+    if (countEl) countEl.textContent = caption.length + ' حرف';
+  }
+  
+  renderDynamicHashtagPills(hashtags);
+  logBufferAction('info', `تم توليد العنوان والهاشتاجات الذكية تلقائياً: ${title || 'مقطع'}`);
+};
+
+function renderDynamicHashtagPills(tags) {
+  const container = document.getElementById('buf-dynamic-hashtags-container');
+  if (!container) return;
+  
+  let html = '<span style="font-size: 11px; color: #94a3b8; align-self: center;">هاشتاجات مقترحة:</span>';
+  tags.forEach(t => {
+    html += `<button type="button" onclick="appendBufferHashtag('${t}')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px; background: rgba(168,85,247,0.15); border-color: rgba(168,85,247,0.3); color: #e9d5ff;">${t}</button>`;
+  });
+  container.innerHTML = html;
+}
+
+window.regenerateSmartCaptionForCurrentVideo = function() {
+  applySmartCaptionToBufferUI(currentSelectedVideoTitle || 'مقطع فيديو');
+};
+
 // ==================== Buffer Video Source & Upload Workflow ====================
 let bufferSelectedVideoFile = null;
 let bufferSelectedVideoBlob = null;
@@ -2448,6 +2550,10 @@ let currentBufferVideoSource = 'local';
 
 window.switchBufferVideoSource = function(source) {
   currentBufferVideoSource = source;
+  uploadedVideoCloudinaryUrl = null;
+  const urlInput = document.getElementById('buffer-post-video-url');
+  if (urlInput) urlInput.value = '';
+  
   logBufferAction('info', `تم تغيير مصدر الفيديو إلى: ${source}`);
   
   const localBtn = document.getElementById('buf-src-btn-local');
@@ -2516,6 +2622,10 @@ window.handleBufferVideoFileSelect = function(file) {
   if (!file) return;
   bufferSelectedVideoFile = file;
   bufferSelectedVideoBlob = file;
+  uploadedVideoCloudinaryUrl = null;
+  
+  const urlInput = document.getElementById('buffer-post-video-url');
+  if (urlInput) urlInput.value = '';
   
   const nameEl = document.getElementById('buf-selected-file-name');
   if (nameEl) nameEl.textContent = `✅ ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MB)`;
@@ -2528,6 +2638,9 @@ window.handleBufferVideoFileSelect = function(file) {
     player.src = URL.createObjectURL(file);
     wrapper.classList.remove('hidden');
   }
+  
+  // Auto smart caption from file name
+  applySmartCaptionToBufferUI(file.name.replace(/\.[^/.]+$/, ''));
 };
 
 window.handleBufferHistorySelect = async function(historyId) {
@@ -2535,6 +2648,10 @@ window.handleBufferHistorySelect = async function(historyId) {
   const entries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
   const entry = entries.find(e => e.id === historyId);
   if (!entry) return;
+  
+  uploadedVideoCloudinaryUrl = null;
+  const urlInput = document.getElementById('buffer-post-video-url');
+  if (urlInput) urlInput.value = '';
   
   logBufferAction('info', `تحميل فيديو من الأرشيف: ${entry.title || historyId}`);
   const player = document.getElementById('buf-video-preview-player');
@@ -2564,6 +2681,9 @@ window.handleBufferHistorySelect = async function(historyId) {
       bufferSelectedVideoFile = new File([bufferSelectedVideoBlob], `${entry.title || 'video'}.mp4`, { type: 'video/mp4' });
       logBufferAction('success', `تم تنزيل الفيديو من رابط السيرفر (${(bufferSelectedVideoBlob.size / (1024 * 1024)).toFixed(2)} MB)`);
     }
+    
+    // Auto smart caption from history title
+    applySmartCaptionToBufferUI(entry.title || 'مقطع فيديو');
   } catch (err) {
     logBufferAction('error', 'فشل تحميل الفيديو من الأرشيف:', err.message);
   }
@@ -2573,6 +2693,10 @@ function checkCurrentRenderedVideo() {
   const statusEl = document.getElementById('buf-current-video-status');
   const player = document.getElementById('buf-video-preview-player');
   const wrapper = document.getElementById('buf-video-preview-wrapper');
+  
+  uploadedVideoCloudinaryUrl = null;
+  const urlInput = document.getElementById('buffer-post-video-url');
+  if (urlInput) urlInput.value = '';
   
   let targetUrl = null;
   if (typeof lastConvertedBlob !== 'undefined' && lastConvertedBlob) {
@@ -2592,12 +2716,13 @@ function checkCurrentRenderedVideo() {
       player.src = targetUrl;
       wrapper.classList.remove('hidden');
     }
+    applySmartCaptionToBufferUI('فيديو ReKaption النهائي');
   } else {
     if (statusEl) statusEl.innerHTML = '⚠️ لم تقم برندرة فيديو بعد في المحرر الحالي. يمكنك رفع فيديو محلي أو اختيار فيديو من الأرشيف.';
   }
 }
 
-window.triggerCloudinaryUpload = async function() {
+window.uploadToCloudinaryDirect = async function(fileToUpload) {
   const cloudName = (localStorage.getItem('cloudinary_cloud_name') || '').trim();
   const uploadPreset = (localStorage.getItem('cloudinary_upload_preset') || '').trim();
   const btn = document.getElementById('btn-upload-cloudinary');
@@ -2607,11 +2732,76 @@ window.triggerCloudinaryUpload = async function() {
   const urlInput = document.getElementById('buffer-post-video-url');
   
   if (!cloudName || !uploadPreset) {
-    alert('يرجى كتابة Cloud Name و Upload Preset في إعدادات Cloudinary بالأعلى أولاً.');
-    logBufferAction('error', 'فشل الرفع: بيانات Cloudinary غير مكتملة (Cloud Name أو Upload Preset مفقود).');
-    return;
+    throw new Error('يرجى كتابة Cloud Name و Upload Preset في إعدادات Cloudinary بالأعلى أولاً.');
   }
   
+  if (!fileToUpload) {
+    throw new Error('لم يتم تحديد ملف فيديو للرفع.');
+  }
+  
+  if (btn) btn.disabled = true;
+  if (progressContainer) progressContainer.classList.remove('hidden');
+  if (progressBar) progressBar.style.width = '0%';
+  if (percentText) percentText.textContent = '0%';
+  
+  logBufferAction('cloudinary', `بدء الرفع التلقائي إلى Cloudinary (${cloudName}) باستخدام Preset (${uploadPreset})...`);
+  
+  const secureUrl = await new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', fileToUpload);
+    formData.append('upload_preset', uploadPreset);
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`);
+    
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        if (progressBar) progressBar.style.width = percent + '%';
+        if (percentText) percentText.textContent = percent + '%';
+      }
+    };
+    
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.secure_url) resolve(data.secure_url);
+          else reject(new Error('لم يتم إرجاع secure_url من Cloudinary'));
+        } catch (err) {
+          reject(new Error('خطأ في قراءة استجابة Cloudinary: ' + err.message));
+        }
+      } else {
+        try {
+          const errData = JSON.parse(xhr.responseText);
+          reject(new Error(errData.error?.message || `خطأ Cloudinary (${xhr.status})`));
+        } catch (e) {
+          reject(new Error(`فشل الرفع إلى Cloudinary (كود ${xhr.status})`));
+        }
+      }
+    };
+    
+    xhr.onerror = () => reject(new Error('فشل الاتصال بـ Cloudinary (خطأ في الشبكة)'));
+    xhr.send(formData);
+  });
+  
+  uploadedVideoCloudinaryUrl = secureUrl;
+  if (urlInput) urlInput.value = secureUrl;
+  if (percentText) percentText.textContent = '100% مكتمل!';
+  if (btn) btn.innerHTML = '<span>✅</span> تم الرفع بنجاح!';
+  logBufferAction('success', `🎉 تم رفع الفيديو بنجاح إلى Cloudinary:\n${secureUrl}`);
+  
+  setTimeout(() => {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>☁️</span> إعادة رفع الفيديو';
+    }
+  }, 2500);
+  
+  return secureUrl;
+};
+
+window.triggerCloudinaryUpload = async function() {
   let fileToUpload = bufferSelectedVideoFile || bufferSelectedVideoBlob;
   
   if (!fileToUpload && currentBufferVideoSource === 'current' && typeof renderTaskStatus !== 'undefined' && renderTaskStatus && renderTaskStatus.videoUrl) {
@@ -2626,73 +2816,13 @@ window.triggerCloudinaryUpload = async function() {
     }
   }
   
-  if (!fileToUpload) {
-    alert('يرجى اختيار أو رفع ملف الفيديو أولاً!');
-    logBufferAction('error', 'لم يتم اختيار أي ملف فيديو للرفع.');
-    return;
-  }
-  
-  logBufferAction('cloudinary', `بدء الرفع إلى Cloudinary (${cloudName}) باستخدام Preset (${uploadPreset})...`);
-  if (btn) btn.disabled = true;
-  if (progressContainer) progressContainer.classList.remove('hidden');
-  if (progressBar) progressBar.style.width = '0%';
-  if (percentText) percentText.textContent = '0%';
-  
   try {
-    const secureUrl = await new Promise((resolve, reject) => {
-      const formData = new FormData();
-      formData.append('file', fileToUpload);
-      formData.append('upload_preset', uploadPreset);
-      
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`);
-      
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 100);
-          if (progressBar) progressBar.style.width = percent + '%';
-          if (percentText) percentText.textContent = percent + '%';
-        }
-      };
-      
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            if (data.secure_url) resolve(data.secure_url);
-            else reject(new Error('لم يتم إرجاع secure_url من Cloudinary'));
-          } catch (err) {
-            reject(new Error('خطأ في قراءة استجابة Cloudinary: ' + err.message));
-          }
-        } else {
-          try {
-            const errData = JSON.parse(xhr.responseText);
-            reject(new Error(errData.error?.message || `خطأ Cloudinary (${xhr.status})`));
-          } catch (e) {
-            reject(new Error(`فشل الرفع إلى Cloudinary (كود ${xhr.status})`));
-          }
-        }
-      };
-      
-      xhr.onerror = () => reject(new Error('فشل الاتصال بـ Cloudinary (خطأ في الشبكة)'));
-      xhr.send(formData);
-    });
-    
-    if (urlInput) urlInput.value = secureUrl;
-    if (percentText) percentText.textContent = '100% مكتمل!';
-    if (btn) btn.innerHTML = '<span>✅</span> تم الرفع بنجاح!';
-    logBufferAction('success', `🎉 تم رفع الفيديو بنجاح إلى Cloudinary! الرابط المباشر:\n${secureUrl}`);
-    
-    setTimeout(() => {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<span>☁️</span> إعادة رفع الفيديو';
-      }
-    }, 2500);
+    await uploadToCloudinaryDirect(fileToUpload);
   } catch (err) {
     console.error('Cloudinary upload error:', err);
     logBufferAction('error', `فشل الرفع إلى Cloudinary: ${err.message}`);
     alert('❌ خطأ أثناء الرفع إلى Cloudinary:\n' + err.message);
+    const btn = document.getElementById('btn-upload-cloudinary');
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = '<span>☁️</span> رفع الفيديو وتوليد الرابط المباشر';
@@ -2704,7 +2834,9 @@ window.appendBufferHashtag = function(tag) {
   const captionInput = document.getElementById('buffer-post-caption');
   if (captionInput) {
     const current = captionInput.value.trim();
-    captionInput.value = current ? `${current} ${tag}` : tag;
+    if (!current.includes(tag)) {
+      captionInput.value = current ? `${current} ${tag}` : tag;
+    }
     const countEl = document.getElementById('buf-caption-count');
     if (countEl) countEl.textContent = captionInput.value.length + ' حرف';
   }
@@ -2731,7 +2863,7 @@ window.submitPostToBuffer = async function() {
   const channelSelect = document.getElementById('buffer-post-channel-select');
   const channelId = channelSelect ? channelSelect.value.trim() : '';
   const videoUrlInput = document.getElementById('buffer-post-video-url');
-  const videoUrl = videoUrlInput ? videoUrlInput.value.trim() : '';
+  let videoUrl = videoUrlInput ? videoUrlInput.value.trim() : '';
   const captionInput = document.getElementById('buffer-post-caption');
   const caption = captionInput ? captionInput.value.trim() : '';
   const isScheduleMode = document.querySelector('input[name="buf-publish-mode"]:checked')?.value === 'schedule';
@@ -2747,11 +2879,6 @@ window.submitPostToBuffer = async function() {
   if (!channelId) {
     alert('يرجى اختيار القناة المستهدفة للنشر!');
     logBufferAction('error', 'محاولة النشر بدون تحديد القناة المستهدفة.');
-    return;
-  }
-  if (!videoUrl) {
-    alert('يرجى رفع الفيديو إلى Cloudinary والحصول على الرابط المباشر أولاً!');
-    logBufferAction('error', 'محاولة النشر بدون وجود رابط فيديو Cloudinary.');
     return;
   }
   
@@ -2770,10 +2897,67 @@ window.submitPostToBuffer = async function() {
     scheduledAtIso = chosenDate.toISOString();
   }
   
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> جاري تجهيز ورفع الفيديو...';
+  }
+  
+  // Auto-Upload to Cloudinary if not yet uploaded or if new video chosen
+  if (!videoUrl || videoUrl !== uploadedVideoCloudinaryUrl) {
+    let fileToUpload = bufferSelectedVideoFile || bufferSelectedVideoBlob;
+    
+    if (!fileToUpload && currentBufferVideoSource === 'current' && typeof renderTaskStatus !== 'undefined' && renderTaskStatus && renderTaskStatus.videoUrl) {
+      try {
+        const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
+        const fullUrl = `${backendBase}/${renderTaskStatus.videoUrl.replace(/^\//, '')}`;
+        logBufferAction('cloudinary', `جاري تنزيل ملف الفيديو من السيرفر قبل الرفع: ${fullUrl}`);
+        const res = await fetch(fullUrl);
+        fileToUpload = await res.blob();
+      } catch (e) {
+        logBufferAction('error', 'فشل جلب ملف الفيديو من السيرفر:', e.message);
+      }
+    }
+    
+    if (!fileToUpload && !videoUrl) {
+      alert('يرجى اختيار أو رفع ملف الفيديو أولاً!');
+      logBufferAction('error', 'محاولة النشر بدون وجود ملف فيديو أو رابط مباشر.');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🚀</span> نشر / جدولة المنشور على TikTok';
+      }
+      return;
+    }
+    
+    if (fileToUpload) {
+      if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = 'rgba(56, 189, 248, 0.15)';
+        resultDiv.style.border = '1px solid rgba(56, 189, 248, 0.4)';
+        resultDiv.style.color = '#38bdf8';
+        resultDiv.textContent = '⏳ جاري رفع الفيديو تلقائياً إلى Cloudinary أولاً...';
+      }
+      try {
+        videoUrl = await uploadToCloudinaryDirect(fileToUpload);
+      } catch (uploadErr) {
+        logBufferAction('error', 'فشل الرفع التلقائي إلى Cloudinary:', uploadErr.message);
+        if (resultDiv) {
+          resultDiv.style.background = 'rgba(239, 68, 68, 0.15)';
+          resultDiv.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+          resultDiv.style.color = '#fca5a5';
+          resultDiv.textContent = `❌ فشل رفع الفيديو: ${uploadErr.message}`;
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🚀</span> نشر / جدولة المنشور على TikTok';
+        }
+        return;
+      }
+    }
+  }
+  
   logBufferAction('buffer', `بدء إرسال المنشور إلى Buffer (Mode: ${isScheduleMode ? 'Custom Scheduled' : 'Share Now'}, Channel: ${channelId})...`);
   
   if (btn) {
-    btn.disabled = true;
     btn.innerHTML = '<span>⏳</span> جاري إرسال المنشور إلى Buffer...';
   }
   if (resultDiv) {
@@ -2786,7 +2970,6 @@ window.submitPostToBuffer = async function() {
   
   try {
     const isNow = !scheduledAtIso;
-    // Clean GraphQL mutation conforming strictly to Buffer API specifications (PostActionSuccess & MutationError only)
     const mutation = `
       mutation CreatePost($input: CreatePostInput!) {
         createPost(input: $input) {
