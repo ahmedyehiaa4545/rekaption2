@@ -129,6 +129,9 @@
         <span>📁</span> أرشيف الفيديوهات (48h)
         <span id="history-badge" style="background: #8b5cf6; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 20px;">0</span>
       </button>
+      <button type="button" id="main-nav-tiktok" class="nav-tab" onclick="switchMainTab('tiktok')" style="padding: 10px 20px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+        <span>📱</span> جدولة ونشر TikTok (Buffer) ✨
+      </button>
     </div>
 
     <!-- Main Dashboard Grid -->
@@ -740,6 +743,234 @@
         <h3 style="color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 6px;">لا توجد فيديوهات مجهزة في الأرشيف حالياً</h3>
         <p style="color: var(--text-muted); font-size: 13px;">عند دمج أي فيديو وتجهيزه، سيظهر هنا تلقائياً لمدة 48 ساعة لتنزيله بسهولة!</p>
       </div>
+    </div>
+
+    <!-- DEDICATED TIKTOK PUBLISHING & SCHEDULING DASHBOARD PANEL -->
+    <div id="tiktok-schedule-panel" class="panel hidden" style="margin-top: 10px; direction: rtl; text-align: right;">
+      
+      <!-- Top Title Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h2 class="panel-title" style="margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+            <span>📱</span> منصة نشر وجدولة مقاطع TikTok (عبر Buffer & Cloudinary)
+          </h2>
+          <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
+            اختر مقطعاً من أرشيفك أو ارفع فيديو، اضبط الكابشن والجدولة، وسيتم رفعه بجودة كاملة على Cloudinary ونشره تلقائياً على حسابك في TikTok!
+          </p>
+        </div>
+        <button type="button" onclick="document.getElementById('tab-quick-settings-box').scrollIntoView({behavior:'smooth'})" class="btn-secondary" style="font-size: 12px; padding: 8px 14px; display: flex; align-items: center; gap: 6px;">
+          <span>⚙️</span> إعدادات الربط
+        </button>
+      </div>
+
+      <!-- Main Dashboard 2-Column Grid -->
+      <div style="display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start;">
+        
+        <!-- RIGHT COLUMN: VIDEO SOURCE SELECTOR & PREVIEW -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          
+          <!-- 1. Video Selection Card -->
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
+            <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>📁</span> اختيار الفيديو المراد نشره:
+            </div>
+
+            <!-- Source tabs -->
+            <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+              <button type="button" id="tab-src-archive-btn" onclick="document.getElementById('tab-archive-picker-container').style.display='block'; document.getElementById('tab-upload-picker-container').style.display='none'; this.style.background='rgba(139,92,246,0.15)'; this.style.borderColor='var(--purple-accent)'; this.style.color='#fff'; document.getElementById('tab-src-upload-btn').style.background='transparent'; document.getElementById('tab-src-upload-btn').style.borderColor='transparent'; document.getElementById('tab-src-upload-btn').style.color='rgba(255,255,255,0.6)';" class="btn-secondary" style="flex: 1; padding: 6px 10px; font-size: 11px; font-weight: 700; background: rgba(139,92,246,0.15); border-color: var(--purple-accent); color: #fff;">
+                من الأرشيف (48h)
+              </button>
+              <button type="button" id="tab-src-upload-btn" onclick="document.getElementById('tab-archive-picker-container').style.display='none'; document.getElementById('tab-upload-picker-container').style.display='block'; this.style.background='rgba(139,92,246,0.15)'; this.style.borderColor='var(--purple-accent)'; this.style.color='#fff'; document.getElementById('tab-src-archive-btn').style.background='transparent'; document.getElementById('tab-src-archive-btn').style.borderColor='transparent'; document.getElementById('tab-src-archive-btn').style.color='rgba(255,255,255,0.6)';" class="btn-secondary" style="flex: 1; padding: 6px 10px; font-size: 11px; font-weight: 700;">
+                رفع ملف فيديو
+              </button>
+            </div>
+
+            <!-- Archive Picker List -->
+            <div id="tab-archive-picker-container">
+              <div id="tab-archive-picker-grid" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-left: 4px;">
+                <!-- Dynamically populated -->
+              </div>
+              <p id="tab-archive-picker-empty" style="display: none; font-size: 11px; color: rgba(255,255,255,0.4); text-align: center; margin: 15px 0;">
+                لا توجد مقاطع في الأرشيف حالياً. يمكنك تجهيز مقطع أولاً أو رفع ملف مباشرة!
+              </p>
+            </div>
+
+            <!-- Upload Picker -->
+            <div id="tab-upload-picker-container" style="display: none;">
+              <div onclick="document.getElementById('tab-custom-video-file-input').click()" style="background: rgba(139,92,246,0.06); border: 2px dashed var(--purple-accent); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer;">
+                <input type="file" id="tab-custom-video-file-input" accept="video/*" onchange="handleCustomVideoFileUpload(event)" style="display: none;" />
+                <span style="font-size: 28px; display: block; margin-bottom: 6px;">📤</span>
+                <span style="font-size: 12px; font-weight: 700; color: #fff; display: block;">انقر لاختيار فيديو من جهازك</span>
+                <span style="font-size: 10px; color: var(--text-muted);">يدعم MP4, MOV بأي حجم</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Selected Video Preview Player -->
+          <div id="tab-selected-video-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.85);">🎬 معاينة الفيديو المختار:</span>
+              <span style="font-size: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #10b981; padding: 2px 8px; border-radius: 10px; font-weight: 800;">جاهز للنشر</span>
+            </div>
+            <div style="width: 100%; max-height: 360px; border-radius: 12px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(139, 92, 246, 0.3);">
+              <video id="tab-tiktok-video-preview" controls style="width: 100%; max-height: 360px; object-fit: contain;"></video>
+            </div>
+          </div>
+
+          <div id="tab-no-video-alert" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 14px; text-align: center; font-size: 12px; color: #f87171;">
+            ⚠️ الرجاء اختيار فيديو من القائمة بالأعلى لمعاينته ونشره
+          </div>
+
+        </div>
+
+        <!-- LEFT COLUMN: POST COMPOSER, CAPTION, CHANNELS & SCHEDULE -->
+        <div style="display: flex; flex-direction: column; gap: 18px;">
+          
+          <!-- Post Details Glass Container -->
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+            
+            <!-- 1. Channel Selector -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.9);">🎯 حساب وقناة TikTok (من Buffer):</label>
+                <button type="button" id="tab-buffer-refresh-channels-btn" onclick="refreshTikTokTabChannels()" style="background: transparent; border: none; color: #a855f7; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit;">
+                  <span>🔄</span> تحديث القنوات
+                </button>
+              </div>
+              <select id="tab-buffer-channel-select" style="width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.4); background: #161224; color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; outline: none;">
+                <option value="">⏳ جاري جلب القنوات...</option>
+              </select>
+            </div>
+
+            <!-- 2. Clean Short Title -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.9);">🏷️ عنوان المقطع النظيف (TikTok Title):</label>
+                <span style="font-size: 10px; color: #10b981; font-weight: 700;">✨ يتم تنظيف العبارات الزائدة تلقائياً</span>
+              </div>
+              <input type="text" id="tab-clean-title-input" oninput="autoDraftTikTokCaption()" placeholder="مثال: أبل تطلق أقوى معالج في تاريخها M5 Ultra" style="width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.3); color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; outline: none; box-sizing: border-box;" />
+            </div>
+
+            <!-- 3. Original YouTube Episode Title (For Copyright Attribution) -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.9);">📺 عنوان حلقة فيديو اليوتيوب الأصلية (لحفظ الحقوق):</label>
+                <button type="button" id="tab-fetch-yt-title-btn" onclick="fetchAndSetYoutubeTitleInTab()" style="background: rgba(139, 92, 246, 0.15); border: 1px solid var(--purple-accent); color: #c084fc; border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit;">
+                  <span>🔍</span> جلب من يوتيوب
+                </button>
+              </div>
+              <input type="text" id="tab-youtube-title-input" oninput="autoDraftTikTokCaption()" placeholder="مثال: بودكاست فنجان مع إيلون ماسك | الحلقة الكاملة" style="width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.3); color: #fff; font-size: 13px; font-family: inherit; outline: none; box-sizing: border-box;" />
+              <span style="font-size: 11px; color: rgba(255, 255, 255, 0.45); display: block; margin-top: 4px;">
+                سيتم إدراج سطر في أسفل الكابشن تلقائياً: <code>جزء من حلقة: [عنوان الحلقة]</code>
+              </span>
+            </div>
+
+            <!-- 4. Post Caption Textarea & AI Generator -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                <label style="font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.9);">📝 الكابشن والوصف النهائي للمنشور:</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" id="tab-ai-caption-btn" onclick="generateAICaptionInTab()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2)); border-color: #ec4899; color: #fff; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <span>✨</span> توليد كابشن ذكي (ملخص من جملتين)
+                  </button>
+                  <span id="tab-buffer-char-count" style="font-size: 11px; color: rgba(255, 255, 255, 0.45);">0 حرف</span>
+                </div>
+              </div>
+              <textarea id="tab-buffer-caption-text" rows="6" placeholder="سيتم صياغة العنوان مع الملخص الذكي وحقوق الحلقة الأصلية والهاشتاجات هنا تلقائياً..." style="width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.35); color: #fff; font-size: 13px; font-family: inherit; resize: vertical; line-height: 1.6; box-sizing: border-box; outline: none;"></textarea>
+            </div>
+
+            <!-- 5. Publishing Mode: Instant vs Schedule -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px 16px;">
+              <label style="font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.9); display: block; margin-bottom: 10px;">⏰ موعد النشر على TikTok:</label>
+              
+              <div style="display: flex; gap: 20px; margin-bottom: 10px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff;">
+                  <input type="radio" name="tab-buffer-publish-type" value="now" checked onchange="toggleTabPublishMode('now')" style="accent-color: #ec4899; width: 16px; height: 16px; cursor: pointer;" />
+                  <span>⚡ نشر فوري الآن</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff;">
+                  <input type="radio" name="tab-buffer-publish-type" value="schedule" onchange="toggleTabPublishMode('schedule')" style="accent-color: #8b5cf6; width: 16px; height: 16px; cursor: pointer;" />
+                  <span>📅 جدولة لموعد لاحق</span>
+                </label>
+              </div>
+
+              <!-- Date-Time picker -->
+              <div id="tab-buffer-schedule-box" style="display: none; margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 10px;">
+                <label style="font-size: 11px; color: rgba(255, 255, 255, 0.65); display: block; margin-bottom: 6px;">حدد التاريخ والوقت بتوقيتك المحلي:</label>
+                <input type="datetime-local" id="tab-buffer-schedule-time" style="width: 100%; max-width: 320px; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.4); background: #161224; color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; outline: none; box-sizing: border-box;" />
+              </div>
+            </div>
+
+            <!-- Progress Box -->
+            <div id="tab-buffer-progress-box" style="display: none; background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(139, 92, 246, 0.4); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span id="tab-buffer-status-msg" style="font-size: 13px; font-weight: 700; color: #a855f7;">جاري بدء العملية...</span>
+                <span id="tab-buffer-progress-percent" style="font-size: 12px; font-weight: 700; color: #fff;">0%</span>
+              </div>
+              <div style="background: rgba(255, 255, 255, 0.08); height: 10px; border-radius: 5px; overflow: hidden;">
+                <div id="tab-buffer-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #ec4899); transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+
+            <!-- Result Box -->
+            <div id="tab-buffer-result-box" style="display: none;"></div>
+
+            <!-- Main Submit Button -->
+            <button type="button" id="tab-buffer-submit-btn" onclick="executeTikTokTabPublish()" style="background: linear-gradient(135deg, #000000, #25F4EE 40%, #FE2C55); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: inherit; box-shadow: 0 6px 25px rgba(254, 44, 85, 0.45); transition: all 0.3s ease;">
+              <span id="tab-buffer-submit-btn-text">🚀 رفع على Cloudinary ونشر فوري على TikTok ✨</span>
+            </button>
+
+          </div>
+
+          <!-- 6. Quick Settings Box -->
+          <div id="tab-quick-settings-box" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 18px; padding: 20px; transition: all 0.3s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px;">⚙️</span>
+                <h3 style="font-size: 15px; font-weight: 800; margin: 0; color: #fff;">إعدادات ربط Cloudinary و Buffer</h3>
+              </div>
+              <button type="button" onclick="saveTabSettings()" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); border: none; color: #fff; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-family: inherit;">
+                💾 حفظ الإعدادات
+              </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+              <div>
+                <label style="font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.8); display: block; margin-bottom: 4px;">☁️ Cloud Name (Cloudinary):</label>
+                <input type="text" id="tab-setting-cloud-name" placeholder="اسم حساب Cloudinary" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-family: monospace; direction: ltr; text-align: left; box-sizing: border-box;" />
+              </div>
+              <div>
+                <label style="font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.8); display: block; margin-bottom: 4px;">📂 Upload Preset (Unsigned):</label>
+                <input type="text" id="tab-setting-upload-preset" placeholder="اسم الـ Preset" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-family: monospace; direction: ltr; text-align: left; box-sizing: border-box;" />
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+              <div>
+                <label style="font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.8); display: block; margin-bottom: 4px;">🔑 مفتاح Buffer API Token:</label>
+                <input type="password" id="tab-setting-buffer-token" placeholder="الـ Access Token من Buffer" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-family: monospace; direction: ltr; text-align: left; box-sizing: border-box;" />
+              </div>
+              <div>
+                <label style="font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.8); display: block; margin-bottom: 4px;">🏷️ الهاشتاجات الافتراضية:</label>
+                <input type="text" id="tab-setting-default-hashtags" placeholder="#fyp #viral #shorts" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-family: inherit; direction: rtl; box-sizing: border-box;" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. Recent Publishing Activity Log -->
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 18px; padding: 20px;">
+            <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px;">
+              <span>📋</span> سجل المنشورات الحديثة (تاريخ النشر والجدولة):
+            </h4>
+            <div id="tab-publish-history-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
 
     <!-- COHERE ASR DASHBOARD PANEL -->

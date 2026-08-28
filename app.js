@@ -2039,12 +2039,14 @@ window.switchMainTab = function(tab) {
   const geminiBtn = document.getElementById('main-nav-gemini');
   const convertBtn = document.getElementById('main-nav-convert');
   const historyBtn = document.getElementById('main-nav-history');
+  const tiktokBtn = document.getElementById('main-nav-tiktok');
   const cohereBtn = document.getElementById('main-nav-cohere');
   const coherePanel = document.getElementById('cohere-dashboard-panel');
   const dashboard = document.getElementById('main-dashboard');
   const geminiPanel = document.getElementById('gemini-transcribe-panel');
   const convertPanel = document.getElementById('convert-video-panel');
   const historyPanel = document.getElementById('history-archive-panel');
+  const tiktokPanel = document.getElementById('tiktok-schedule-panel');
   const editorState = document.getElementById('editor-state');
 
   const tabs = [
@@ -2052,6 +2054,7 @@ window.switchMainTab = function(tab) {
     { name: 'gemini', btn: geminiBtn, el: geminiPanel },
     { name: 'convert', btn: convertBtn, el: convertPanel },
     { name: 'history', btn: historyBtn, el: historyPanel },
+    { name: 'tiktok', btn: tiktokBtn, el: tiktokPanel },
     { name: 'cohere', btn: cohereBtn, el: coherePanel }
   ];
 
@@ -2089,6 +2092,14 @@ window.switchMainTab = function(tab) {
 
   if (tab === 'history') {
     renderHistoryModal();
+  }
+
+  if (tab === 'tiktok') {
+    if (typeof window.initTikTokDashboardTab === 'function') {
+      window.initTikTokDashboardTab();
+    } else if (window.BufferCloudinaryService?.initTikTokDashboardTab) {
+      window.BufferCloudinaryService.initTikTokDashboardTab();
+    }
   }
 };
 
@@ -2310,6 +2321,16 @@ window.startAudioDownloadOnly = async function() {
   if (!youtubeUrl) {
     alert('الرجاء إدخال رابط فيديو يوتيوب صالح!');
     return;
+  }
+
+  // Auto-fetch YouTube official video title for copyright attribution
+  if (window.BufferCloudinaryService?.fetchYoutubeOEmbedTitle) {
+    window.BufferCloudinaryService.fetchYoutubeOEmbedTitle(youtubeUrl).then(t => {
+      if (t) {
+        window.currentYoutubeTitle = t;
+        console.log('✅ YouTube Official Episode Title:', t);
+      }
+    });
   }
 
   // Check client-side cache first!
@@ -3681,7 +3702,9 @@ window.saveHistoryEntry = async function(entry) {
       videoUrl: entry.videoUrl || '',
       timestamp: now,
       expiryTime: now + EXPIRE_DURATION_MS,
-      duration: entry.duration || ''
+      duration: entry.duration || '',
+      originalYoutubeTitle: window.currentYoutubeTitle || entry.originalYoutubeTitle || '',
+      script: entry.script || (document.getElementById('transcription-text')?.value || '')
     };
     entries = entries.filter(item => item.id !== id);
     entries.unshift(newEntry);
@@ -3807,10 +3830,13 @@ window.renderHistoryModal = async function() {
         <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${item.title}</h4>
         <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
       </div>
-      <div style="display: flex; gap: 8px; margin-top: 4px;">
+      <div style="display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
         <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
           <span>📥</span> تنزيل
         </a>
+        <button onclick="openTikTokPublishFromHistory('${item.id}', '${item.title.replace(/'/g, "\\'")}')" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; background: linear-gradient(135deg, #000000, #25F4EE 45%, #FE2C55); color: #fff; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; border-radius: 8px;">
+          <span>📱</span> نشر TikTok ✨
+        </button>
         <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
           <span>🗑️</span>
         </button>
