@@ -1796,6 +1796,8 @@ window.renderVideo = async function() {
     
     outputVideo.src = url;
     downloadLink.href = url;
+    window.lastRenderedVideoBlob = blob;
+    window.lastRenderedVideoUrl = url;
     showState(successState);
     playSuccessSound();
 
@@ -2223,6 +2225,7 @@ window.startVerticalConversion = async function() {
     }
 
     lastConvertedBlob = await videoBlobRes.blob();
+    window.lastConvertedBlob = lastConvertedBlob;
     const localVideoUrl = URL.createObjectURL(lastConvertedBlob);
 
     videoPlayer.src = localVideoUrl;
