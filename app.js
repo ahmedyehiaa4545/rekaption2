@@ -2037,14 +2037,12 @@ window.switchMainTab = function(tab) {
   const geminiBtn = document.getElementById('main-nav-gemini');
   const convertBtn = document.getElementById('main-nav-convert');
   const historyBtn = document.getElementById('main-nav-history');
-  const scheduleBtn = document.getElementById('main-nav-schedule');
   const cohereBtn = document.getElementById('main-nav-cohere');
   const coherePanel = document.getElementById('cohere-dashboard-panel');
   const dashboard = document.getElementById('main-dashboard');
   const geminiPanel = document.getElementById('gemini-transcribe-panel');
   const convertPanel = document.getElementById('convert-video-panel');
   const historyPanel = document.getElementById('history-archive-panel');
-  const schedulePanel = document.getElementById('schedule-tiktok-panel');
   const editorState = document.getElementById('editor-state');
 
   const tabs = [
@@ -2052,7 +2050,6 @@ window.switchMainTab = function(tab) {
     { name: 'gemini', btn: geminiBtn, el: geminiPanel },
     { name: 'convert', btn: convertBtn, el: convertPanel },
     { name: 'history', btn: historyBtn, el: historyPanel },
-    { name: 'schedule', btn: scheduleBtn, el: schedulePanel },
     { name: 'cohere', btn: cohereBtn, el: coherePanel }
   ];
 
@@ -2090,12 +2087,6 @@ window.switchMainTab = function(tab) {
 
   if (tab === 'history') {
     renderHistoryModal();
-  }
-
-  if (tab === 'schedule') {
-    if (typeof initBufferTab === 'function') {
-      initBufferTab();
-    }
   }
 };
 
@@ -2489,10 +2480,6 @@ window.startAudioDownloadOnly = async function() {
       transcriptionContainer.style.display = 'flex';
       transcriptionText.value = resData.transcription;
 
-      if (resData.videoTitle) {
-        window.currentSourceVideoTitle = resData.videoTitle;
-      }
-
       // Update Client Cache
       lastGeminiYtUrl = youtubeUrl;
       lastGeminiTranscription = resData.transcription;
@@ -2591,8 +2578,7 @@ window.fetchShortsSuggestions = async function() {
           openrouterModel: openrouterModel,
           customPrompt: customPrompt,
           titleStyle: titleStyle,
-          numShorts: numShorts,
-          sourceTitle: window.currentSourceVideoTitle || ''
+          numShorts: numShorts
         })
       });
     } catch (e) {
@@ -2645,8 +2631,7 @@ window.fetchShortsSuggestions = async function() {
           openrouterModel: openrouterModel,
           customPrompt: customPrompt,
           titleStyle: titleStyle,
-          numShorts: numShorts,
-          sourceTitle: window.currentSourceVideoTitle || ''
+          numShorts: numShorts
         })
       });
 
@@ -2672,9 +2657,7 @@ window.fetchShortsSuggestions = async function() {
       const escapedYtUrl = ytUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
       
       shortsList.forEach((short, idx) => {
-        const pureTitle = (typeof window.cleanPureTitle === 'function') ? window.cleanPureTitle(short.title) : short.title;
-        short.title = pureTitle;
-        const copyText = `عنوان المقطع: ${pureTitle}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
+        const copyText = `عنوان المقطع: ${short.title}\nالتوقيت: [${short.start_time} -> ${short.end_time}]\nالخطاف: ${short.hook}\n\nالنص:\n${short.script}`;
         const escapedCopyText = copyText.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         
         cardsHtml += `
@@ -3508,9 +3491,7 @@ window.processBatchCaption = async function() {
       if (typeof window.saveHistoryEntry === 'function') {
         try {
           await window.saveHistoryEntry({
-            title: window.cleanPureTitle ? window.cleanPureTitle(short.title) : short.title,
-            summary: short.summary || short.hook || '',
-            sourceTitle: window.currentSourceVideoTitle || '',
+            title: `🎬 ${short.title} (${short.start_time} - ${short.end_time})`,
             videoUrl: finalUrl,
             serverUrl: `${apiUrl.replace(/\/$/, '')}/${renderTaskStatus.videoUrl}`,
             blob: finalVideoBlob,
@@ -3690,12 +3671,9 @@ window.saveHistoryEntry = async function(entry) {
   try {
     let entries = getHistoryEntries();
     const now = Date.now();
-    const pure = (typeof window.cleanPureTitle === 'function') ? window.cleanPureTitle(entry.title) : entry.title;
     const newEntry = {
       id: id,
-      title: pure || entry.title || 'فيديو كابشن مجهز',
-      summary: entry.summary || '',
-      sourceTitle: entry.sourceTitle || window.currentSourceVideoTitle || '',
+      title: entry.title || 'فيديو كابشن مجهز',
       serverUrl: serverUrl,
       videoUrl: entry.videoUrl || '',
       timestamp: now,
@@ -3826,14 +3804,11 @@ window.renderHistoryModal = async function() {
         <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${item.title}</h4>
         <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
       </div>
-      <div style="display: flex; gap: 6px; margin-top: 4px;">
-        <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+      <div style="display: flex; gap: 8px; margin-top: 4px;">
+        <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
           <span>📥</span> تنزيل
         </a>
-        <button type="button" onclick="openBufferScheduleModal('${activeUrl}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.id}', '${(item.sourceTitle || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="جدولة ونشر المقطع عبر Buffer">
-          <span>📅</span> Buffer
-        </button>
-        <button type="button" onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
+        <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
           <span>🗑️</span>
         </button>
       </div>
@@ -4848,670 +4823,4 @@ async function saveSystemKeysBackend() {
 document.addEventListener('DOMContentLoaded', () => { 
   renderTemplateList(); 
   loadKeysFromFirebase();
-  const savedBufferKey = localStorage.getItem('buffer_api_key');
-  const bufferInput = document.getElementById('buffer-api-key-input');
-  if (savedBufferKey && bufferInput) {
-    bufferInput.value = savedBufferKey;
-  }
 });
-
-// ==================== Buffer Social Media Scheduling & Posting Logic ====================
-
-window.saveBufferApiKey = function(val) {
-  if (val !== undefined && val !== null) {
-    localStorage.setItem('buffer_api_key', val.trim());
-  }
-};
-
-window.getBufferApiKey = function() {
-  const input = document.getElementById('buffer-api-key-input');
-  if (input && input.value.trim()) {
-    return input.value.trim();
-  }
-  return localStorage.getItem('buffer_api_key') || '';
-};
-
-window.initBufferTab = function() {
-  const savedKey = localStorage.getItem('buffer_api_key') || '';
-  const input = document.getElementById('buffer-api-key-input');
-  if (input && savedKey) {
-    input.value = savedKey;
-  }
-  const cldNameInput = document.getElementById('cloudinary-cloud-name');
-  if (cldNameInput) cldNameInput.value = localStorage.getItem('cld_name') || '';
-  const cldPresetInput = document.getElementById('cloudinary-upload-preset');
-  if (cldPresetInput) cldPresetInput.value = localStorage.getItem('cld_preset') || '';
-
-  if (typeof populateBufferVideoSources === 'function') {
-    populateBufferVideoSources();
-  }
-  if (savedKey) {
-    testBufferConnection(true);
-  }
-};
-
-window.currentBufferChannels = [];
-
-window.testBufferConnection = async function(isSilent = false) {
-  const apiKey = getBufferApiKey();
-  if (!apiKey) {
-    if (!isSilent) alert('يرجى إدخال مفتاح Buffer API Key أولاً.');
-    return;
-  }
-
-  const statusBox = document.getElementById('buffer-account-status-box');
-  const channelsList = document.getElementById('buffer-channels-list');
-  const channelSelect = document.getElementById('buffer-channel-select');
-  const modalChannelSelect = document.getElementById('modal-buffer-channel-select');
-
-  try {
-    const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-    
-    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/channels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: apiKey })
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'فشل الاتصال بـ Buffer API' }));
-      throw new Error(err.detail || err.message || `خطأ (${res.status})`);
-    }
-
-    const data = await res.json();
-    const channels = data.channels || [];
-    window.currentBufferChannels = channels;
-
-    // Populate channel selects
-    [channelSelect, modalChannelSelect].forEach(sel => {
-      if (!sel) return;
-      sel.innerHTML = channels.length === 0 
-        ? '<option value="">-- لم يتم العثور على قنوات متصلة --</option>'
-        : channels.map(ch => `<option value="${ch.id}" ${ch.service === 'tiktok' ? 'selected' : ''}>[${ch.service.toUpperCase()}] ${ch.displayName || ch.name || ch.id}</option>`).join('');
-    });
-
-    if (statusBox && channelsList) {
-      statusBox.style.display = 'block';
-      if (channels.length === 0) {
-        channelsList.innerHTML = `
-          <div style="font-size: 12px; color: #fbbf24;">
-            ⚠️ تم التحقق من المفتاح بنجاح، ولكن لم يتم العثور على قنوات متصلة في حسابك على Buffer. يرجى الدخول إلى <a href="https://buffer.com" target="_blank" style="color: #c084fc; text-decoration: underline;">Buffer Channels</a> وربط حسابك (TikTok أو Instagram أو YouTube).
-          </div>
-        `;
-      } else {
-        channelsList.innerHTML = channels.map(ch => {
-          const sName = (ch.service || 'channel').toUpperCase();
-          const dName = ch.displayName || ch.name || 'قناة تواصل';
-          const icon = ch.service === 'tiktok' ? '🎵' : (ch.service === 'instagram' ? '📷' : (ch.service === 'youtube' ? '▶️' : '🌐'));
-          return `
-            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 16px;">${icon}</span>
-                <div>
-                  <span style="font-size: 13px; font-weight: 700; color: #fff;">${dName} (${sName})</span>
-                  <span style="display: block; font-size: 10px; color: var(--text-muted); direction: ltr; text-align: right;">ID: ${ch.id}</span>
-                </div>
-              </div>
-              <span style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;">متصل وجاهز</span>
-            </div>
-          `;
-        }).join('');
-      }
-    }
-
-    saveBufferApiKey(apiKey);
-    loadBufferScheduledPosts();
-
-    if (!isSilent) {
-      alert('🎉 تم الاتصال بـ Buffer بنجاح والحسابات جاهزة للنشر والجدولة بدون أي قيود كوتا!');
-    }
-  } catch (err) {
-    console.error('Buffer connection test error:', err);
-    if (!isSilent) {
-      alert(`⚠️ خطأ في الاتصال بـ Buffer:\n${err.message}\nتأكد من صحة الـ API Key في حسابك على Buffer.`);
-    }
-  }
-};
-
-window.cleanPureTitle = function(title) {
-  if (!title) return '';
-  let t = title.toString()
-    .replace(/^[🎬🎥✂️\s]+/, '')
-    .replace(/^\[\d+\]\s*/, '')
-    .replace(/^[🎬🎥✂️\s]+/, '')
-    .replace(/^مقطع\s*#?\d+[:\s-]*/i, '')
-    .replace(/^Shorts?\s*#?\d+[:\s-]*/i, '')
-    .replace(/\s*\(\d{1,2}:\d{2}.*?\)$/, '')
-    .trim();
-  return t;
-};
-
-window.buildTikTokCaption = function(title, summary, sourceTitle) {
-  const pureTitle = window.cleanPureTitle(title);
-  let parts = [];
-  if (pureTitle) {
-    parts.push(pureTitle);
-  }
-  
-  if (summary && summary.trim()) {
-    parts.push(summary.trim());
-  }
-  
-  parts.push('#shorts #fyp #viral #اكسبلور #تيك_توك');
-  
-  const epTitle = sourceTitle || window.currentSourceVideoTitle || '';
-  if (epTitle && epTitle.trim()) {
-    parts.push(`من حلقة: ${epTitle.trim()}`);
-  }
-  
-  return parts.join('\n\n');
-};
-
-window.populateBufferVideoSources = function() {
-  const select = document.getElementById('buffer-video-source-select');
-  if (!select) return;
-
-  const entries = (typeof getHistoryEntries === 'function') ? getHistoryEntries() : [];
-  
-  select.innerHTML = '<option value="">-- اختر من الفيديوهات الجاهزة في الأرشيف --</option>';
-  
-  entries.forEach((item, idx) => {
-    const opt = document.createElement('option');
-    const sUrl = item.serverUrl || '';
-    opt.value = sUrl || item.videoUrl || item.id;
-    opt.dataset.id = item.id;
-    opt.dataset.serverUrl = sUrl;
-    opt.dataset.videoUrl = item.videoUrl || '';
-    const pure = window.cleanPureTitle(item.title);
-    opt.textContent = `🎬 [${idx + 1}] ${pure || item.title}`;
-    opt.dataset.title = pure || item.title;
-    opt.dataset.summary = item.summary || '';
-    opt.dataset.sourceTitle = item.sourceTitle || '';
-    select.appendChild(opt);
-  });
-
-  const customOpt = document.createElement('option');
-  customOpt.value = 'custom';
-  customOpt.textContent = '🔗 إدخال رابط فيديو مباشر (Direct MP4 URL)';
-  select.appendChild(customOpt);
-};
-
-window.onBufferVideoSourceChange = function() {
-  const select = document.getElementById('buffer-video-source-select');
-  const customWrapper = document.getElementById('buffer-custom-url-wrapper');
-  const captionInput = document.getElementById('buffer-post-caption');
-
-  if (!select) return;
-  const val = select.value;
-
-  if (val === 'custom') {
-    if (customWrapper) customWrapper.style.display = 'block';
-  } else {
-    if (customWrapper) customWrapper.style.display = 'none';
-    const selectedOpt = select.options[select.selectedIndex];
-    if (selectedOpt && selectedOpt.dataset.title && captionInput) {
-      captionInput.value = window.buildTikTokCaption(selectedOpt.dataset.title, selectedOpt.dataset.summary, selectedOpt.dataset.sourceTitle);
-    }
-  }
-};
-
-window.toggleBufferScheduleInput = function(show) {
-  const wrapper = document.getElementById('buffer-datetime-picker-wrapper');
-  if (wrapper) {
-    wrapper.style.display = show ? 'block' : 'none';
-    if (show) {
-      const dtInput = document.getElementById('buffer-schedule-datetime');
-      if (dtInput && !dtInput.value) {
-        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        dtInput.value = tomorrow.toISOString().slice(0, 16);
-      }
-    }
-  }
-};
-
-window.submitBufferSchedule = async function() {
-  const apiKey = getBufferApiKey();
-  if (!apiKey) {
-    alert('يرجى إدخال مفتاح Buffer API Key والتحقق منه أولاً.');
-    return;
-  }
-
-  const channelSelect = document.getElementById('buffer-channel-select');
-  const selectedChannelId = channelSelect ? channelSelect.value : null;
-
-  const select = document.getElementById('buffer-video-source-select');
-  const customUrlInput = document.getElementById('buffer-custom-video-url');
-  let videoUrl = select ? select.value : '';
-  const selectedOpt = select ? select.options[select.selectedIndex] : null;
-
-  if (videoUrl === 'custom') {
-    videoUrl = customUrlInput ? customUrlInput.value.trim() : '';
-  }
-
-  if (!videoUrl) {
-    alert('يرجى اختيار فيديو من الأرشيف أو إدخال رابط فيديو صالح.');
-    return;
-  }
-
-  const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-
-  const submitBtn = document.getElementById('buffer-submit-btn');
-  const originalText = submitBtn ? submitBtn.innerHTML : '';
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳</span> جاري معالجة وتجهيز الفيديو لـ Buffer...';
-  }
-
-  try {
-    // Check if we should upload the blob from IndexedDB for 100% reliability
-    const historyId = selectedOpt ? selectedOpt.dataset.id : null;
-    let localBlob = null;
-    if (historyId && typeof getVideoBlobFromIDB === 'function') {
-      try {
-        localBlob = await getVideoBlobFromIDB(historyId);
-      } catch (e) {
-        console.warn('IDB fetch blob error:', e);
-      }
-    }
-    if (!localBlob && videoUrl.startsWith('blob:')) {
-      try {
-        localBlob = await fetch(videoUrl).then(r => r.blob());
-      } catch (e) {
-        console.warn('Blob fetch error:', e);
-      }
-    }
-
-    const cldName = (localStorage.getItem('cld_name') || document.getElementById('cloudinary-cloud-name')?.value || '').trim();
-    const cldPreset = (localStorage.getItem('cld_preset') || document.getElementById('cloudinary-upload-preset')?.value || '').trim();
-
-    if (localBlob && cldName && cldPreset) {
-      if (submitBtn) submitBtn.innerHTML = '<span>☁️</span> جاري رفع الفيديو لسحابة Cloudinary...';
-      try {
-        const cldFd = new FormData();
-        cldFd.append('file', localBlob);
-        cldFd.append('upload_preset', cldPreset);
-        const cldRes = await fetch(`https://api.cloudinary.com/v1_1/${cldName}/video/upload`, {
-          method: 'POST',
-          body: cldFd
-        });
-        if (cldRes.ok) {
-          const cldData = await cldRes.json();
-          if (cldData.secure_url) {
-            videoUrl = cldData.secure_url;
-            console.log('🌟 Uploaded directly to Cloudinary for Buffer:', videoUrl);
-          }
-        }
-      } catch (cldErr) {
-        console.warn('Cloudinary direct upload failed, fallback to Railway:', cldErr);
-      }
-    }
-
-    if (localBlob && (!videoUrl || videoUrl.startsWith('blob:'))) {
-      if (submitBtn) submitBtn.innerHTML = '<span>📤</span> جاري رفع الفيديو للسيرفر لتجهيز الرابط لـ Buffer...';
-      const fd = new FormData();
-      fd.append('file', localBlob, 'buffer_post.mp4');
-      const upBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : baseBackend;
-      const upRes = await fetch(`${upBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
-        method: 'POST',
-        body: fd
-      });
-      if (upRes.ok) {
-        const upData = await upRes.json();
-        if (upData.videoUrl) {
-          videoUrl = upData.videoUrl;
-          console.log('✅ Fresh public video URL created for Buffer:', videoUrl);
-        }
-      }
-      if (submitBtn) submitBtn.innerHTML = '<span>⏳</span> جاري مزامنة رابط الفيديو مع خوادم النشر...';
-      await new Promise(r => setTimeout(r, 2500));
-    } else if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
-      videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
-    }
-
-    const caption = (document.getElementById('buffer-post-caption')?.value || '').trim();
-    if (!caption) {
-      throw new Error('يرجى كتابة نص المنشور (Caption).');
-    }
-
-    const modeRadio = document.querySelector('input[name="buffer-publish-mode"]:checked');
-    const modeVal = modeRadio ? modeRadio.value : 'now';
-    const isPublishNow = (modeVal === 'now');
-    let scheduledForIso = null;
-
-    if (modeVal === 'schedule') {
-      const dtVal = document.getElementById('buffer-schedule-datetime')?.value;
-      if (!dtVal) {
-        throw new Error('يرجى تحديد تاريخ ووقت الجدولة.');
-      }
-      const chosenDate = new Date(dtVal);
-      if (isNaN(chosenDate.getTime()) || chosenDate.getTime() <= Date.now()) {
-        throw new Error('تاريخ الجدولة يجب أن يكون في المستقبل.');
-      }
-      scheduledForIso = chosenDate.toISOString();
-    }
-
-    if (submitBtn) submitBtn.innerHTML = '<span>⏳</span> جاري إرسال المنشور إلى Buffer...';
-
-    const postPayload = {
-      apiKey: apiKey,
-      channelId: selectedChannelId || undefined,
-      videoUrl: videoUrl,
-      content: caption,
-      publishNow: isPublishNow,
-      scheduledFor: scheduledForIso,
-      saveToDraft: false,
-      cloudinaryCloudName: cldName || undefined,
-      cloudinaryUploadPreset: cldPreset || undefined
-    };
-
-    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/create-post`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(postPayload)
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'حدث خطأ أثناء الاتصال بـ Buffer' }));
-      throw new Error(err.detail || err.message || 'فشلت عملية النشر');
-    }
-
-    const result = await res.json();
-    alert(result.message || '🎉 تمت العملية بنجاح عبر Buffer!');
-    
-    const captionEl = document.getElementById('buffer-post-caption');
-    if (captionEl) captionEl.value = '';
-
-    loadBufferScheduledPosts();
-  } catch (err) {
-    console.error('Buffer submit error:', err);
-    alert(`❌ خطأ في النشر عبر Buffer:\n${err.message}`);
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalText;
-    }
-  }
-};
-
-window.loadBufferScheduledPosts = async function() {
-  const apiKey = getBufferApiKey();
-  if (!apiKey) return;
-
-  const container = document.getElementById('buffer-posts-list-container');
-  if (!container) return;
-
-  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted);">جاري جلب المنشورات المجدولة من Buffer...</div>';
-
-  try {
-    const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/posts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: apiKey })
-    });
-
-    if (!res.ok) {
-      throw new Error('فشل جلب المنشورات من Buffer.');
-    }
-
-    const data = await res.json();
-    const posts = data.posts || [];
-
-    if (posts.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 25px; color: var(--text-muted); font-size: 13px; background: rgba(255,255,255,0.02); border-radius: 12px;">
-          لا توجد منشورات مجدولة حالياً في طابور Buffer الخاص بك.
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = posts.map(post => {
-      const isSent = post.status === 'sent' || post.status === 'published';
-      const statusBadge = isSent
-        ? `<span style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">✅ تم النشر</span>`
-        : `<span style="background: rgba(139,92,246,0.15); color: #c084fc; border: 1px solid rgba(139,92,246,0.3); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">⏱️ مجدول</span>`;
-      
-      const timeDisplay = post.dueAt 
-        ? `📅 موعد النشر: ${new Date(post.dueAt).toLocaleString('ar-EG')}`
-        : (post.createdAt ? `📅 أُضيف في: ${new Date(post.createdAt).toLocaleString('ar-EG')}` : '');
-
-      return `
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <div style="display: flex; flex-direction: column; gap: 4px; max-width: 80%;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span>🚀</span>
-              <span style="font-size: 13px; font-weight: 700; color: #fff;">${(post.text || '').substring(0, 70)}${(post.text || '').length > 70 ? '...' : ''}</span>
-            </div>
-            ${timeDisplay ? `<span style="font-size: 11px; color: var(--purple-accent); font-weight: 600;">${timeDisplay}</span>` : ''}
-          </div>
-          <div>${statusBadge}</div>
-        </div>
-      `;
-    }).join('');
-  } catch (e) {
-    console.warn('Error fetching Buffer posts:', e);
-    container.innerHTML = `
-      <div style="text-align: center; padding: 20px; color: #f87171; font-size: 12px;">
-        تعذر تحميل المنشورات المجدولة حالياً (${e.message}).
-      </div>
-    `;
-  }
-};
-
-// 1-Click Buffer Modal Helpers
-window.openBufferScheduleModal = function(videoUrl, title = '', summary = '', historyId = '', sourceTitle = '') {
-  const modal = document.getElementById('buffer-schedule-modal');
-  if (!modal) return;
-
-  modal.dataset.historyId = historyId || '';
-  const urlInput = document.getElementById('modal-buffer-video-url');
-  const captionInput = document.getElementById('modal-buffer-caption');
-  const dtInput = document.getElementById('modal-buffer-datetime');
-  const statusMsg = document.getElementById('modal-buffer-status-msg');
-  const chSelect = document.getElementById('modal-buffer-channel-select');
-
-  if (urlInput) urlInput.value = videoUrl || '';
-  if (captionInput) {
-    captionInput.value = window.buildTikTokCaption(title, summary, sourceTitle);
-  }
-  if (dtInput) {
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    dtInput.value = tomorrow.toISOString().slice(0, 16);
-  }
-  if (statusMsg) statusMsg.style.display = 'none';
-
-  if (chSelect && window.currentBufferChannels && window.currentBufferChannels.length > 0) {
-    chSelect.innerHTML = window.currentBufferChannels.map(ch => 
-      `<option value="${ch.id}" ${ch.service === 'tiktok' ? 'selected' : ''}>[${ch.service.toUpperCase()}] ${ch.displayName || ch.name || ch.id}</option>`
-    ).join('');
-  } else {
-    testBufferConnection(true);
-  }
-
-  modal.style.display = 'flex';
-};
-
-window.closeBufferScheduleModal = function() {
-  const modal = document.getElementById('buffer-schedule-modal');
-  if (modal) modal.style.display = 'none';
-};
-
-window.toggleModalBufferScheduleInput = function(show) {
-  const box = document.getElementById('modal-buffer-datetime-box');
-  if (box) box.style.display = show ? 'block' : 'none';
-};
-
-window.openCurrentVideoBufferModal = function() {
-  const vid = document.getElementById('main-preview-video');
-  const src = vid ? (vid.currentSrc || vid.src) : '';
-  if (!src) {
-    alert('لا يوجد فيديو معروض حالياً في المعاينة للجدولة.');
-    return;
-  }
-  openBufferScheduleModal(src, 'فيديو شورتس جديد', '');
-};
-
-window.submitModalBufferSchedule = async function() {
-  const apiKey = getBufferApiKey();
-  if (!apiKey) {
-    alert('يرجى الانتقال لتابة "جدولة ونشر (Buffer)" وتعيين مفتاح Buffer API أولاً.');
-    return;
-  }
-
-  const modal = document.getElementById('buffer-schedule-modal');
-  const historyId = modal?.dataset?.historyId || '';
-  let videoUrl = document.getElementById('modal-buffer-video-url')?.value;
-  const caption = (document.getElementById('modal-buffer-caption')?.value || '').trim();
-  const channelId = document.getElementById('modal-buffer-channel-select')?.value;
-  const statusMsg = document.getElementById('modal-buffer-status-msg');
-  const submitBtn = document.getElementById('modal-buffer-submit-btn');
-
-  if (!videoUrl) {
-    alert('رابط الفيديو غير متوفر.');
-    return;
-  }
-
-  const modeRadio = document.querySelector('input[name="modal-buffer-mode"]:checked');
-  const modeVal = modeRadio ? modeRadio.value : 'now';
-  const isPublishNow = (modeVal === 'now');
-  let scheduledForIso = null;
-
-  if (modeVal === 'schedule') {
-    const dtVal = document.getElementById('modal-buffer-datetime')?.value;
-    if (!dtVal) {
-      alert('يرجى تحديد تاريخ ووقت الجدولة.');
-      return;
-    }
-    const chosenDate = new Date(dtVal);
-    if (isNaN(chosenDate.getTime()) || chosenDate.getTime() <= Date.now()) {
-      alert('تاريخ الجدولة يجب أن يكون في المستقبل.');
-      return;
-    }
-    scheduledForIso = chosenDate.toISOString();
-  }
-
-  const baseBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : (typeof apiUrl !== 'undefined' ? apiUrl : '');
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ جاري تجهيز الفيديو لـ Buffer...';
-  }
-
-  try {
-    let localBlob = null;
-    if (historyId && typeof getVideoBlobFromIDB === 'function') {
-      try {
-        localBlob = await getVideoBlobFromIDB(historyId);
-      } catch (e) {
-        console.warn('IDB fetch blob error:', e);
-      }
-    }
-    if (!localBlob && videoUrl.startsWith('blob:')) {
-      try {
-        localBlob = await fetch(videoUrl).then(r => r.blob());
-      } catch (e) {
-        console.warn('Blob fetch error:', e);
-      }
-    }
-
-    const cldName = (localStorage.getItem('cld_name') || document.getElementById('cloudinary-cloud-name')?.value || '').trim();
-    const cldPreset = (localStorage.getItem('cld_preset') || document.getElementById('cloudinary-upload-preset')?.value || '').trim();
-
-    if (localBlob && cldName && cldPreset) {
-      if (submitBtn) submitBtn.textContent = '☁️ جاري رفع الفيديو لسحابة Cloudinary...';
-      try {
-        const cldFd = new FormData();
-        cldFd.append('file', localBlob);
-        cldFd.append('upload_preset', cldPreset);
-        const cldRes = await fetch(`https://api.cloudinary.com/v1_1/${cldName}/video/upload`, {
-          method: 'POST',
-          body: cldFd
-        });
-        if (cldRes.ok) {
-          const cldData = await cldRes.json();
-          if (cldData.secure_url) {
-            videoUrl = cldData.secure_url;
-          }
-        }
-      } catch (cldErr) {
-        console.warn('Cloudinary direct upload failed, fallback to Railway:', cldErr);
-      }
-    }
-
-    if (localBlob && (!videoUrl || videoUrl.startsWith('blob:'))) {
-      if (submitBtn) submitBtn.textContent = '📤 جاري رفع الفيديو للسيرفر لـ Buffer...';
-      const fd = new FormData();
-      fd.append('file', localBlob, 'buffer_modal_post.mp4');
-      const upBackend = (typeof audioApiUrl !== 'undefined' && audioApiUrl) ? audioApiUrl : baseBackend;
-      const upRes = await fetch(`${upBackend.replace(/\/$/, '')}/api/buffer/upload-media`, {
-        method: 'POST',
-        body: fd
-      });
-      if (upRes.ok) {
-        const upData = await upRes.json();
-        if (upData.videoUrl) {
-          videoUrl = upData.videoUrl;
-        }
-      }
-      if (submitBtn) submitBtn.textContent = '⏳ جاري مزامنة رابط الفيديو مع خوادم النشر...';
-      await new Promise(r => setTimeout(r, 2500));
-    } else if (videoUrl && !videoUrl.startsWith('http') && !videoUrl.startsWith('blob:')) {
-      videoUrl = `${baseBackend.replace(/\/$/, '')}/${videoUrl.replace(/^\//, '')}`;
-    }
-
-    if (submitBtn) submitBtn.textContent = '⏳ جاري إرسال المنشور إلى Buffer...';
-
-    const postPayload = {
-      apiKey: apiKey,
-      channelId: channelId || undefined,
-      videoUrl: videoUrl,
-      content: caption,
-      publishNow: isPublishNow,
-      scheduledFor: scheduledForIso,
-      saveToDraft: false,
-      cloudinaryCloudName: cldName || undefined,
-      cloudinaryUploadPreset: cldPreset || undefined
-    };
-
-    const res = await fetch(`${baseBackend.replace(/\/$/, '')}/api/buffer/create-post`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(postPayload)
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'حدث خطأ في طلب الجدولة' }));
-      throw new Error(err.detail || err.message || 'فشلت عملية النشر عبر Buffer');
-    }
-
-    const result = await res.json();
-
-    if (statusMsg) {
-      statusMsg.style.display = 'block';
-      statusMsg.style.background = 'rgba(16,185,129,0.15)';
-      statusMsg.style.color = '#10b981';
-      statusMsg.style.border = '1px solid #10b981';
-      statusMsg.textContent = result.message || '✅ تم الإرسال بنجاح عبر Buffer!';
-    }
-
-    setTimeout(() => {
-      closeBufferScheduleModal();
-    }, 2200);
-
-  } catch (err) {
-    if (statusMsg) {
-      statusMsg.style.display = 'block';
-      statusMsg.style.background = 'rgba(239,68,68,0.15)';
-      statusMsg.style.color = '#f87171';
-      statusMsg.style.border = '1px solid #ef4444';
-      statusMsg.textContent = `❌ ${err.message}`;
-    }
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = '🚀 تأكيد الإرسال عبر Buffer';
-    }
-  }
-};
-
