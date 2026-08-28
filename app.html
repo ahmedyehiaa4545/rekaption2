@@ -912,6 +912,151 @@
         </div>
 
       </div>
+
+      <!-- SECTION 2: CREATE & PUBLISH / SCHEDULE POST -->
+      <div style="margin-top: 25px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 24px;">
+        <h3 style="font-size: 16px; color: #fff; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+          <span>🎬</span> تجهيز ونشر الفيديو إلى TikTok / Buffer
+        </h3>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+          
+          <!-- Column 1: Video Source & Cloudinary Upload -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <label style="font-size: 13px; font-weight: 700; color: #c084fc; display: block;">
+              1️⃣ اختيار الفيديو ورفعه إلى Cloudinary
+            </label>
+
+            <!-- Video Source Selector Tabs -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="buf-src-btn-local" onclick="switchBufferVideoSource('local')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border-color: var(--purple-accent); color: #fff;">
+                📤 رفع من الجهاز
+              </button>
+              <button type="button" id="buf-src-btn-history" onclick="switchBufferVideoSource('history')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px;">
+                📁 من الأرشيف (48h)
+              </button>
+              <button type="button" id="buf-src-btn-current" onclick="switchBufferVideoSource('current')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px;">
+                ✨ الفيديو الحالي بالمحرر
+              </button>
+            </div>
+
+            <!-- Source A: Local Upload Box -->
+            <div id="buf-source-local-box" class="file-upload-box" onclick="document.getElementById('buf-video-file-input').click()" style="padding: 20px; text-align: center; cursor: pointer;">
+              <input type="file" id="buf-video-file-input" accept="video/mp4,video/quicktime,video/*" style="display:none" onchange="handleBufferVideoFileSelect(this.files[0])" />
+              <span style="font-size: 28px; display: block; margin-bottom: 6px;">🎥</span>
+              <span id="buf-selected-file-name" style="font-size: 12px; color: #fff; font-weight: 600;">اضغط لاختيار فيديو MP4 من جهازك</span>
+            </div>
+
+            <!-- Source B: History Selector Box -->
+            <div id="buf-source-history-box" class="hidden" style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 12px; color: var(--text-muted);">اختر فيديو من الفيديوهات المحفوظة في الأرشيف:</span>
+              <select id="buf-history-select" onchange="handleBufferHistorySelect(this.value)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 12px;">
+                <option value="">-- اختر فيديو من الأرشيف --</option>
+              </select>
+            </div>
+
+            <!-- Source C: Current Video Box -->
+            <div id="buf-source-current-box" class="hidden" style="background: rgba(15,23,42,0.6); border: 1px dashed rgba(168,85,247,0.4); border-radius: 8px; padding: 14px; text-align: center;">
+              <span id="buf-current-video-status" style="font-size: 12px; color: var(--text-muted);">
+                سيتم استخدام آخر فيديو قمت برندرته وتنزيله في المحرر.
+              </span>
+            </div>
+
+            <!-- Video Preview Player (Compact) -->
+            <div id="buf-video-preview-wrapper" class="hidden" style="margin-top: 5px; border-radius: 8px; overflow: hidden; background: #000; text-align: center;">
+              <video id="buf-video-preview-player" controls playsinline style="max-height: 180px; width: 100%; object-fit: contain;"></video>
+            </div>
+
+            <!-- Upload Button & Progress -->
+            <button type="button" id="btn-upload-cloudinary" onclick="triggerCloudinaryUpload()" class="btn-secondary" style="width: 100%; justify-content: center; padding: 10px; font-size: 13px; font-weight: 700; background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; color: #38bdf8;">
+              <span>☁️</span> رفع الفيديو وتوليد الرابط المباشر
+            </button>
+
+            <!-- Progress Bar -->
+            <div id="buf-upload-progress-container" class="hidden" style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: #38bdf8;">
+                <span id="buf-upload-status-text">جاري الرفع إلى Cloudinary...</span>
+                <span id="buf-upload-percent-text">0%</span>
+              </div>
+              <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div id="buf-upload-progress-bar" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.2s;"></div>
+              </div>
+            </div>
+
+            <!-- Direct Video URL Display -->
+            <div>
+              <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">رابط الفيديو المباشر (Cloudinary URL):</span>
+              <input type="url" id="buffer-post-video-url" placeholder="https://res.cloudinary.com/.../video.mp4" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: rgba(15,23,42,0.8); color: #fff; font-size: 0.8rem; font-family: monospace; outline: none; box-sizing: border-box;" />
+            </div>
+
+          </div>
+
+          <!-- Column 2: Channel, Caption, Schedule & Publish Trigger -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <label style="font-size: 13px; font-weight: 700; color: #c084fc; display: block;">
+              2️⃣ تفاصيل المنشور وموعد النشر على Buffer
+            </label>
+
+            <!-- Target Channel Selector -->
+            <div>
+              <span style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">اختر القناة المستهدفة:</span>
+              <select id="buffer-post-channel-select" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px; font-weight: 700;">
+                <option value="">-- اضغط فحص وجلب القنوات أولاً --</option>
+              </select>
+            </div>
+
+            <!-- Caption / Description Textarea -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; color: var(--text-muted);">وصف المنشور (Caption & Tags):</span>
+                <span id="buf-caption-count" style="font-size: 11px; color: var(--text-muted);">0 حرف</span>
+              </div>
+              <textarea id="buffer-post-caption" placeholder="اكتب وصف الفيديو والهاشتاجات هنا..." style="width: 100%; height: 90px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: rgba(15,23,42,0.8); color: #fff; font-family: inherit; font-size: 13px; resize: vertical; box-sizing: border-box; outline: none;" oninput="document.getElementById('buf-caption-count').textContent = this.value.length + ' حرف'"></textarea>
+              
+              <!-- Quick Hashtags Pills -->
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+                <button type="button" onclick="appendBufferHashtag('#fyp')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px;">#fyp</button>
+                <button type="button" onclick="appendBufferHashtag('#foryou')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px;">#foryou</button>
+                <button type="button" onclick="appendBufferHashtag('#viral')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px;">#viral</button>
+                <button type="button" onclick="appendBufferHashtag('#tiktok')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px;">#tiktok</button>
+                <button type="button" onclick="appendBufferHashtag('#شورتس')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px;">#شورتس</button>
+                <button type="button" onclick="appendBufferHashtag('#بودكاست')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px;">#بودكاست</button>
+              </div>
+            </div>
+
+            <!-- Publishing Mode Toggle (Now vs Scheduled) -->
+            <div style="background: rgba(15,23,42,0.6); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px;">
+              <span style="font-size: 12px; font-weight: 700; color: #fff; display: block; margin-bottom: 8px;">طريقة وتوقيت النشر:</span>
+              
+              <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: #fff;">
+                  <input type="radio" name="buf-publish-mode" value="now" checked onchange="toggleBufferScheduleInputs(false)" />
+                  <span>⚡ نشر فوري الآن</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: #fff;">
+                  <input type="radio" name="buf-publish-mode" value="schedule" onchange="toggleBufferScheduleInputs(true)" />
+                  <span>⏰ جدولة لتاريخ ووقت محدد</span>
+                </label>
+              </div>
+
+              <div id="buf-datetime-picker-container" class="hidden" style="margin-top: 8px;">
+                <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">حدد تاريخ ووقت النشر:</span>
+                <input type="datetime-local" id="buffer-post-datetime" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: rgba(0,0,0,0.5); color: #fff; font-size: 12px; outline: none; box-sizing: border-box;" />
+              </div>
+            </div>
+
+            <!-- Final Publish / Schedule Button -->
+            <button type="button" id="btn-submit-buffer-post" onclick="submitPostToBuffer()" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; font-size: 14px; gap: 8px; background: linear-gradient(135deg, #a855f7 0%, #d946ef 100%);">
+              <span>🚀</span> نشر / جدولة المنشور على TikTok
+            </button>
+
+            <!-- Publish Result Alert Area -->
+            <div id="buffer-publish-result" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; text-align: center;"></div>
+
+          </div>
+
+        </div>
+      </div>
     </div>
 
     <div id="editor-state" class="panel hidden" style="margin-top: 10px;">
