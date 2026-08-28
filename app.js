@@ -5801,6 +5801,11 @@ window.openTikTokPublishModalForArchiveVideo = async function(id) {
   if (timeEl) timeEl.textContent = `جاهز وممنتج في الأرشيف ✅`;
   if (hookEl) hookEl.textContent = `جاهز للنشر الفوري أو الجدولة عبر Buffer`;
 
+  // Fix the tag so it doesn't say "مقطع مقترح" (that's for unrendered shorts!)
+  const tagEl = document.getElementById('modal-tiktok-short-tag');
+  if (tagEl) tagEl.textContent = `🎞️ فيديو جاهز من الأرشيف`;
+
+
   if (progBox) progBox.style.display = 'none';
   if (succBox) succBox.style.display = 'none';
   if (errBox) errBox.style.display = 'none';
