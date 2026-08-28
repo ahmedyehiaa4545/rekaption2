@@ -2038,7 +2038,8 @@ window.switchMainTab = function(tab) {
   const convertBtn = document.getElementById('main-nav-convert');
   const historyBtn = document.getElementById('main-nav-history');
   const cohereBtn = document.getElementById('main-nav-cohere');
-  const tiktokBtn = document.getElementById('main-nav-tiktok');
+  const tiktokBtn = document.getElementById('main-nav-tiktok-schedule');
+
   const coherePanel = document.getElementById('cohere-dashboard-panel');
   const dashboard = document.getElementById('main-dashboard');
   const geminiPanel = document.getElementById('gemini-transcribe-panel');
@@ -2053,7 +2054,7 @@ window.switchMainTab = function(tab) {
     { name: 'convert', btn: convertBtn, el: convertPanel },
     { name: 'history', btn: historyBtn, el: historyPanel },
     { name: 'cohere', btn: cohereBtn, el: coherePanel },
-    { name: 'tiktok', btn: tiktokBtn, el: tiktokPanel }
+    { name: 'tiktok-schedule', btn: tiktokBtn, el: tiktokPanel }
   ];
 
   tabs.forEach(t => {
@@ -2088,17 +2089,284 @@ window.switchMainTab = function(tab) {
     }
   }
 
-  if (tab === 'tiktok') {
-    if (typeof loadBufferTabSettings === 'function') {
-      loadBufferTabSettings();
-    }
-    if (typeof renderTikTokTabArchiveVideos === 'function') {
-      renderTikTokTabArchiveVideos();
-    }
-  }
-
   if (tab === 'history') {
     renderHistoryModal();
+  }
+
+  if (tab === 'tiktok-schedule') {
+    initBufferTab();
+  }
+};
+
+// ==================== Buffer & TikTok Schedule Integration ====================
+window.saveBufferCredentials = function() {
+  const tokenInput = document.getElementById('buffer-api-key-input');
+  const cloudNameInput = document.getElementById('cloudinary-cloud-name');
+  const presetInput = document.getElementById('cloudinary-upload-preset');
+  
+  if (tokenInput) localStorage.setItem('buffer_api_key', tokenInput.value.trim());
+  if (cloudNameInput) localStorage.setItem('cloudinary_cloud_name', cloudNameInput.value.trim());
+  if (presetInput) localStorage.setItem('cloudinary_upload_preset', presetInput.value.trim());
+};
+
+window.togglePasswordVisibility = function(inputId) {
+  const inp = document.getElementById(inputId);
+  if (inp) {
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+};
+
+function showBufferStatus(text, type) {
+  const el = document.getElementById('buffer-status-msg');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent = text;
+  if (type === 'error') {
+    el.style.background = 'rgba(239, 68, 68, 0.15)';
+    el.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+    el.style.color = '#fca5a5';
+  } else if (type === 'success') {
+    el.style.background = 'rgba(16, 185, 129, 0.15)';
+    el.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+    el.style.color = '#6ee7b7';
+  } else {
+    el.style.background = 'rgba(139, 92, 246, 0.15)';
+    el.style.border = '1px solid rgba(139, 92, 246, 0.4)';
+    el.style.color = '#c084fc';
+  }
+}
+
+function renderBufferChannelsList(channels) {
+  const container = document.getElementById('buffer-channels-container');
+  const emptyState = document.getElementById('buffer-channels-empty');
+  const countBadge = document.getElementById('buffer-channels-count');
+  
+  if (!channels || channels.length === 0) {
+    if (container) container.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'block';
+    if (countBadge) countBadge.textContent = '0 قنوات';
+    return;
+  }
+  
+  if (emptyState) emptyState.style.display = 'none';
+  if (countBadge) countBadge.textContent = `${channels.length} قناة مربوطة`;
+  
+  let html = '';
+  channels.forEach(ch => {
+    const isTikTok = (ch.service || '').toLowerCase() === 'tiktok';
+    const isInstagram = (ch.service || '').toLowerCase() === 'instagram';
+    const isYouTube = (ch.service || '').toLowerCase() === 'youtube';
+    const isTwitter = (ch.service || '').toLowerCase() === 'twitter' || (ch.service || '').toLowerCase() === 'x';
+    
+    let serviceIcon = '🌐';
+    let serviceBadgeBg = 'rgba(255,255,255,0.1)';
+    let serviceBadgeColor = '#fff';
+    
+    if (isTikTok) {
+      serviceIcon = '🎵';
+      serviceBadgeBg = 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)';
+      serviceBadgeColor = '#000';
+    } else if (isInstagram) {
+      serviceIcon = '📸';
+      serviceBadgeBg = 'linear-gradient(135deg, #f58529, #dd2a7b, #8134af)';
+      serviceBadgeColor = '#fff';
+    } else if (isYouTube) {
+      serviceIcon = '▶️';
+      serviceBadgeBg = '#ff0000';
+      serviceBadgeColor = '#fff';
+    } else if (isTwitter) {
+      serviceIcon = '🐦';
+      serviceBadgeBg = '#1da1f2';
+      serviceBadgeColor = '#fff';
+    }
+    
+    const serviceName = ch.service ? ch.service.toUpperCase() : 'CHANNEL';
+    const isPaused = !!ch.isQueuePaused;
+    const avatarUrl = ch.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(ch.displayName || ch.name || 'User')}&background=8b5cf6&color=fff`;
+    
+    html += `
+      <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(15,23,42,0.6); border: 1px solid ${isTikTok ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 12px; padding: 14px; gap: 12px; transition: all 0.3s;">
+        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <img src="${avatarUrl}" alt="${ch.name || ''}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid ${isTikTok ? '#a855f7' : 'rgba(255,255,255,0.2)'};" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(ch.displayName || ch.name || 'User')}&background=8b5cf6&color=fff'" />
+          <div style="min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="color: #fff; font-weight: 700; font-size: 14px;">${ch.displayName || ch.name || 'قناة غير معنونة'}</span>
+              <span style="font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; background: ${serviceBadgeBg}; color: ${serviceBadgeColor};">
+                ${serviceIcon} ${serviceName}
+              </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 11px; color: var(--text-muted);">
+              <span>@${ch.name || 'user'}</span>
+              <span>•</span>
+              <span style="font-family: monospace; color: #a855f7;">ID: ${ch.id}</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+          <span style="font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: ${isPaused ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'}; color: ${isPaused ? '#ef4444' : '#10b981'}; border: 1px solid ${isPaused ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'};">
+            ${isPaused ? '⏸️ متوقف مؤقتاً' : '🟢 متصل ونشط'}
+          </span>
+          <button type="button" onclick="navigator.clipboard.writeText('${ch.id}'); alert('تم نسخ معرف القناة: ${ch.id}');" class="btn-secondary" style="font-size: 10px; padding: 3px 8px;">
+            📋 نسخ الـ ID
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  
+  if (container) container.innerHTML = html;
+}
+
+window.fetchBufferChannels = async function() {
+  const tokenInput = document.getElementById('buffer-api-key-input');
+  const token = tokenInput ? tokenInput.value.trim() : '';
+  const btn = document.getElementById('btn-fetch-buffer-channels');
+  
+  if (!token) {
+    showBufferStatus('يرجى إدخال مفتاح Buffer API Key أولاً.', 'error');
+    return;
+  }
+  
+  localStorage.setItem('buffer_api_key', token);
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> جاري الاتصال بـ Buffer وجلب القنوات...';
+  }
+  showBufferStatus('جاري التحقق من الحساب وجلب القنوات من Buffer...', 'info');
+  
+  try {
+    let channels = [];
+    let fetchSuccessful = false;
+    
+    // Method 1: Try direct GraphQL to Buffer API
+    try {
+      const orgRes = await fetch('https://api.buffer.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          query: `
+            query GetOrganizations {
+              account {
+                id
+                email
+                organizations {
+                  id
+                  name
+                }
+              }
+            }
+          `
+        })
+      });
+      
+      if (orgRes.ok) {
+        const orgData = await orgRes.json();
+        if (orgData.errors && orgData.errors.length > 0) {
+          throw new Error(orgData.errors[0].message || 'خطأ في استجابة Buffer');
+        }
+        
+        const orgs = orgData?.data?.account?.organizations || [];
+        if (orgs.length > 0) {
+          for (const org of orgs) {
+            const chanRes = await fetch('https://api.buffer.com', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                query: `
+                  query GetChannels {
+                    channels(input: {
+                      organizationId: "${org.id}"
+                    }) {
+                      id
+                      name
+                      displayName
+                      service
+                      avatar
+                      isQueuePaused
+                    }
+                  }
+                `
+              })
+            });
+            if (chanRes.ok) {
+              const chanData = await chanRes.json();
+              const orgChannels = chanData?.data?.channels || [];
+              channels = channels.concat(orgChannels);
+            }
+          }
+          fetchSuccessful = true;
+        }
+      }
+    } catch (directErr) {
+      console.warn('Direct Buffer GraphQL failed or blocked by CORS, trying backend proxy...', directErr);
+    }
+    
+    // Method 2: Fallback to backend proxy if direct fetch did not succeed
+    if (!fetchSuccessful) {
+      const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
+      const proxyRes = await fetch(backendBase + '/api/buffer/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token })
+      });
+      const proxyData = await proxyRes.json();
+      if (!proxyRes.ok || proxyData.error || proxyData.detail) {
+        throw new Error(proxyData.detail || proxyData.error || 'فشل الاتصال بـ Buffer');
+      }
+      channels = proxyData.channels || [];
+      fetchSuccessful = true;
+    }
+    
+    localStorage.setItem('buffer_cached_channels', JSON.stringify(channels));
+    window.bufferChannels = channels;
+    renderBufferChannelsList(channels);
+    
+    if (channels.length > 0) {
+      showBufferStatus(`✅ تم الاتصال بنجاح وجلب ${channels.length} قناة مربوطة!`, 'success');
+    } else {
+      showBufferStatus('تم الاتصال بالحساب بنجاح، لكن لا توجد أي قنوات مربوطة حالياً في حساب Buffer.', 'info');
+    }
+  } catch (err) {
+    console.error('Buffer fetch error:', err);
+    showBufferStatus(`❌ خطأ: ${err.message || 'تعذر الاتصال بـ Buffer'}`, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>🔄</span> فحص وجلب القنوات المربوطة';
+    }
+  }
+};
+
+window.initBufferTab = function() {
+  const savedToken = localStorage.getItem('buffer_api_key');
+  const savedCloudName = localStorage.getItem('cloudinary_cloud_name');
+  const savedPreset = localStorage.getItem('cloudinary_upload_preset');
+  const cachedChannels = localStorage.getItem('buffer_cached_channels');
+  
+  const tokenInput = document.getElementById('buffer-api-key-input');
+  const cloudNameInput = document.getElementById('cloudinary-cloud-name');
+  const presetInput = document.getElementById('cloudinary-upload-preset');
+  
+  if (tokenInput && savedToken) tokenInput.value = savedToken;
+  if (cloudNameInput && savedCloudName) cloudNameInput.value = savedCloudName;
+  if (presetInput && savedPreset) presetInput.value = savedPreset;
+  
+  if (cachedChannels) {
+    try {
+      const parsed = JSON.parse(cachedChannels);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        renderBufferChannelsList(parsed);
+      }
+    } catch (e) {
+      console.warn('Error parsing cached buffer channels:', e);
+    }
   }
 };
 
@@ -3817,10 +4085,7 @@ window.renderHistoryModal = async function() {
         <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
       </div>
       <div style="display: flex; gap: 8px; margin-top: 4px;">
-        <button type="button" onclick="openTikTokPublishModalForArchiveVideo('${item.id}')" class="btn-primary" style="flex: 1; padding: 8px 10px; justify-content: center; font-size: 12px; background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55); border: 1px solid rgba(255,255,255,0.2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-          <span>📱</span> تيك توك
-        </button>
-        <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-secondary" style="flex: 1; padding: 8px 10px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+        <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
           <span>📥</span> تنزيل
         </a>
         <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
@@ -4838,1122 +5103,4 @@ async function saveSystemKeysBackend() {
 document.addEventListener('DOMContentLoaded', () => { 
   renderTemplateList(); 
   loadKeysFromFirebase();
-  if (typeof loadBufferTabSettings === 'function') {
-    loadBufferTabSettings();
-  }
 });
-
-// ==================== Buffer & Cloudinary Integration Logic ====================
-
-window.toggleBufferTokenVisibility = function() {
-  const input = document.getElementById('buffer-token-input');
-  if (!input) return;
-  input.type = input.type === 'password' ? 'text' : 'password';
-};
-
-window.saveBufferTabSettings = function(showMessage = true) {
-  const token = document.getElementById('buffer-token-input')?.value.trim() || '';
-  const cloudName = document.getElementById('cloudinary-cloud-name-input')?.value.trim() || '';
-  const uploadPreset = document.getElementById('cloudinary-upload-preset-input')?.value.trim() || '';
-
-  if (token) localStorage.setItem('rekaption_buffer_token', token);
-  if (cloudName) localStorage.setItem('rekaption_cloudinary_cloud_name', cloudName);
-  if (uploadPreset) localStorage.setItem('rekaption_cloudinary_upload_preset', uploadPreset);
-
-  if (showMessage) {
-    alert('✅ تم حفظ الإعدادات بنجاح في المتصفح!');
-  }
-};
-
-window.loadBufferTabSettings = function() {
-  const tokenInput = document.getElementById('buffer-token-input');
-  const cloudNameInput = document.getElementById('cloudinary-cloud-name-input');
-  const uploadPresetInput = document.getElementById('cloudinary-upload-preset-input');
-
-  const savedToken = localStorage.getItem('rekaption_buffer_token') || '';
-  const savedCloudName = localStorage.getItem('rekaption_cloudinary_cloud_name') || '';
-  const savedUploadPreset = localStorage.getItem('rekaption_cloudinary_upload_preset') || '';
-
-  if (tokenInput && !tokenInput.value && savedToken) tokenInput.value = savedToken;
-  if (cloudNameInput && !cloudNameInput.value && savedCloudName) cloudNameInput.value = savedCloudName;
-  if (uploadPresetInput && !uploadPresetInput.value && savedUploadPreset) uploadPresetInput.value = savedUploadPreset;
-};
-
-// Helper: Multi-Tier Buffer GraphQL Requester (Backend Proxy -> Direct -> Fast CORS Proxies)
-async function requestBufferGraphQL(query, variables, token) {
-  const payload = JSON.stringify({ query, variables: variables || {} });
-  const authHeader = `Bearer ${token.trim()}`;
-
-  // Strategy 1: Backend API Proxy (Railway/Local)
-  const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
-  const proxyEndpoints = [
-    backendBase ? `${backendBase}/api/buffer/graphql` : '',
-    '/api/buffer/graphql'
-  ].filter(Boolean);
-
-  for (const ep of proxyEndpoints) {
-    if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
-    try {
-      const res = await fetch(ep, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token.trim(), query, variables: variables || {} })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && (data.data || data.errors)) return data;
-      }
-    } catch (_) {}
-  }
-
-  // Strategy 2: Direct browser fetch to https://api.buffer.com
-  try {
-    const res = await fetch('https://api.buffer.com', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader
-      },
-      body: payload
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && (data.data || data.errors)) return data;
-    }
-  } catch (_) {}
-
-  // Strategy 3: Fast CORS Proxy (corsproxy.io)
-  try {
-    const res = await fetch('https://corsproxy.io/?url=https://api.buffer.com', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader
-      },
-      body: payload
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && (data.data || data.errors)) return data;
-    }
-  } catch (_) {}
-
-  // Strategy 4: AllOrigins proxy fallback
-  try {
-    const res = await fetch('https://api.allorigins.win/raw?url=https://api.buffer.com', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader
-      },
-      body: payload
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && (data.data || data.errors)) return data;
-    }
-  } catch (_) {}
-
-  throw new Error('تعذر الاتصال بخوادم Buffer API. يرجى التأكد من اتصال الإنترنت وصحة المفتاح.');
-}
-
-window.fetchAndDisplayBufferChannels = async function() {
-  const tokenInput = document.getElementById('buffer-token-input');
-  const token = (tokenInput?.value || localStorage.getItem('rekaption_buffer_token') || '').trim();
-
-  if (!token) {
-    alert('يرجى إدخال مفتاح Buffer API Key أولاً!');
-    tokenInput?.focus();
-    return;
-  }
-
-  // Auto-save the token
-  saveBufferTabSettings(false);
-
-  // UI Elements
-  const loadingEl = document.getElementById('buffer-channels-loading');
-  const errorEl = document.getElementById('buffer-channels-error');
-  const errorTitle = document.getElementById('buffer-error-title');
-  const errorDesc = document.getElementById('buffer-error-desc');
-  const emptyEl = document.getElementById('buffer-channels-empty');
-  const gridEl = document.getElementById('buffer-channels-grid');
-  const statusText = document.getElementById('buffer-channels-status-text');
-  const countBadge = document.getElementById('buffer-channels-count-badge');
-  const fetchBtn = document.getElementById('fetch-buffer-channels-btn');
-
-  // Reset UI to Loading State
-  if (loadingEl) loadingEl.style.display = 'block';
-  if (errorEl) errorEl.style.display = 'none';
-  if (emptyEl) emptyEl.style.display = 'none';
-  if (gridEl) {
-    gridEl.style.display = 'none';
-    gridEl.innerHTML = '';
-  }
-  if (fetchBtn) {
-    fetchBtn.disabled = true;
-    fetchBtn.style.opacity = '0.7';
-  }
-  if (statusText) statusText.textContent = 'جاري التحقق من المفتاح وجلب المنظمات والقنوات...';
-
-  try {
-    // 1. Try Backend Channels Proxy first if available
-    let allChannels = [];
-    let backendFetched = false;
-    const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
-    const backendEndpoints = [
-      backendBase ? `${backendBase}/api/buffer/channels` : '',
-      '/api/buffer/channels'
-    ].filter(Boolean);
-
-    for (const ep of backendEndpoints) {
-      if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
-      try {
-        const res = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: token })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.channels && data.channels.length > 0) {
-            allChannels = data.channels;
-            backendFetched = true;
-            break;
-          } else if (data && data.error) {
-            throw new Error(data.error);
-          }
-        }
-      } catch (err) {
-        if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed to fetch')) {
-          throw err;
-        }
-      }
-    }
-
-    // 2. If Backend Proxy wasn't used/available, do direct GraphQL multi-step fetch
-    if (!backendFetched) {
-      // Step 1: Query Organizations
-      const orgQuery = `
-        query GetOrganizations {
-          account {
-            organizations {
-              id
-              name
-            }
-          }
-        }
-      `;
-
-      const orgRes = await requestBufferGraphQL(orgQuery, {}, token);
-      if (orgRes.errors && orgRes.errors.length > 0) {
-        throw new Error(orgRes.errors[0].message || 'خطأ في استعلام حساب Buffer');
-      }
-
-      const orgs = orgRes?.data?.account?.organizations || [];
-      if (!orgs || orgs.length === 0) {
-        throw new Error('لم يتم العثور على أي منظمة أو حساب (Organization) في حساب Buffer المدخل.');
-      }
-
-      // Step 2: Query Channels for each Organization
-      const chanQuery = `
-        query GetChannels($input: ChannelsInput!) {
-          channels(input: $input) {
-            id
-            name
-            displayName
-            service
-            avatar
-          }
-        }
-      `;
-
-      for (const org of orgs) {
-        if (!org.id) continue;
-        try {
-          const cRes = await requestBufferGraphQL(chanQuery, { input: { organizationId: org.id } }, token);
-          const chList = cRes?.data?.channels || [];
-          chList.forEach(ch => {
-            allChannels.push({
-              id: ch.id,
-              name: ch.name || ch.displayName || 'TikTok Channel',
-              displayName: ch.displayName || ch.name,
-              service: ch.service || 'tiktok',
-              avatar: ch.avatar || '',
-              organizationName: org.name
-            });
-          });
-        } catch (e) {
-          console.warn(`Could not fetch channels for org ${org.id}:`, e);
-        }
-      }
-    }
-
-    if (!allChannels || allChannels.length === 0) {
-      throw new Error('تم الاتصال بحسابك في Buffer بنجاح، ولكن لم يتم العثور على أي قنوات مربوطة (مثل TikTok). يرجى التأكد من ربط قناتك في إعدادات Buffer أولاً.');
-    }
-
-    // Success! Render Channels Cards
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (gridEl) {
-      gridEl.style.display = 'grid';
-      gridEl.innerHTML = '';
-
-      allChannels.forEach((ch, idx) => {
-        const isTikTok = (ch.service || '').toLowerCase() === 'tiktok';
-        const serviceBadgeColor = isTikTok ? '#fe2c55' : '#8b5cf6';
-        const serviceIcon = isTikTok ? '🎵' : '📺';
-        const serviceLabel = isTikTok ? 'TikTok Channel' : (ch.service || 'قناة');
-
-        const card = document.createElement('div');
-        card.style.cssText = `
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid ${isTikTok ? 'rgba(254, 44, 85, 0.4)' : 'rgba(139, 92, 246, 0.3)'};
-          border-radius: 14px;
-          padding: 18px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          transition: transform 0.2s ease, border-color 0.2s ease;
-          position: relative;
-          overflow: hidden;
-        `;
-
-        card.innerHTML = `
-          <div style="display: flex; align-items: center; gap: 12px;">
-            ${ch.avatar ? `
-              <img src="${ch.avatar}" alt="${ch.name}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid ${serviceBadgeColor};" />
-            ` : `
-              <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid ${serviceBadgeColor};">
-                ${serviceIcon}
-              </div>
-            `}
-            <div style="flex: 1; min-width: 0;">
-              <h4 style="font-size: 15px; font-weight: 800; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${ch.displayName || ch.name || 'قناة تيك توك'}
-              </h4>
-              <span style="font-size: 11px; color: rgba(255,255,255,0.5); display: block; margin-top: 2px;">
-                ${ch.organizationName ? `المنظمة: ${ch.organizationName}` : 'حساب Buffer'}
-              </span>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(0,0,0,0.25); border-radius: 8px; font-size: 11px;">
-            <span style="color: rgba(255,255,255,0.7); font-weight: 600;">المنصة:</span>
-            <span style="color: #fff; font-weight: 800; background: ${serviceBadgeColor}22; color: ${serviceBadgeColor}; padding: 2px 8px; border-radius: 6px; border: 1px solid ${serviceBadgeColor}44;">
-              ${serviceIcon} ${serviceLabel}
-            </span>
-          </div>
-
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.5);">
-            <span>معرف القناة (Channel ID):</span>
-            <code style="font-family: monospace; color: #a855f7; background: rgba(168,85,247,0.1); padding: 2px 6px; border-radius: 4px;">${ch.id || 'N/A'}</code>
-          </div>
-
-          <div style="margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
-            <span style="font-size: 12px; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 5px;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
-              متصل وجاهز للنشر ✅
-            </span>
-            <span style="font-size: 11px; color: rgba(255,255,255,0.4);">#${idx + 1}</span>
-          </div>
-        `;
-
-        gridEl.appendChild(card);
-      });
-    }
-
-    if (countBadge) {
-      countBadge.textContent = `${allChannels.length} قناة متصلة ✅`;
-      countBadge.style.display = 'inline-block';
-    }
-    if (statusText) {
-      statusText.innerHTML = `✅ تم الاتصال بنجاح بـ Buffer! تم العثور على <strong>${allChannels.length}</strong> قناة مربوطة.`;
-    }
-
-  } catch (err) {
-    console.error('Buffer Channel Fetch Error:', err);
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (errorEl) {
-      errorEl.style.display = 'block';
-      if (errorTitle) errorTitle.textContent = 'تعذر الاتصال بـ Buffer';
-      if (errorDesc) errorDesc.textContent = err.message || 'تأكد من صحة مفتاح الـ API والاتصال بالإنترنت.';
-    }
-    if (statusText) {
-      statusText.textContent = '❌ فشل جلب القنوات المربوطة. تحقق من رسالة الخطأ أدناه.';
-    }
-  } finally {
-    if (fetchBtn) {
-      fetchBtn.disabled = false;
-      fetchBtn.style.opacity = '1';
-    }
-  }
-};
-
-// ==================== TikTok Publishing & Scheduling Modal & Service ====================
-
-let currentModalPublishShort = null;
-let lastFetchedBufferChannels = [];
-
-function cleanTikTokTitle(rawTitle) {
-  if (!rawTitle || typeof rawTitle !== 'string') return '';
-  return rawTitle
-    .replace(/^[\s🎬🎥✨📱]*(?:مقطع(?:\s*مقترح|\s*Shorts)?|Shorts)\s*#?\d*[:\s\-]*/gi, '')
-    .replace(/\s*\(\d+:\d+\s*-\s*\d+:\d+\)/g, '')
-    .replace(/^[🎬🎥✨📱\s\-_:]+/, '')
-    .trim();
-}
-
-function stripTimestampsAndNoise(text) {
-  if (!text || typeof text !== 'string') return '';
-  return text
-    .replace(/\[\s*\d+:\d+\s*->\s*\d+:\d+\s*\]/g, '')
-    .replace(/\(\s*\d+:\d+\s*-\s*\d+:\d+\s*\)/g, '')
-    .replace(/\d+:\d+:\d+|\d+:\d+/g, '')
-    .replace(/[\u064B-\u065F]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-async function fetchYoutubeOEmbedTitle(url) {
-  if (!url || typeof url !== 'string' || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
-    return '';
-  }
-  try {
-    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url.trim())}&format=json`;
-    const res = await fetch(oembedUrl);
-    if (res.ok) {
-      const data = await res.json();
-      return data.title || '';
-    }
-  } catch(e) {
-    console.warn('oEmbed title fetch failed:', e);
-  }
-  return '';
-}
-
-async function generateSmartTikTokCaption({ cleanTitle, originalYoutubeTitle, scriptText, geminiApiKey, defaultHashtags }) {
-  const title = cleanTitle || 'مقطع مميز';
-  const ytTitle = originalYoutubeTitle || window.currentYoutubeTitle || 'فيديو يوتيوب';
-  const hashtags = defaultHashtags || '#fyp #viral #shorts #rekaption #تيك_توك';
-
-  let summaryTwoSentences = '';
-  const cleanRawScript = stripTimestampsAndNoise(scriptText || '');
-
-  // 1. Try Gemini AI generation if key is provided
-  const apiKey = geminiApiKey || localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
-  if (apiKey && cleanRawScript && cleanRawScript.length > 25) {
-    try {
-      const prompt = `أنت كاتب محتوى لمنصة TikTok.
-اكتب ملخصاً مشوقاً ودقيقاً لغوياً من جملتين اثنتين فقط باللغة العربية الفصحى (بحد أقصى 35 كلمة) عن هذا المقطع:
-العنوان: "${title}"
-سياق المقطع: "${cleanRawScript.substring(0, 1000)}"
-
-الشروط الصارمة:
-- جملتان اثنتان فقط لا غير.
-- أسلوب مشوق وجذاب للمشاهد في TikTok.
-- بدون أي مقدمات (لا تكتب "إليك الملخص" أو ما شابه).
-- بدون هاشتاجات وبدون تكرار العنوان.`;
-
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.5, maxOutputTokens: 120 }
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (generatedText) {
-          summaryTwoSentences = generatedText;
-        }
-      }
-    } catch (err) {
-      console.warn('Gemini caption generation fallback:', err);
-    }
-  }
-
-  // 2. High quality fallback if AI is not configured or failed
-  if (!summaryTwoSentences) {
-    if (cleanRawScript && cleanRawScript.length > 20) {
-      const sentences = cleanRawScript.split(/[\.\n\?!،]+/).map(s => s.trim()).filter(s => s.length > 15);
-      if (sentences.length >= 2) {
-        summaryTwoSentences = `${sentences[0]}. ${sentences[1]}.`;
-      } else if (sentences.length === 1) {
-        summaryTwoSentences = `${sentences[0]}. تابع الفيديو لمعرفة باقي التفاصيل الممتعة!`;
-      }
-    }
-  }
-
-  if (!summaryTwoSentences || summaryTwoSentences.length > 250) {
-    summaryTwoSentences = `نظرة سريعة ومشوقة تكشف أهم التفاصيل والمعلومات غير المتوقعة حول ${title}. تابع المقطع للنهاية لمعرفة القصة كاملة!`;
-  }
-
-  return `${title}\n\n${summaryTwoSentences}\n\nجزء من حلقة: ${ytTitle}\n\n${hashtags}`;
-}
-
-async function uploadToCloudinary(fileOrBlobOrUrl, cloudName, uploadPreset, onProgress) {
-  if (!cloudName || !uploadPreset) {
-    throw new Error('يرجى إدخال Cloud Name و Upload Preset لحساب Cloudinary في إعدادات تابة TikTok.');
-  }
-
-  const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/video/upload`;
-  const formData = new FormData();
-  formData.append('upload_preset', uploadPreset.trim());
-
-  if (fileOrBlobOrUrl instanceof Blob || fileOrBlobOrUrl instanceof File) {
-    formData.append('file', fileOrBlobOrUrl, 'rekaption_tiktok.mp4');
-  } else if (typeof fileOrBlobOrUrl === 'string' && fileOrBlobOrUrl.startsWith('http')) {
-    formData.append('file', fileOrBlobOrUrl);
-  } else {
-    throw new Error('صيغة الفيديو غير صالحة للرفع إلى Cloudinary.');
-  }
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', uploadUrl);
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) {
-        const percent = Math.round((e.loaded / e.total) * 100);
-        onProgress(percent);
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const resp = JSON.parse(xhr.responseText);
-          if (resp.secure_url) {
-            resolve(resp.secure_url);
-          } else {
-            reject(new Error(resp.error ? resp.error.message : 'فشل الحصول على رابط الفيديو من Cloudinary'));
-          }
-        } catch(e) {
-          reject(new Error('خطأ في استجابة Cloudinary: ' + e.message));
-        }
-      } else {
-        try {
-          const errResp = JSON.parse(xhr.responseText);
-          reject(new Error(errResp.error ? errResp.error.message : `خطأ Cloudinary (كود ${xhr.status})`));
-        } catch(_) {
-          reject(new Error(`خطأ في رفع الفيديو إلى Cloudinary (كود ${xhr.status})`));
-        }
-      }
-    };
-
-    xhr.onerror = () => {
-      reject(new Error('فشل الاتصال بخدمة Cloudinary. تأكد من صحة الـ Cloud Name والـ Upload Preset.'));
-    };
-
-    xhr.send(formData);
-  });
-}
-
-async function publishToBuffer({ bufferToken, channelId, text, videoUrl, scheduledAt, isNow }) {
-  if (!bufferToken) throw new Error('مفتاح Buffer API غير موجود.');
-  if (!channelId) throw new Error('يرجى اختيار حساب TikTok.');
-  if (!videoUrl) throw new Error('رابط الفيديو مفقود.');
-
-  const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
-  const publishEndpoints = [
-    backendBase ? `${backendBase}/api/buffer/publish` : '',
-    '/api/buffer/publish'
-  ].filter(Boolean);
-
-  const payload = {
-    token: bufferToken.trim(),
-    channelId: channelId.trim(),
-    text: text || '',
-    videoUrl: videoUrl.trim(),
-    isNow: isNow,
-    scheduledAt: scheduledAt || null
-  };
-
-  let lastError = null;
-  for (const ep of publishEndpoints) {
-    if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
-    try {
-      const res = await fetch(ep, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'success') {
-          return data.post || { id: 'success', status: isNow ? 'published' : 'scheduled' };
-        } else if (data.error) {
-          throw new Error(data.error);
-        }
-      } else {
-        const errJson = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
-        throw new Error(errJson.detail || errJson.error || `خطأ من الخادم (كود ${res.status})`);
-      }
-    } catch (err) {
-      lastError = err;
-      if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed to fetch')) {
-        throw err;
-      }
-    }
-  }
-
-  if (lastError) throw lastError;
-  throw new Error('فشل إرسال المنشور إلى الخادم.');
-}
-
-// Modal Controllers
-window.openPublishModalForSuggestedShort = async function(idx) {
-  if (typeof idx !== 'number' || !currentSuggestedShorts || !currentSuggestedShorts[idx]) {
-    alert('المقطع المقترح غير موجود.');
-    return;
-  }
-
-  const short = currentSuggestedShorts[idx];
-  const ytUrl = window.lastGeminiYtUrl || document.getElementById('gemini-yt-url')?.value.trim() || '';
-  const clean = cleanTikTokTitle(short.title);
-
-  currentModalPublishShort = {
-    ...short,
-    idx: idx,
-    cleanTitle: clean,
-    ytUrl: ytUrl,
-    videoBlob: null
-  };
-
-  const modal = document.getElementById('tiktok-publish-modal');
-  if (!modal) return;
-
-  // Set Info
-  const titleEl = document.getElementById('modal-tiktok-short-title');
-  const timeEl = document.getElementById('modal-tiktok-short-time');
-  const hookEl = document.getElementById('modal-tiktok-short-hook');
-  const captionInput = document.getElementById('modal-tiktok-caption-input');
-  const schedBox = document.getElementById('modal-tiktok-schedule-time-box');
-  const progBox = document.getElementById('modal-tiktok-progress-box');
-  const succBox = document.getElementById('modal-tiktok-success-box');
-  const errBox = document.getElementById('modal-tiktok-error-box');
-  const schedTimeInput = document.getElementById('modal-tiktok-schedule-time');
-
-  if (titleEl) titleEl.textContent = `🎥 ${clean || short.title}`;
-  if (timeEl) timeEl.textContent = `${short.start_time} ➔ ${short.end_time}`;
-  if (hookEl) hookEl.textContent = short.hook ? `⚡ الخطاف: ${short.hook}` : '';
-
-  if (progBox) progBox.style.display = 'none';
-  if (succBox) succBox.style.display = 'none';
-  if (errBox) errBox.style.display = 'none';
-  if (schedBox) schedBox.style.display = 'none';
-
-  // Default mode: Share Now
-  const nowRadio = document.querySelector('input[name="modal-tiktok-publish-mode"][value="now"]');
-  if (nowRadio) nowRadio.checked = true;
-  toggleModalPublishMode('now');
-
-  // Default schedule time: 1 hour later
-  if (schedTimeInput) {
-    const d = new Date();
-    d.setHours(d.getHours() + 1);
-    d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5);
-    const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-    schedTimeInput.value = localIso;
-    schedTimeInput.min = new Date(Date.now() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-  }
-
-  // Pre-generate Draft Caption
-  if (captionInput) {
-    captionInput.value = '⏳ جاري صياغة الكابشن والملخص الذكي...';
-    generateSmartTikTokCaption({
-      cleanTitle: clean,
-      originalYoutubeTitle: window.currentYoutubeTitle || '',
-      scriptText: short.script || '',
-      geminiApiKey: localStorage.getItem('gemini_api_key') || '',
-      defaultHashtags: '#fyp #viral #shorts #rekaption #تيك_توك'
-    }).then(cap => {
-      captionInput.value = cap;
-      updateModalCharCount();
-    }).catch(() => {
-      captionInput.value = `${clean}\n\n${stripTimestampsAndNoise(short.script || '')}\n\n#fyp #viral #shorts #rekaption #تيك_توك`;
-      updateModalCharCount();
-    });
-  }
-
-  // Load Channels
-  loadChannelsForModal();
-
-  modal.style.display = 'flex';
-};
-
-window.closeTikTokPublishModal = function() {
-  const modal = document.getElementById('tiktok-publish-modal');
-  if (modal) modal.style.display = 'none';
-  currentModalPublishShort = null;
-};
-
-window.toggleModalPublishMode = function(mode) {
-  const schedBox = document.getElementById('modal-tiktok-schedule-time-box');
-  const submitText = document.getElementById('modal-tiktok-submit-text');
-  if (mode === 'schedule') {
-    if (schedBox) schedBox.style.display = 'block';
-    if (submitText) submitText.textContent = '📅 جدولة المقطع على TikTok';
-  } else {
-    if (schedBox) schedBox.style.display = 'none';
-    if (submitText) submitText.textContent = '⚡ تأكيد ونشر الآن على TikTok';
-  }
-};
-
-window.updateModalCharCount = function() {
-  const input = document.getElementById('modal-tiktok-caption-input');
-  const countEl = document.getElementById('modal-tiktok-char-count');
-  if (input && countEl) {
-    countEl.textContent = `${input.value.length} حرف`;
-  }
-};
-
-window.regenerateModalAICaption = async function() {
-  if (!currentModalPublishShort) return;
-  const captionInput = document.getElementById('modal-tiktok-caption-input');
-  if (!captionInput) return;
-  const orig = captionInput.value;
-  captionInput.value = '⏳ جاري إعادة الصياغة بالذكاء الاصطناعي...';
-  try {
-    const cap = await generateSmartTikTokCaption({
-      cleanTitle: currentModalPublishShort.cleanTitle || currentModalPublishShort.title,
-      originalYoutubeTitle: window.currentYoutubeTitle || '',
-      scriptText: currentModalPublishShort.script || '',
-      geminiApiKey: localStorage.getItem('gemini_api_key') || '',
-      defaultHashtags: '#fyp #viral #shorts #rekaption #تيك_توك'
-    });
-    captionInput.value = cap;
-    updateModalCharCount();
-  } catch(e) {
-    captionInput.value = orig;
-  }
-};
-
-window.loadChannelsForModal = async function() {
-  const select = document.getElementById('modal-tiktok-channel-select');
-  if (!select) return;
-
-  const token = (document.getElementById('buffer-token-input')?.value || localStorage.getItem('rekaption_buffer_token') || '').trim();
-  if (!token) {
-    select.innerHTML = '<option value="">⚠️ أدخل مفتاح Buffer API أولاً في إعدادات تابة TikTok</option>';
-    return;
-  }
-
-  select.innerHTML = '<option value="">⏳ جاري جلب القنوات من Buffer...</option>';
-
-  try {
-    const backendBase = (typeof apiUrl !== 'undefined' ? apiUrl : (window.apiUrl || '')).replace(/\/$/, '');
-    const endpoints = [
-      backendBase ? `${backendBase}/api/buffer/channels` : '',
-      '/api/buffer/channels'
-    ].filter(Boolean);
-
-    let channels = [];
-    for (const ep of endpoints) {
-      if (window.location.protocol === 'file:' && ep.startsWith('/')) continue;
-      try {
-        const res = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: token })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.channels) {
-            channels = data.channels;
-            break;
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (!channels || channels.length === 0) {
-      select.innerHTML = '<option value="">❌ لم يتم العثور على قنوات متصلة</option>';
-      return;
-    }
-
-    select.innerHTML = '';
-    let hasTikTok = false;
-    channels.forEach(ch => {
-      const isTikTok = (ch.service || '').toLowerCase().includes('tiktok');
-      const opt = document.createElement('option');
-      opt.value = ch.id;
-      opt.textContent = `${isTikTok ? '🎵 [TikTok]' : `[${ch.service || 'قناة'}]`} ${ch.name || ch.displayName}`;
-      if (isTikTok && !hasTikTok) {
-        opt.selected = true;
-        hasTikTok = true;
-      }
-      select.appendChild(opt);
-    });
-
-    if (!hasTikTok && channels.length > 0) {
-      select.selectedIndex = 0;
-    }
-  } catch (err) {
-    select.innerHTML = `<option value="">⚠️ خطأ: ${err.message || 'فشل جلب القنوات'}</option>`;
-  }
-};
-
-window.executeModalTikTokPublish = async function() {
-  if (!currentModalPublishShort) {
-    alert('لم يتم تحديد أي مقطع للنشر.');
-    return;
-  }
-
-  const token = (document.getElementById('buffer-token-input')?.value || localStorage.getItem('rekaption_buffer_token') || '').trim();
-  const cloudName = (document.getElementById('cloudinary-cloud-name-input')?.value || localStorage.getItem('rekaption_cloudinary_cloud_name') || '').trim();
-  const uploadPreset = (document.getElementById('cloudinary-upload-preset-input')?.value || localStorage.getItem('rekaption_cloudinary_upload_preset') || '').trim();
-
-  if (!token) {
-    alert('يرجى إدخال مفتاح Buffer API Key في إعدادات تابة TikTok أولاً.');
-    switchMainTab('tiktok');
-    closeTikTokPublishModal();
-    return;
-  }
-  if (!cloudName || !uploadPreset) {
-    alert('يرجى إدخال Cloud Name و Upload Preset لحساب Cloudinary في تابة TikTok لتمكين رفع واستضافة الفيديوهات.');
-    switchMainTab('tiktok');
-    closeTikTokPublishModal();
-    return;
-  }
-
-  const channelSelect = document.getElementById('modal-tiktok-channel-select');
-  const channelId = channelSelect ? channelSelect.value : '';
-  if (!channelId) {
-    alert('يرجى اختيار قناة TikTok المستهدفة من القائمة.');
-    return;
-  }
-
-  const isSchedule = document.querySelector('input[name="modal-tiktok-publish-mode"]:checked')?.value === 'schedule';
-  const scheduleInput = document.getElementById('modal-tiktok-schedule-time');
-  const scheduledAt = isSchedule && scheduleInput ? scheduleInput.value : null;
-
-  if (isSchedule && !scheduledAt) {
-    alert('يرجى تحديد تاريخ ووقت الجدولة.');
-    return;
-  }
-
-  const captionText = document.getElementById('modal-tiktok-caption-input')?.value || '';
-
-  // UI Elements
-  const submitBtn = document.getElementById('modal-tiktok-submit-btn');
-  const progBox = document.getElementById('modal-tiktok-progress-box');
-  const progStatus = document.getElementById('modal-tiktok-progress-status');
-  const progBar = document.getElementById('modal-tiktok-progress-bar');
-  const succBox = document.getElementById('modal-tiktok-success-box');
-  const succTitle = document.getElementById('modal-tiktok-success-title');
-  const succDesc = document.getElementById('modal-tiktok-success-desc');
-  const errBox = document.getElementById('modal-tiktok-error-box');
-  const errDesc = document.getElementById('modal-tiktok-error-desc');
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.style.opacity = '0.6';
-  }
-  if (progBox) progBox.style.display = 'block';
-  if (succBox) succBox.style.display = 'none';
-  if (errBox) errBox.style.display = 'none';
-
-  try {
-    let videoBlob = currentModalPublishShort.videoBlob;
-
-    // Step 1: Get Video Blob from Archive (or server URL)
-    if (!videoBlob && currentModalPublishShort.id) {
-      if (progStatus) progStatus.textContent = '1/3 📁 جاري قراءة الفيديو من الأرشيف...';
-      if (progBar) progBar.style.width = '25%';
-
-      videoBlob = await getVideoBlobFromIDB(currentModalPublishShort.id);
-      if (!videoBlob && currentModalPublishShort.url) {
-        const fileRes = await fetch(currentModalPublishShort.url);
-        if (fileRes.ok) videoBlob = await fileRes.blob();
-      }
-    }
-
-    if (!videoBlob && currentModalPublishShort.url) {
-      const fileRes = await fetch(currentModalPublishShort.url);
-      if (fileRes.ok) videoBlob = await fileRes.blob();
-    }
-
-    if (!videoBlob) {
-      throw new Error('ملف الفيديو غير متوفر في الأرشيف.');
-    }
-
-    // Step 2: Upload to Cloudinary
-    if (progStatus) progStatus.textContent = '2/3 ☁️ جاري استضافة الفيديو على Cloudinary...';
-    if (progBar) progBar.style.width = '55%';
-
-    const cloudinaryUrl = await uploadToCloudinary(videoBlob, cloudName, uploadPreset, (pct) => {
-      if (progStatus) progStatus.textContent = `2/3 ☁️ جاري رفع الفيديو لـ Cloudinary (${pct}%)...`;
-      if (progBar) progBar.style.width = `${55 + Math.round(pct * 0.3)}%`;
-    });
-
-    // Step 3: Publish / Schedule via Buffer API
-    if (progStatus) progStatus.textContent = '3/3 📱 جاري إرسال المنشور إلى Buffer API...';
-    if (progBar) progBar.style.width = '90%';
-
-    const postResult = await publishToBuffer({
-      bufferToken: token,
-      channelId: channelId,
-      text: captionText,
-      videoUrl: cloudinaryUrl,
-      scheduledAt: scheduledAt,
-      isNow: !isSchedule
-    });
-
-    // Success!
-    if (progBar) progBar.style.width = '100%';
-    if (progBox) progBox.style.display = 'none';
-    if (succBox) {
-      succBox.style.display = 'block';
-      if (succTitle) succTitle.textContent = isSchedule ? '🎉 تمت جدولة المقطع بنجاح!' : '🎉 تم النشر بنجاح على TikTok!';
-      if (succDesc) {
-        succDesc.innerHTML = isSchedule
-          ? `تمت جدولة المقطع للنشر في موعده: <strong>${new Date(scheduledAt).toLocaleString('ar-EG')}</strong>.<br/>رابط الفيديو المستضاف: <a href="${cloudinaryUrl}" target="_blank" style="color:#25f4ee; text-decoration:underline;">معاينة الفيديو</a>`
-          : `تم إرسال المقطع فورياً إلى حسابك في TikTok عبر Buffer.<br/>رابط الفيديو المستضاف: <a href="${cloudinaryUrl}" target="_blank" style="color:#25f4ee; text-decoration:underline;">معاينة الفيديو</a>`;
-      }
-    }
-
-    // Save Publish History
-    try {
-      const historyStr = localStorage.getItem('rekaption_tiktok_publish_history');
-      const history = historyStr ? JSON.parse(historyStr) : [];
-      history.unshift({
-        id: 'pub_' + Date.now(),
-        title: currentModalPublishShort.cleanTitle || currentModalPublishShort.title,
-        videoUrl: cloudinaryUrl,
-        isNow: !isSchedule,
-        scheduledAt: scheduledAt,
-        timestamp: Date.now()
-      });
-      if (history.length > 20) history.pop();
-      localStorage.setItem('rekaption_tiktok_publish_history', JSON.stringify(history));
-    } catch(e) {}
-
-  } catch(err) {
-    console.error('TikTok publish error:', err);
-    if (progBox) progBox.style.display = 'none';
-    if (errBox) {
-      errBox.style.display = 'block';
-      if (errDesc) errDesc.textContent = err.message || 'حدث خطأ غير متوقع أثناء معالجة النشر.';
-    }
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.style.opacity = '1';
-    }
-  }
-};
-
-window.openTikTokPublishModalForArchiveVideo = async function(id) {
-  console.log('[TIKTOK MODAL] openTikTokPublishModalForArchiveVideo called with id:', id);
-  try {
-  const entries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
-  console.log('[TIKTOK MODAL] Found entries:', entries.length);
-  const item = entries.find(e => e.id === id);
-  if (!item) {
-    alert('فيديو الأرشيف غير موجود.');
-    return;
-  }
-  console.log('[TIKTOK MODAL] Found item:', item.title);
-
-  let blob = null;
-  try {
-    if (typeof getVideoBlobFromIDB === 'function') {
-      blob = await getVideoBlobFromIDB(item.id);
-    }
-  } catch(blobErr) {
-    console.warn('[TIKTOK MODAL] Could not get blob from IDB:', blobErr);
-  }
-
-  let activeUrl = '';
-  if (blob && blob.size > 0) {
-    activeUrl = URL.createObjectURL(blob);
-  } else if (item.serverUrl && !item.serverUrl.startsWith('blob:')) {
-    activeUrl = item.serverUrl;
-    if (!activeUrl.startsWith('http') && typeof apiUrl !== 'undefined') {
-      activeUrl = `${apiUrl.replace(/\/$/, '')}/${activeUrl.replace(/^\//, '')}`;
-    }
-  } else if (item.videoUrl) {
-    activeUrl = item.videoUrl;
-  }
-
-  const clean = cleanTikTokTitle(item.title) || 'فيديو شورتس مفرغ وممنتج';
-
-  currentModalPublishShort = {
-    id: item.id,
-    title: item.title,
-    cleanTitle: clean,
-    videoBlob: blob,
-    url: activeUrl,
-    script: item.script || item.title || ''
-  };
-
-  const modal = document.getElementById('tiktok-publish-modal');
-  if (!modal) return;
-
-  // Set Info
-  const titleEl = document.getElementById('modal-tiktok-short-title');
-  const timeEl = document.getElementById('modal-tiktok-short-time');
-  const hookEl = document.getElementById('modal-tiktok-short-hook');
-  const captionInput = document.getElementById('modal-tiktok-caption-input');
-  const schedBox = document.getElementById('modal-tiktok-schedule-time-box');
-  const progBox = document.getElementById('modal-tiktok-progress-box');
-  const succBox = document.getElementById('modal-tiktok-success-box');
-  const errBox = document.getElementById('modal-tiktok-error-box');
-  const schedTimeInput = document.getElementById('modal-tiktok-schedule-time');
-
-  if (titleEl) titleEl.textContent = `🎬 ${clean}`;
-  if (timeEl) timeEl.textContent = `جاهز وممنتج في الأرشيف ✅`;
-  if (hookEl) hookEl.textContent = `جاهز للنشر الفوري أو الجدولة عبر Buffer`;
-
-  // Fix the tag so it doesn't say "مقطع مقترح" (that's for unrendered shorts!)
-  const tagEl = document.getElementById('modal-tiktok-short-tag');
-  if (tagEl) tagEl.textContent = `🎞️ فيديو جاهز من الأرشيف`;
-
-
-  if (progBox) progBox.style.display = 'none';
-  if (succBox) succBox.style.display = 'none';
-  if (errBox) errBox.style.display = 'none';
-  if (schedBox) schedBox.style.display = 'none';
-
-  // Default mode: Share Now
-  const nowRadio = document.querySelector('input[name="modal-tiktok-publish-mode"][value="now"]');
-  if (nowRadio) nowRadio.checked = true;
-  toggleModalPublishMode('now');
-
-  // Default schedule time: 1 hour later
-  if (schedTimeInput) {
-    const d = new Date();
-    d.setHours(d.getHours() + 1);
-    d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5);
-    const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-    schedTimeInput.value = localIso;
-    schedTimeInput.min = new Date(Date.now() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-  }
-
-  // Pre-generate Draft Caption
-  if (captionInput) {
-    captionInput.value = '⏳ جاري صياغة الكابشن والملخص الذكي...';
-    generateSmartTikTokCaption({
-      cleanTitle: clean,
-      originalYoutubeTitle: window.currentYoutubeTitle || '',
-      scriptText: item.script || item.title || '',
-      geminiApiKey: localStorage.getItem('gemini_api_key') || '',
-      defaultHashtags: '#fyp #viral #shorts #rekaption #تيك_توك'
-    }).then(cap => {
-      captionInput.value = cap;
-      updateModalCharCount();
-    }).catch(() => {
-      captionInput.value = `${clean}\n\n#fyp #viral #shorts #rekaption #تيك_توك`;
-      updateModalCharCount();
-    });
-  }
-
-  // Load Channels
-  loadChannelsForModal();
-
-  console.log('[TIKTOK MODAL] Showing modal now.');
-  modal.style.display = 'flex';
-  } catch(outerErr) {
-    console.error('[TIKTOK MODAL] FATAL ERROR - Modal failed to open:', outerErr);
-    alert('حدث خطأ أثناء فتح نافذة النشر: ' + outerErr.message);
-  }
-};
-
-window.renderTikTokTabArchiveVideos = async function() {
-  const grid = document.getElementById('tab-archive-videos-grid');
-  const empty = document.getElementById('tab-archive-videos-empty');
-  if (!grid || !empty) return;
-
-  const entries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
-
-  if (!entries || entries.length === 0) {
-    grid.style.display = 'none';
-    grid.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-
-  empty.style.display = 'none';
-  grid.style.display = 'grid';
-  grid.innerHTML = '';
-
-  // Initial placeholders
-  grid.innerHTML = entries.map(item => `
-    <div id="tab-hist-card-${item.id}" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(254, 44, 85, 0.3); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; position: relative;">
-      <div class="video-container" style="width: 100%; height: 210px; border-radius: 10px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
-        <div class="spinner" style="width: 24px; height: 24px; border-left-color: #fe2c55;"></div>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 4px;">
-        <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${cleanTikTokTitle(item.title) || item.title}</h4>
-        <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
-      </div>
-      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px;">
-        <button disabled class="btn-primary" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; justify-content: center; opacity: 0.5;">
-          <span>⏳</span> جاري التحميل...
-        </button>
-      </div>
-    </div>
-  `).join('');
-
-  for (const item of entries) {
-    const cardEl = document.getElementById(`tab-hist-card-${item.id}`);
-    if (!cardEl) continue;
-
-    let activeUrl = '';
-    const storedBlob = await getVideoBlobFromIDB(item.id);
-
-    if (storedBlob && storedBlob.size > 0) {
-      activeUrl = URL.createObjectURL(storedBlob);
-    } else if (item.serverUrl && !item.serverUrl.startsWith('blob:')) {
-      activeUrl = item.serverUrl;
-      if (!activeUrl.startsWith('http') && typeof apiUrl !== 'undefined') {
-        activeUrl = `${apiUrl.replace(/\/$/, '')}/${activeUrl.replace(/^\//, '')}`;
-      }
-    } else if (item.videoUrl && !item.videoUrl.startsWith('blob:')) {
-      activeUrl = item.videoUrl;
-    }
-
-    if (!activeUrl) {
-      cardEl.querySelector('.video-container').innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 6px; color: #f87171; font-size: 12px;">
-          <span>⚠️ الملف غير متوفر أو انتهت صلاحيته</span>
-        </div>
-      `;
-      continue;
-    }
-
-    const cleanTitle = cleanTikTokTitle(item.title) || item.title;
-    const safeTitle = cleanTitle.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
-
-    cardEl.innerHTML = `
-      <div style="width: 100%; border-radius: 10px; overflow: hidden; background: #000; position: relative;">
-        <video src="${activeUrl}" controls style="width: 100%; height: 210px; object-fit: contain; display: block;"></video>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 4px;">
-        <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">🎬 ${cleanTitle}</h4>
-        <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
-      </div>
-      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px;">
-        <!-- Publish / Schedule to TikTok Button -->
-        <button type="button" onclick="openTikTokPublishModalForArchiveVideo('${item.id}')" class="btn-primary" style="width: 100%; padding: 10px 14px; font-size: 13px; font-weight: 800; justify-content: center; background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55); border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 4px 14px rgba(254,44,85,0.35); cursor: pointer; display: flex; align-items: center; gap: 6px;">
-          <span>📱</span> نشر / جدولة على TikTok
-        </button>
-
-        <div style="display: flex; gap: 8px;">
-          <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-secondary" style="flex: 1; padding: 7px 10px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-            <span>📥</span> تنزيل
-          </a>
-          <button onclick="deleteHistoryEntry('${item.id}'); renderTikTokTabArchiveVideos();" class="btn-secondary" style="padding: 7px 10px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
-            <span>🗑️</span>
-          </button>
-        </div>
-      </div>
-    `;
-  }
-};
-
-
