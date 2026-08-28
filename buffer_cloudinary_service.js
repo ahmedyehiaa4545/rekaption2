@@ -301,7 +301,35 @@
       throw new Error('يرجى إدخال مفتاح Buffer API Token في الإعدادات.');
     }
 
-    // Step 1: Query Organizations
+    // 1. Try Backend API Proxy (Railway/Microservice)
+    const endpointsToTry = [
+      '/api/buffer/channels',
+      `${(window.apiUrl || '').replace(/\/$/, '')}/api/buffer/channels`
+    ];
+
+    for (const ep of endpointsToTry) {
+      if (!ep || (ep === '/api/buffer/channels' && window.location.protocol === 'file:')) continue;
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: bufferToken.trim() })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.channels && data.channels.length > 0) {
+            return data.channels;
+          }
+          if (data && data.error) {
+            console.warn(`Buffer backend error from ${ep}:`, data.error);
+          }
+        }
+      } catch (e) {
+        console.warn(`Proxy fetch failed on ${ep}:`, e);
+      }
+    }
+
+    // 2. Fallback: Step 1: Query Organizations
     const orgQuery = `
       query {
         account {
