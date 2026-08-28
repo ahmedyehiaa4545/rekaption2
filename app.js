@@ -2092,8 +2092,8 @@ window.switchMainTab = function(tab) {
     if (typeof loadBufferTabSettings === 'function') {
       loadBufferTabSettings();
     }
-    if (typeof renderTikTokTabSuggestedShorts === 'function') {
-      renderTikTokTabSuggestedShorts();
+    if (typeof renderTikTokTabArchiveVideos === 'function') {
+      renderTikTokTabArchiveVideos();
     }
   }
 
@@ -2811,27 +2811,6 @@ window.fetchShortsSuggestions = async function() {
                 <span>🎬</span> قص وتوليد الكابشن
               </button>
 
-              <!-- Dedicated TikTok Publish / Schedule Button -->
-              <button type="button" onclick="openPublishModalForSuggestedShort(${idx})" class="btn-primary" style="
-                width: 100%;
-                padding: 10px 14px;
-                font-size: 13px;
-                font-weight: 800;
-                justify-content: center;
-                border-radius: 10px;
-                background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55);
-                border: 1px solid rgba(255,255,255,0.2);
-                color: #fff;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                box-shadow: 0 4px 14px rgba(254, 44, 85, 0.35);
-                margin: 0;
-              ">
-                <span>📱</span> نشر / جدولة على TikTok (Buffer)
-              </button>
-
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <!-- Cut & Download Button -->
                 <button type="button" onclick="cutVideoSegment('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
@@ -2873,9 +2852,6 @@ window.fetchShortsSuggestions = async function() {
       });
       listContainer.innerHTML = cardsHtml;
       container.style.display = 'flex';
-      if (typeof renderTikTokTabSuggestedShorts === 'function') {
-        renderTikTokTabSuggestedShorts();
-      }
     } else {
       throw new Error('الاستجابة لا تحتوي على مقاطع مقترحة.');
     }
@@ -3841,7 +3817,10 @@ window.renderHistoryModal = async function() {
         <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
       </div>
       <div style="display: flex; gap: 8px; margin-top: 4px;">
-        <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-primary" style="flex: 1; padding: 8px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+        <button type="button" onclick="openTikTokPublishModalForArchiveVideo('${item.id}')" class="btn-primary" style="flex: 1; padding: 8px 10px; justify-content: center; font-size: 12px; background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55); border: 1px solid rgba(255,255,255,0.2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+          <span>📱</span> تيك توك
+        </button>
+        <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-secondary" style="flex: 1; padding: 8px 10px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
           <span>📥</span> تنزيل
         </a>
         <button onclick="deleteHistoryEntry('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
@@ -5679,20 +5658,25 @@ window.executeModalTikTokPublish = async function() {
   try {
     let videoBlob = currentModalPublishShort.videoBlob;
 
-    // Step 1: Cut video from YouTube if not yet cut
-    if (!videoBlob) {
-      if (progStatus) progStatus.textContent = '1/3 ✂️ جاري قص وتجهيز مقطع الفيديو بجودة عالية...';
+    // Step 1: Get Video Blob from Archive (or server URL)
+    if (!videoBlob && currentModalPublishShort.id) {
+      if (progStatus) progStatus.textContent = '1/3 📁 جاري قراءة الفيديو من الأرشيف...';
       if (progBar) progBar.style.width = '25%';
 
-      const ytUrl = currentModalPublishShort.ytUrl || window.lastGeminiYtUrl || document.getElementById('gemini-yt-url')?.value.trim();
-      if (!ytUrl) {
-        throw new Error('رابط يوتيوب غير متوفر لقص المقطع.');
+      videoBlob = await getVideoBlobFromIDB(currentModalPublishShort.id);
+      if (!videoBlob && currentModalPublishShort.url) {
+        const fileRes = await fetch(currentModalPublishShort.url);
+        if (fileRes.ok) videoBlob = await fileRes.blob();
       }
+    }
 
-      videoBlob = await performAsyncCut(ytUrl, currentModalPublishShort.start_time, currentModalPublishShort.end_time, 1080, (pct) => {
-        if (progStatus) progStatus.textContent = `1/3 ✂️ جاري قص الفيديو (${pct}%)...`;
-      });
-      currentModalPublishShort.videoBlob = videoBlob;
+    if (!videoBlob && currentModalPublishShort.url) {
+      const fileRes = await fetch(currentModalPublishShort.url);
+      if (fileRes.ok) videoBlob = await fileRes.blob();
+    }
+
+    if (!videoBlob) {
+      throw new Error('ملف الفيديو غير متوفر في الأرشيف.');
     }
 
     // Step 2: Upload to Cloudinary
@@ -5761,12 +5745,112 @@ window.executeModalTikTokPublish = async function() {
   }
 };
 
-window.renderTikTokTabSuggestedShorts = function() {
-  const grid = document.getElementById('tab-suggested-shorts-grid');
-  const empty = document.getElementById('tab-suggested-shorts-empty');
+window.openTikTokPublishModalForArchiveVideo = async function(id) {
+  const entries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
+  const item = entries.find(e => e.id === id);
+  if (!item) {
+    alert('فيديو الأرشيف غير موجود.');
+    return;
+  }
+
+  let blob = null;
+  if (typeof getVideoBlobFromIDB === 'function') {
+    blob = await getVideoBlobFromIDB(item.id);
+  }
+
+  let activeUrl = '';
+  if (blob && blob.size > 0) {
+    activeUrl = URL.createObjectURL(blob);
+  } else if (item.serverUrl && !item.serverUrl.startsWith('blob:')) {
+    activeUrl = item.serverUrl;
+    if (!activeUrl.startsWith('http') && typeof apiUrl !== 'undefined') {
+      activeUrl = `${apiUrl.replace(/\/$/, '')}/${activeUrl.replace(/^\//, '')}`;
+    }
+  } else if (item.videoUrl) {
+    activeUrl = item.videoUrl;
+  }
+
+  const clean = cleanTikTokTitle(item.title) || 'فيديو شورتس مفرغ وممنتج';
+
+  currentModalPublishShort = {
+    id: item.id,
+    title: item.title,
+    cleanTitle: clean,
+    videoBlob: blob,
+    url: activeUrl,
+    script: item.script || item.title || ''
+  };
+
+  const modal = document.getElementById('tiktok-publish-modal');
+  if (!modal) return;
+
+  // Set Info
+  const titleEl = document.getElementById('modal-tiktok-short-title');
+  const timeEl = document.getElementById('modal-tiktok-short-time');
+  const hookEl = document.getElementById('modal-tiktok-short-hook');
+  const captionInput = document.getElementById('modal-tiktok-caption-input');
+  const schedBox = document.getElementById('modal-tiktok-schedule-time-box');
+  const progBox = document.getElementById('modal-tiktok-progress-box');
+  const succBox = document.getElementById('modal-tiktok-success-box');
+  const errBox = document.getElementById('modal-tiktok-error-box');
+  const schedTimeInput = document.getElementById('modal-tiktok-schedule-time');
+
+  if (titleEl) titleEl.textContent = `🎬 ${clean}`;
+  if (timeEl) timeEl.textContent = `جاهز وممنتج في الأرشيف ✅`;
+  if (hookEl) hookEl.textContent = `جاهز للنشر الفوري أو الجدولة عبر Buffer`;
+
+  if (progBox) progBox.style.display = 'none';
+  if (succBox) succBox.style.display = 'none';
+  if (errBox) errBox.style.display = 'none';
+  if (schedBox) schedBox.style.display = 'none';
+
+  // Default mode: Share Now
+  const nowRadio = document.querySelector('input[name="modal-tiktok-publish-mode"][value="now"]');
+  if (nowRadio) nowRadio.checked = true;
+  toggleModalPublishMode('now');
+
+  // Default schedule time: 1 hour later
+  if (schedTimeInput) {
+    const d = new Date();
+    d.setHours(d.getHours() + 1);
+    d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5);
+    const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    schedTimeInput.value = localIso;
+    schedTimeInput.min = new Date(Date.now() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+  }
+
+  // Pre-generate Draft Caption
+  if (captionInput) {
+    captionInput.value = '⏳ جاري صياغة الكابشن والملخص الذكي...';
+    generateSmartTikTokCaption({
+      cleanTitle: clean,
+      originalYoutubeTitle: window.currentYoutubeTitle || '',
+      scriptText: item.script || item.title || '',
+      geminiApiKey: localStorage.getItem('gemini_api_key') || '',
+      defaultHashtags: '#fyp #viral #shorts #rekaption #تيك_توك'
+    }).then(cap => {
+      captionInput.value = cap;
+      updateModalCharCount();
+    }).catch(() => {
+      captionInput.value = `${clean}\n\n#fyp #viral #shorts #rekaption #تيك_توك`;
+      updateModalCharCount();
+    });
+  }
+
+  // Load Channels
+  loadChannelsForModal();
+
+  modal.style.display = 'flex';
+};
+
+window.renderTikTokTabArchiveVideos = async function() {
+  const grid = document.getElementById('tab-archive-videos-grid');
+  const empty = document.getElementById('tab-archive-videos-empty');
   if (!grid || !empty) return;
 
-  if (!currentSuggestedShorts || currentSuggestedShorts.length === 0) {
+  const entries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
+
+  if (!entries || entries.length === 0) {
     grid.style.display = 'none';
     grid.innerHTML = '';
     empty.style.display = 'block';
@@ -5777,43 +5861,79 @@ window.renderTikTokTabSuggestedShorts = function() {
   grid.style.display = 'grid';
   grid.innerHTML = '';
 
-  currentSuggestedShorts.forEach((short, idx) => {
-    const clean = cleanTikTokTitle(short.title);
-    const card = document.createElement('div');
-    card.style.cssText = `
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(254, 44, 85, 0.3);
-      border-radius: 14px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      transition: all 0.2s ease;
-      position: relative;
-    `;
-
-    card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="background: linear-gradient(135deg, #fe2c55, #25f4ee); color: #000; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px;">مقطع #${idx + 1}</span>
-        <span style="font-family: monospace; font-size: 12px; color: #c084fc; font-weight: 700; direction: ltr;">${short.start_time} ➔ ${short.end_time}</span>
+  // Initial placeholders
+  grid.innerHTML = entries.map(item => `
+    <div id="tab-hist-card-${item.id}" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(254, 44, 85, 0.3); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; position: relative;">
+      <div class="video-container" style="width: 100%; height: 210px; border-radius: 10px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
+        <div class="spinner" style="width: 24px; height: 24px; border-left-color: #fe2c55;"></div>
       </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">${cleanTikTokTitle(item.title) || item.title}</h4>
+        <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
+      </div>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px;">
+        <button disabled class="btn-primary" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; justify-content: center; opacity: 0.5;">
+          <span>⏳</span> جاري التحميل...
+        </button>
+      </div>
+    </div>
+  `).join('');
 
-      <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #fff; line-height: 1.4;">
-        🎥 ${clean || short.title}
-      </h4>
+  for (const item of entries) {
+    const cardEl = document.getElementById(`tab-hist-card-${item.id}`);
+    if (!cardEl) continue;
 
-      ${short.hook ? `
-        <div style="font-size: 12px; color: #f472b6; line-height: 1.4; background: rgba(236, 72, 153, 0.08); padding: 6px 10px; border-radius: 6px; border-right: 2px solid #ec4899;">
-          ⚡ ${short.hook}
+    let activeUrl = '';
+    const storedBlob = await getVideoBlobFromIDB(item.id);
+
+    if (storedBlob && storedBlob.size > 0) {
+      activeUrl = URL.createObjectURL(storedBlob);
+    } else if (item.serverUrl && !item.serverUrl.startsWith('blob:')) {
+      activeUrl = item.serverUrl;
+      if (!activeUrl.startsWith('http') && typeof apiUrl !== 'undefined') {
+        activeUrl = `${apiUrl.replace(/\/$/, '')}/${activeUrl.replace(/^\//, '')}`;
+      }
+    } else if (item.videoUrl && !item.videoUrl.startsWith('blob:')) {
+      activeUrl = item.videoUrl;
+    }
+
+    if (!activeUrl) {
+      cardEl.querySelector('.video-container').innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 6px; color: #f87171; font-size: 12px;">
+          <span>⚠️ الملف غير متوفر أو انتهت صلاحيته</span>
         </div>
-      ` : ''}
+      `;
+      continue;
+    }
 
-      <button type="button" onclick="openPublishModalForSuggestedShort(${idx})" class="btn-primary" style="margin-top: auto; padding: 10px 14px; font-size: 12px; font-weight: 800; justify-content: center; background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(254,44,85,0.3); cursor: pointer; display: flex; align-items: center; gap: 6px;">
-        <span>📱</span> اختيار للنشر والجدولة
-      </button>
+    const cleanTitle = cleanTikTokTitle(item.title) || item.title;
+    const safeTitle = cleanTitle.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
+
+    cardEl.innerHTML = `
+      <div style="width: 100%; border-radius: 10px; overflow: hidden; background: #000; position: relative;">
+        <video src="${activeUrl}" controls style="width: 100%; height: 210px; object-fit: contain; display: block;"></video>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; line-height: 1.4;">🎬 ${cleanTitle}</h4>
+        <span style="font-size: 11px; color: #a78bfa; font-weight: 600;">${formatCountdown(item.expiryTime)}</span>
+      </div>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Publish / Schedule to TikTok Button -->
+        <button type="button" onclick="openTikTokPublishModalForArchiveVideo('${item.id}')" class="btn-primary" style="width: 100%; padding: 10px 14px; font-size: 13px; font-weight: 800; justify-content: center; background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55); border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 4px 14px rgba(254,44,85,0.35); cursor: pointer; display: flex; align-items: center; gap: 6px;">
+          <span>📱</span> نشر / جدولة على TikTok
+        </button>
+
+        <div style="display: flex; gap: 8px;">
+          <a href="${activeUrl}" download="${safeTitle}.mp4" class="btn-secondary" style="flex: 1; padding: 7px 10px; justify-content: center; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+            <span>📥</span> تنزيل
+          </a>
+          <button onclick="deleteHistoryEntry('${item.id}'); renderTikTokTabArchiveVideos();" class="btn-secondary" style="padding: 7px 10px; font-size: 12px; color: #f87171; border-color: rgba(248, 113, 113, 0.3); cursor: pointer;">
+            <span>🗑️</span>
+          </button>
+        </div>
+      </div>
     `;
-
-    grid.appendChild(card);
-  });
+  }
 };
+
 

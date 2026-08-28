@@ -907,31 +907,40 @@
         </div>
       </div>
 
-      <!-- Pick Suggested Short Section -->
+      <!-- Ready Archive Videos for Publishing Section -->
       <div class="panel-inner" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 22px; margin-top: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
           <div>
             <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
-              <span>🎬</span> المقاطع المقترحة المتاحة للنشر أو الجدولة
+              <span>📁</span> فيديوهات الأرشيف الجاهزة للنشر والجدولة (48h)
             </h3>
             <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin: 4px 0 0 0;">
-              اختر أي مقطع من مقترحات الذكاء الاصطناعي لنشره فوراً أو جدولته على TikTok عبر Buffer.
+              جميع الفيديوهات التي تم إنشاؤها ورندرتها في المنصة محفوظة هنا وجاهزة للنشر أو الجدولة الفورية على TikTok عبر Buffer.
             </p>
           </div>
-          <button type="button" onclick="switchMainTab('gemini')" class="btn-secondary" style="padding: 8px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-            <span>✨</span> توليد مقترحات جديدة من يوتيوب
+          <div style="display: flex; gap: 8px;">
+            <button type="button" onclick="renderTikTokTabArchiveVideos()" class="btn-secondary" style="padding: 8px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>🔄</span> تحديث الأرشيف
+            </button>
+            <button type="button" onclick="switchMainTab('editor')" class="btn-primary" style="padding: 8px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>🎬</span> إنشاء فيديو جديد
+            </button>
+          </div>
+        </div>
+
+        <div id="tab-archive-videos-empty" style="text-align: center; padding: 40px 20px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+          <div style="font-size: 36px; margin-bottom: 10px; opacity: 0.7;">📁</div>
+          <h4 style="font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 6px 0;">لا توجد فيديوهات في الأرشيف حالياً</h4>
+          <p style="font-size: 12px; color: rgba(255,255,255,0.5); max-width: 420px; margin: 0 auto 15px auto;">
+            عند رندرة أي فيديو في صانع الفيديو أو معالجة مقاطع يوتيوب دفعة واحدة، سيظهر هنا تلقائياً لتقوم بنشره أو جدولته بضغطة زر.
+          </p>
+          <button type="button" onclick="switchMainTab('editor')" class="btn-primary" style="padding: 8px 18px; font-size: 12px; margin: 0 auto; display: inline-flex;">
+            انتقل لصانع الفيديو لإنشاء مقطع جديد 🚀
           </button>
         </div>
 
-        <div id="tab-suggested-shorts-empty" style="text-align: center; padding: 30px 20px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
-          <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 0 0 10px 0;">لا توجد مقاطع مقترحة حالياً في هذه الجلسة.</p>
-          <button type="button" onclick="switchMainTab('gemini')" class="btn-primary" style="padding: 8px 16px; font-size: 12px; margin: 0 auto; display: inline-flex;">
-            انتقل لتابة تحميل يوتيوب واقترح مقاطع Shorts 🚀
-          </button>
-        </div>
-
-        <div id="tab-suggested-shorts-grid" style="display: none; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
-          <!-- Dynamically populated by JS -->
+        <div id="tab-archive-videos-grid" style="display: none; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+          <!-- Dynamically populated from getHistoryEntries() -->
         </div>
       </div>
     </div>
