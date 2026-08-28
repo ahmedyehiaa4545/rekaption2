@@ -358,12 +358,10 @@
               id
               dueAt
               status
+              text
             }
           }
           ... on MutationError {
-            message
-          }
-          ... on UserError {
             message
           }
         }
