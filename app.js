@@ -2099,6 +2099,61 @@ window.switchMainTab = function(tab) {
 };
 
 // ==================== Buffer & TikTok Schedule Integration ====================
+
+window.logBufferAction = function(type, message, details = null) {
+  const logBox = document.getElementById('buffer-live-logs');
+  const now = new Date();
+  const timeStr = now.toTimeString().split(' ')[0];
+  
+  let color = '#38bdf8';
+  let badge = '[INFO]';
+  if (type === 'success') {
+    color = '#10b981';
+    badge = '[SUCCESS]';
+  } else if (type === 'error') {
+    color = '#ef4444';
+    badge = '[ERROR]';
+  } else if (type === 'buffer') {
+    color = '#c084fc';
+    badge = '[BUFFER API]';
+  } else if (type === 'cloudinary') {
+    color = '#38bdf8';
+    badge = '[CLOUDINARY]';
+  }
+  
+  let detailsText = '';
+  if (details) {
+    try {
+      detailsText = typeof details === 'string' ? ` - ${details}` : `\n  ↳ ${JSON.stringify(details, null, 2)}`;
+    } catch (e) {
+      detailsText = ` - ${details}`;
+    }
+  }
+
+  const logLine = `<div style="margin-bottom: 4px; font-family: 'Courier New', Courier, monospace;"><span style="color: #64748b;">[${timeStr}]</span> <span style="color: ${color}; font-weight: bold;">${badge}</span> <span style="color: #f1f5f9;">${message}</span><span style="color: #94a3b8; font-size: 11px;">${detailsText}</span></div>`;
+  
+  if (logBox) {
+    logBox.innerHTML += logLine;
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+  console.log(`[${timeStr}] ${badge} ${message}`, details || '');
+};
+
+window.copyBufferLogs = function() {
+  const logBox = document.getElementById('buffer-live-logs');
+  if (logBox) {
+    navigator.clipboard.writeText(logBox.innerText || logBox.textContent);
+    alert('✅ تم نسخ سجل العمليات (Logs) بالكامل!');
+  }
+};
+
+window.clearBufferLogs = function() {
+  const logBox = document.getElementById('buffer-live-logs');
+  if (logBox) {
+    logBox.innerHTML = '<div style="color: #94a3b8;">[CLEARED] Operation logs console cleared. Awaiting actions...</div>';
+  }
+};
+
 window.saveBufferCredentials = function() {
   const tokenInput = document.getElementById('buffer-api-key-input');
   const cloudNameInput = document.getElementById('cloudinary-cloud-name');
@@ -2245,6 +2300,7 @@ window.selectChannelForPublish = function(channelId) {
     select.scrollIntoView({ behavior: 'smooth', block: 'center' });
     select.style.borderColor = '#a855f7';
     setTimeout(() => { select.style.borderColor = 'var(--border-subtle)'; }, 1500);
+    logBufferAction('info', `تم اختيار القناة للنشر: ID ${channelId}`);
   }
 };
 
@@ -2255,10 +2311,12 @@ window.fetchBufferChannels = async function() {
   
   if (!token) {
     showBufferStatus('يرجى إدخال مفتاح Buffer API Key أولاً.', 'error');
+    logBufferAction('error', 'محاولة جلب القنوات بدون إدخال Buffer API Key.');
     return;
   }
   
   localStorage.setItem('buffer_api_key', token);
+  logBufferAction('buffer', 'بدء الاتصال بـ Buffer GraphQL API لجلب المنظمات والقنوات...');
   
   if (btn) {
     btn.disabled = true;
@@ -2272,6 +2330,7 @@ window.fetchBufferChannels = async function() {
     
     // Method 1: Try direct GraphQL to Buffer API
     try {
+      logBufferAction('buffer', 'إرسال طلب GetOrganizations مباشر إلى https://api.buffer.com');
       const orgRes = await fetch('https://api.buffer.com', {
         method: 'POST',
         headers: {
@@ -2301,8 +2360,11 @@ window.fetchBufferChannels = async function() {
         }
         
         const orgs = orgData?.data?.account?.organizations || [];
+        logBufferAction('success', `تم جلب ${orgs.length} منظمة من الحساب:`, orgs);
+        
         if (orgs.length > 0) {
           for (const org of orgs) {
+            logBufferAction('buffer', `جلب القنوات للمنظمة ID: ${org.id}...`);
             const chanRes = await fetch('https://api.buffer.com', {
               method: 'POST',
               headers: {
@@ -2336,12 +2398,13 @@ window.fetchBufferChannels = async function() {
         }
       }
     } catch (directErr) {
-      console.warn('Direct Buffer GraphQL failed or blocked by CORS, trying backend proxy...', directErr);
+      logBufferAction('error', `الاتصال المباشر واجه قيد، جاري التحويل للبروكسي...`, directErr.message);
     }
     
     // Method 2: Fallback to backend proxy if direct fetch did not succeed
     if (!fetchSuccessful) {
       const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
+      logBufferAction('info', `إرسال طلب عبر السيرفر الوسيط: ${backendBase}/api/buffer/channels`);
       const proxyRes = await fetch(backendBase + '/api/buffer/channels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2361,12 +2424,15 @@ window.fetchBufferChannels = async function() {
     
     if (channels.length > 0) {
       showBufferStatus(`✅ تم الاتصال بنجاح وجلب ${channels.length} قناة مربوطة!`, 'success');
+      logBufferAction('success', `تم جلب ${channels.length} قناة بنجاح:`, channels.map(c => ({ id: c.id, name: c.displayName || c.name, service: c.service })));
     } else {
       showBufferStatus('تم الاتصال بالحساب بنجاح، لكن لا توجد أي قنوات مربوطة حالياً في حساب Buffer.', 'info');
+      logBufferAction('info', 'تم الاتصال ولكن لا توجد قنوات مربوطة في حساب Buffer.');
     }
   } catch (err) {
     console.error('Buffer fetch error:', err);
     showBufferStatus(`❌ خطأ: ${err.message || 'تعذر الاتصال بـ Buffer'}`, 'error');
+    logBufferAction('error', `فشل جلب قنوات Buffer: ${err.message}`, err);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -2382,6 +2448,7 @@ let currentBufferVideoSource = 'local';
 
 window.switchBufferVideoSource = function(source) {
   currentBufferVideoSource = source;
+  logBufferAction('info', `تم تغيير مصدر الفيديو إلى: ${source}`);
   
   const localBtn = document.getElementById('buf-src-btn-local');
   const historyBtn = document.getElementById('buf-src-btn-history');
@@ -2453,6 +2520,8 @@ window.handleBufferVideoFileSelect = function(file) {
   const nameEl = document.getElementById('buf-selected-file-name');
   if (nameEl) nameEl.textContent = `✅ ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MB)`;
   
+  logBufferAction('info', `تم اختيار ملف فيديو محلي: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+  
   const player = document.getElementById('buf-video-preview-player');
   const wrapper = document.getElementById('buf-video-preview-wrapper');
   if (player && wrapper) {
@@ -2467,6 +2536,7 @@ window.handleBufferHistorySelect = async function(historyId) {
   const entry = entries.find(e => e.id === historyId);
   if (!entry) return;
   
+  logBufferAction('info', `تحميل فيديو من الأرشيف: ${entry.title || historyId}`);
   const player = document.getElementById('buf-video-preview-player');
   const wrapper = document.getElementById('buf-video-preview-wrapper');
   
@@ -2483,18 +2553,19 @@ window.handleBufferHistorySelect = async function(historyId) {
         player.src = URL.createObjectURL(blob);
         wrapper.classList.remove('hidden');
       }
+      logBufferAction('success', `تم استخراج ملف الفيديو من IndexedDB بنجاح (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`);
     } else if (entry.serverUrl) {
       if (player && wrapper) {
         player.src = entry.serverUrl;
         wrapper.classList.remove('hidden');
       }
-      // Fetch blob from serverUrl
       const res = await fetch(entry.serverUrl);
       bufferSelectedVideoBlob = await res.blob();
       bufferSelectedVideoFile = new File([bufferSelectedVideoBlob], `${entry.title || 'video'}.mp4`, { type: 'video/mp4' });
+      logBufferAction('success', `تم تنزيل الفيديو من رابط السيرفر (${(bufferSelectedVideoBlob.size / (1024 * 1024)).toFixed(2)} MB)`);
     }
   } catch (err) {
-    console.warn('Error loading history video for Buffer:', err);
+    logBufferAction('error', 'فشل تحميل الفيديو من الأرشيف:', err.message);
   }
 };
 
@@ -2508,9 +2579,11 @@ function checkCurrentRenderedVideo() {
     bufferSelectedVideoBlob = lastConvertedBlob;
     bufferSelectedVideoFile = new File([lastConvertedBlob], 'current_video.mp4', { type: 'video/mp4' });
     targetUrl = URL.createObjectURL(lastConvertedBlob);
+    logBufferAction('info', 'تم العثور على آخر فيديو تم تحويله في الذاكرة.');
   } else if (typeof renderTaskStatus !== 'undefined' && renderTaskStatus && renderTaskStatus.videoUrl) {
     const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
     targetUrl = `${backendBase}/${renderTaskStatus.videoUrl.replace(/^\//, '')}`;
+    logBufferAction('info', `تم العثور على آخر فيديو مرندر: ${targetUrl}`);
   }
   
   if (targetUrl) {
@@ -2535,28 +2608,31 @@ window.triggerCloudinaryUpload = async function() {
   
   if (!cloudName || !uploadPreset) {
     alert('يرجى كتابة Cloud Name و Upload Preset في إعدادات Cloudinary بالأعلى أولاً.');
+    logBufferAction('error', 'فشل الرفع: بيانات Cloudinary غير مكتملة (Cloud Name أو Upload Preset مفقود).');
     return;
   }
   
   let fileToUpload = bufferSelectedVideoFile || bufferSelectedVideoBlob;
   
-  // If current video has a remote server URL, try fetching its blob first
   if (!fileToUpload && currentBufferVideoSource === 'current' && typeof renderTaskStatus !== 'undefined' && renderTaskStatus && renderTaskStatus.videoUrl) {
     try {
       const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
       const fullUrl = `${backendBase}/${renderTaskStatus.videoUrl.replace(/^\//, '')}`;
+      logBufferAction('cloudinary', `جاري تنزيل ملف الفيديو من السيرفر قبل الرفع: ${fullUrl}`);
       const res = await fetch(fullUrl);
       fileToUpload = await res.blob();
     } catch (e) {
-      console.warn("Failed to fetch current video blob:", e);
+      logBufferAction('error', 'فشل جلب ملف الفيديو من السيرفر:', e.message);
     }
   }
   
   if (!fileToUpload) {
     alert('يرجى اختيار أو رفع ملف الفيديو أولاً!');
+    logBufferAction('error', 'لم يتم اختيار أي ملف فيديو للرفع.');
     return;
   }
   
+  logBufferAction('cloudinary', `بدء الرفع إلى Cloudinary (${cloudName}) باستخدام Preset (${uploadPreset})...`);
   if (btn) btn.disabled = true;
   if (progressContainer) progressContainer.classList.remove('hidden');
   if (progressBar) progressBar.style.width = '0%';
@@ -2586,7 +2662,7 @@ window.triggerCloudinaryUpload = async function() {
             if (data.secure_url) resolve(data.secure_url);
             else reject(new Error('لم يتم إرجاع secure_url من Cloudinary'));
           } catch (err) {
-            reject(new Error('خطأ في استجابة Cloudinary: ' + err.message));
+            reject(new Error('خطأ في قراءة استجابة Cloudinary: ' + err.message));
           }
         } else {
           try {
@@ -2605,6 +2681,8 @@ window.triggerCloudinaryUpload = async function() {
     if (urlInput) urlInput.value = secureUrl;
     if (percentText) percentText.textContent = '100% مكتمل!';
     if (btn) btn.innerHTML = '<span>✅</span> تم الرفع بنجاح!';
+    logBufferAction('success', `🎉 تم رفع الفيديو بنجاح إلى Cloudinary! الرابط المباشر:\n${secureUrl}`);
+    
     setTimeout(() => {
       if (btn) {
         btn.disabled = false;
@@ -2613,6 +2691,7 @@ window.triggerCloudinaryUpload = async function() {
     }, 2500);
   } catch (err) {
     console.error('Cloudinary upload error:', err);
+    logBufferAction('error', `فشل الرفع إلى Cloudinary: ${err.message}`);
     alert('❌ خطأ أثناء الرفع إلى Cloudinary:\n' + err.message);
     if (btn) {
       btn.disabled = false;
@@ -2638,7 +2717,6 @@ window.toggleBufferScheduleInputs = function(isScheduled) {
     container.classList.remove('hidden');
     const picker = document.getElementById('buffer-post-datetime');
     if (picker && !picker.value) {
-      // Default to tomorrow at current time + 1 hour
       const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       picker.value = d.toISOString().slice(0, 16);
@@ -2663,14 +2741,17 @@ window.submitPostToBuffer = async function() {
   
   if (!token) {
     alert('يرجى إدخال مفتاح Buffer API Key في الأعلى والتحقق من القنوات أولاً.');
+    logBufferAction('error', 'محاولة النشر بدون Buffer API Key.');
     return;
   }
   if (!channelId) {
     alert('يرجى اختيار القناة المستهدفة للنشر!');
+    logBufferAction('error', 'محاولة النشر بدون تحديد القناة المستهدفة.');
     return;
   }
   if (!videoUrl) {
     alert('يرجى رفع الفيديو إلى Cloudinary والحصول على الرابط المباشر أولاً!');
+    logBufferAction('error', 'محاولة النشر بدون وجود رابط فيديو Cloudinary.');
     return;
   }
   
@@ -2689,6 +2770,8 @@ window.submitPostToBuffer = async function() {
     scheduledAtIso = chosenDate.toISOString();
   }
   
+  logBufferAction('buffer', `بدء إرسال المنشور إلى Buffer (Mode: ${isScheduleMode ? 'Custom Scheduled' : 'Share Now'}, Channel: ${channelId})...`);
+  
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = '<span>⏳</span> جاري إرسال المنشور إلى Buffer...';
@@ -2703,6 +2786,7 @@ window.submitPostToBuffer = async function() {
   
   try {
     const isNow = !scheduledAtIso;
+    // Clean GraphQL mutation conforming strictly to Buffer API specifications (PostActionSuccess & MutationError only)
     const mutation = `
       mutation CreatePost($input: CreatePostInput!) {
         createPost(input: $input) {
@@ -2714,9 +2798,6 @@ window.submitPostToBuffer = async function() {
             }
           }
           ... on MutationError {
-            message
-          }
-          ... on UserError {
             message
           }
         }
@@ -2741,11 +2822,14 @@ window.submitPostToBuffer = async function() {
       inputPayload.dueAt = scheduledAtIso;
     }
     
+    logBufferAction('buffer', 'GraphQL Mutation Payload:', inputPayload);
+    
     let postResult = null;
     let publishSuccess = false;
     
     // Attempt 1: Direct GraphQL call
     try {
+      logBufferAction('buffer', 'محاولة النشر المباشر عبر https://api.buffer.com...');
       const res = await fetch('https://api.buffer.com', {
         method: 'POST',
         headers: {
@@ -2760,6 +2844,7 @@ window.submitPostToBuffer = async function() {
       
       if (res.ok) {
         const data = await res.json();
+        logBufferAction('buffer', 'استجابة Buffer المباشرة:', data);
         if (data.errors && data.errors.length > 0) {
           throw new Error(data.errors[0].message || 'خطأ في استجابة Buffer');
         }
@@ -2773,12 +2858,13 @@ window.submitPostToBuffer = async function() {
         }
       }
     } catch (directErr) {
-      console.warn('Direct publish failed, trying backend proxy...', directErr);
+      logBufferAction('info', `النشر المباشر تعذر (${directErr.message})، جاري النشر عبر السيرفر الوسيط...`);
     }
     
     // Attempt 2: Fallback to backend proxy
     if (!publishSuccess) {
       const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
+      logBufferAction('info', `إرسال طلب النشر إلى السيرفر: ${backendBase}/api/buffer/publish`);
       const proxyRes = await fetch(backendBase + '/api/buffer/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2792,6 +2878,7 @@ window.submitPostToBuffer = async function() {
         })
       });
       const proxyData = await proxyRes.json();
+      logBufferAction('buffer', 'استجابة السيرفر الوسيط:', proxyData);
       if (!proxyRes.ok || proxyData.error || proxyData.detail || proxyData.status === 'error') {
         throw new Error(proxyData.error || proxyData.detail || 'فشل النشر عبر Buffer');
       }
@@ -2809,11 +2896,14 @@ window.submitPostToBuffer = async function() {
         : `🎉 تم إرسال الفيديو للنشر الفوري على TikTok بنجاح! ${postIdText}`;
     }
     
+    logBufferAction('success', `🎉 تم ${isScheduleMode ? 'جدولة' : 'نشر'} المنشور بنجاح على Buffer!`, postResult);
+    
     if (typeof playSuccessSound === 'function') {
       playSuccessSound();
     }
   } catch (err) {
     console.error('Buffer publish error:', err);
+    logBufferAction('error', `❌ خطأ في عملية النشر: ${err.message}`, err);
     if (resultDiv) {
       resultDiv.style.background = 'rgba(239, 68, 68, 0.15)';
       resultDiv.style.border = '1px solid rgba(239, 68, 68, 0.4)';
