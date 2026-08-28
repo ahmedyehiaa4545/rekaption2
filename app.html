@@ -906,6 +906,34 @@
           <!-- Dynamically filled by JS -->
         </div>
       </div>
+
+      <!-- Pick Suggested Short Section -->
+      <div class="panel-inner" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 22px; margin-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>🎬</span> المقاطع المقترحة المتاحة للنشر أو الجدولة
+            </h3>
+            <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin: 4px 0 0 0;">
+              اختر أي مقطع من مقترحات الذكاء الاصطناعي لنشره فوراً أو جدولته على TikTok عبر Buffer.
+            </p>
+          </div>
+          <button type="button" onclick="switchMainTab('gemini')" class="btn-secondary" style="padding: 8px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+            <span>✨</span> توليد مقترحات جديدة من يوتيوب
+          </button>
+        </div>
+
+        <div id="tab-suggested-shorts-empty" style="text-align: center; padding: 30px 20px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+          <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 0 0 10px 0;">لا توجد مقاطع مقترحة حالياً في هذه الجلسة.</p>
+          <button type="button" onclick="switchMainTab('gemini')" class="btn-primary" style="padding: 8px 16px; font-size: 12px; margin: 0 auto; display: inline-flex;">
+            انتقل لتابة تحميل يوتيوب واقترح مقاطع Shorts 🚀
+          </button>
+        </div>
+
+        <div id="tab-suggested-shorts-grid" style="display: none; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+          <!-- Dynamically populated by JS -->
+        </div>
+      </div>
     </div>
 
     <div id="editor-state" class="panel hidden" style="margin-top: 10px;">
@@ -1559,9 +1587,108 @@
           <div id="batch-modal-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.3s ease;"></div>
         </div>
         <p id="batch-modal-status-desc" style="font-size: 12px; color: rgba(255,255,255,0.7); margin: 0; line-height: 1.5;">جارٍ قص المقطع وتحليله بالذكاء الاصطناعي وتجهيز الكابشن...</p>
+    <!-- ====== Modal: نشر وجدولة مقطع TikTok عبر Buffer ====== -->
+    <div id="tiktok-publish-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); z-index:11000; justify-content:center; align-items:center; padding:20px; direction:rtl; font-family:Cairo,sans-serif;">
+      <div style="background:#0e0c1b; border:1px solid rgba(254,44,85,0.4); border-radius:24px; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; padding:28px; box-shadow:0 25px 60px rgba(0,0,0,0.85); color:#fff; position:relative; box-sizing:border-box;">
+        
+        <!-- Modal Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:24px;">📱</span>
+            <div>
+              <h3 style="margin:0; font-size:18px; font-weight:800; color:#fff;">نشر وجدولة مقطع TikTok</h3>
+              <p style="margin:2px 0 0 0; font-size:12px; color:rgba(255,255,255,0.6);">إرسال المقطع تلقائياً عبر Cloudinary & Buffer</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeTikTokPublishModal()" style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.15); border-radius:10px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;">✕</button>
+        </div>
+
+        <!-- Short Info Card -->
+        <div id="modal-tiktok-short-info" style="background:rgba(254,44,85,0.06); border:1px solid rgba(254,44,85,0.25); border-radius:14px; padding:14px; margin-bottom:16px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="modal-tiktok-short-tag" style="background:linear-gradient(135deg,#fe2c55,#25f4ee); color:#000; font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px;">مقطع مقترح</span>
+            <span id="modal-tiktok-short-time" style="font-family:monospace; font-size:12px; color:#c084fc; font-weight:700; direction:ltr;">00:00 ➔ 00:00</span>
+          </div>
+          <h4 id="modal-tiktok-short-title" style="margin:0; font-size:14px; font-weight:800; color:#fff; line-height:1.4;">عنوان المقطع</h4>
+          <p id="modal-tiktok-short-hook" style="margin:0; font-size:12px; color:#f472b6; line-height:1.4;"></p>
+        </div>
+
+        <!-- 1. Channel Selector -->
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px; font-weight:700; color:rgba(255,255,255,0.85); display:block; margin-bottom:6px;">قناة TikTok المستهدفة:</label>
+          <div style="display:flex; gap:8px;">
+            <select id="modal-tiktok-channel-select" style="flex:1; padding:11px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.4); color:#fff; font-size:13px; font-family:inherit; outline:none;">
+              <option value="">جاري جلب القنوات المربوطة...</option>
+            </select>
+            <button type="button" onclick="loadChannelsForModal()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:0 12px; color:#fff; cursor:pointer; font-size:13px;" title="تحديث القنوات">🔄</button>
+          </div>
+        </div>
+
+        <!-- 2. Caption & Hashtags -->
+        <div style="margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label style="font-size:12px; font-weight:700; color:rgba(255,255,255,0.85);">وصف المنشور (الكابشن والهاشتاجات):</label>
+            <button type="button" onclick="regenerateModalAICaption()" style="background:none; border:none; color:#c084fc; font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline;">✨ إعادة الصياغة بـ AI</button>
+          </div>
+          <textarea id="modal-tiktok-caption-input" oninput="updateModalCharCount()" style="width:100%; height:110px; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.35); color:#fff; font-family:inherit; font-size:13px; line-height:1.6; resize:vertical; box-sizing:border-box; outline:none;"></textarea>
+          <div style="text-align:left; font-size:11px; color:rgba(255,255,255,0.4); margin-top:3px;" id="modal-tiktok-char-count">0 حرف</div>
+        </div>
+
+        <!-- 3. Publishing Mode -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:14px; margin-bottom:18px;">
+          <label style="font-size:12px; font-weight:700; color:rgba(255,255,255,0.85); display:block; margin-bottom:10px;">طريقة وموعد النشر:</label>
+          <div style="display:flex; gap:15px; margin-bottom:12px; flex-wrap:wrap;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; font-weight:600; color:#fff;">
+              <input type="radio" name="modal-tiktok-publish-mode" value="now" checked onchange="toggleModalPublishMode('now')" style="accent-color:#fe2c55; cursor:pointer;" />
+              <span>⚡ نشر فوري الآن (Share Now)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; font-weight:600; color:#fff;">
+              <input type="radio" name="modal-tiktok-publish-mode" value="schedule" onchange="toggleModalPublishMode('schedule')" style="accent-color:#fe2c55; cursor:pointer;" />
+              <span>📅 جدولة لموعد محدد (Schedule)</span>
+            </label>
+          </div>
+
+          <div id="modal-tiktok-schedule-time-box" style="display:none;">
+            <label style="font-size:11px; color:rgba(255,255,255,0.7); display:block; margin-bottom:4px;">تاريخ ووقت النشر:</label>
+            <input type="datetime-local" id="modal-tiktok-schedule-time" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.5); color:#fff; font-size:13px; font-family:inherit; box-sizing:border-box; outline:none;" />
+          </div>
+        </div>
+
+        <!-- Progress Status Box -->
+        <div id="modal-tiktok-progress-box" style="display:none; background:rgba(139,92,246,0.1); border:1px solid rgba(139,92,246,0.35); border-radius:12px; padding:16px; margin-bottom:18px; text-align:center;">
+          <div class="spinner" style="margin:0 auto 10px auto; width:28px; height:28px; border-left-color:#fe2c55; border-style:solid; border-width:3px; border-radius:50%; animation:spin 1s linear infinite;"></div>
+          <p id="modal-tiktok-progress-status" style="font-size:13px; font-weight:700; color:#fff; margin:0 0 6px 0;">جاري بدء المعالجة...</p>
+          <div style="background:rgba(255,255,255,0.1); height:8px; border-radius:4px; overflow:hidden; width:80%; margin:0 auto;">
+            <div id="modal-tiktok-progress-bar" style="width:10%; height:100%; background:linear-gradient(90deg,#fe2c55,#25f4ee); transition:width 0.3s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Success Result Box -->
+        <div id="modal-tiktok-success-box" style="display:none; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.4); border-radius:12px; padding:16px; margin-bottom:18px; text-align:center;">
+          <span style="font-size:30px; display:block; margin-bottom:6px;">🎉</span>
+          <h4 id="modal-tiktok-success-title" style="margin:0 0 4px 0; font-size:15px; font-weight:800; color:#10b981;">تم النشر بنجاح!</h4>
+          <p id="modal-tiktok-success-desc" style="margin:0; font-size:12px; color:rgba(255,255,255,0.8); line-height:1.5;"></p>
+        </div>
+
+        <!-- Error Result Box -->
+        <div id="modal-tiktok-error-box" style="display:none; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.4); border-radius:12px; padding:14px; margin-bottom:18px;">
+          <div style="display:flex; align-items:center; gap:6px; color:#f87171; font-weight:800; font-size:13px; margin-bottom:4px;">
+            <span>⚠️</span> <span id="modal-tiktok-error-title">فشلت العملية</span>
+          </div>
+          <p id="modal-tiktok-error-desc" style="margin:0; font-size:12px; color:rgba(255,255,255,0.85); line-height:1.5;"></p>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div style="display:flex; gap:10px;">
+          <button type="button" id="modal-tiktok-submit-btn" onclick="executeModalTikTokPublish()" class="btn-primary" style="flex:1; padding:12px 18px; justify-content:center; font-size:14px; font-weight:800; background:linear-gradient(135deg,#000000,#25F4EE 50%,#FE2C55); border:1px solid rgba(255,255,255,0.2); box-shadow:0 4px 15px rgba(254,44,85,0.4); cursor:pointer; display:flex; align-items:center; gap:8px;">
+            <span>🚀</span> <span id="modal-tiktok-submit-text">تأكيد ونشر على TikTok</span>
+          </button>
+          <button type="button" onclick="closeTikTokPublishModal()" class="btn-secondary" style="padding:12px 18px; font-size:13px;">
+            إلغاء
+          </button>
+        </div>
       </div>
     </div>
-
 
   </div>
   <script src="app.js?v=2.1"></script>

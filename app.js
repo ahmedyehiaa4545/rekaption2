@@ -2092,6 +2092,9 @@ window.switchMainTab = function(tab) {
     if (typeof loadBufferTabSettings === 'function') {
       loadBufferTabSettings();
     }
+    if (typeof renderTikTokTabSuggestedShorts === 'function') {
+      renderTikTokTabSuggestedShorts();
+    }
   }
 
   if (tab === 'history') {
@@ -2808,6 +2811,27 @@ window.fetchShortsSuggestions = async function() {
                 <span>🎬</span> قص وتوليد الكابشن
               </button>
 
+              <!-- Dedicated TikTok Publish / Schedule Button -->
+              <button type="button" onclick="openPublishModalForSuggestedShort(${idx})" class="btn-primary" style="
+                width: 100%;
+                padding: 10px 14px;
+                font-size: 13px;
+                font-weight: 800;
+                justify-content: center;
+                border-radius: 10px;
+                background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55);
+                border: 1px solid rgba(255,255,255,0.2);
+                color: #fff;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                box-shadow: 0 4px 14px rgba(254, 44, 85, 0.35);
+                margin: 0;
+              ">
+                <span>📱</span> نشر / جدولة على TikTok (Buffer)
+              </button>
+
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <!-- Cut & Download Button -->
                 <button type="button" onclick="cutVideoSegment('${escapedYtUrl}', '${short.start_time}', '${short.end_time}', ${idx + 1}, this)" class="btn-primary" style="
@@ -2849,6 +2873,9 @@ window.fetchShortsSuggestions = async function() {
       });
       listContainer.innerHTML = cardsHtml;
       container.style.display = 'flex';
+      if (typeof renderTikTokTabSuggestedShorts === 'function') {
+        renderTikTokTabSuggestedShorts();
+      }
     } else {
       throw new Error('الاستجابة لا تحتوي على مقاطع مقترحة.');
     }
@@ -5182,3 +5209,611 @@ window.fetchAndDisplayBufferChannels = async function() {
     }
   }
 };
+
+// ==================== TikTok Publishing & Scheduling Modal & Service ====================
+
+let currentModalPublishShort = null;
+let lastFetchedBufferChannels = [];
+
+function cleanTikTokTitle(rawTitle) {
+  if (!rawTitle || typeof rawTitle !== 'string') return '';
+  return rawTitle
+    .replace(/^[\s🎬🎥✨📱]*(?:مقطع(?:\s*مقترح|\s*Shorts)?|Shorts)\s*#?\d*[:\s\-]*/gi, '')
+    .replace(/\s*\(\d+:\d+\s*-\s*\d+:\d+\)/g, '')
+    .replace(/^[🎬🎥✨📱\s\-_:]+/, '')
+    .trim();
+}
+
+function stripTimestampsAndNoise(text) {
+  if (!text || typeof text !== 'string') return '';
+  return text
+    .replace(/\[\s*\d+:\d+\s*->\s*\d+:\d+\s*\]/g, '')
+    .replace(/\(\s*\d+:\d+\s*-\s*\d+:\d+\s*\)/g, '')
+    .replace(/\d+:\d+:\d+|\d+:\d+/g, '')
+    .replace(/[\u064B-\u065F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function fetchYoutubeOEmbedTitle(url) {
+  if (!url || typeof url !== 'string' || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
+    return '';
+  }
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url.trim())}&format=json`;
+    const res = await fetch(oembedUrl);
+    if (res.ok) {
+      const data = await res.json();
+      return data.title || '';
+    }
+  } catch(e) {
+    console.warn('oEmbed title fetch failed:', e);
+  }
+  return '';
+}
+
+async function generateSmartTikTokCaption({ cleanTitle, originalYoutubeTitle, scriptText, geminiApiKey, defaultHashtags }) {
+  const title = cleanTitle || 'مقطع مميز';
+  const ytTitle = originalYoutubeTitle || window.currentYoutubeTitle || 'فيديو يوتيوب';
+  const hashtags = defaultHashtags || '#fyp #viral #shorts #rekaption #تيك_توك';
+
+  let summaryTwoSentences = '';
+  const cleanRawScript = stripTimestampsAndNoise(scriptText || '');
+
+  // 1. Try Gemini AI generation if key is provided
+  const apiKey = geminiApiKey || localStorage.getItem('gemini_api_key') || localStorage.getItem('geminiApiKey') || '';
+  if (apiKey && cleanRawScript && cleanRawScript.length > 25) {
+    try {
+      const prompt = `أنت كاتب محتوى لمنصة TikTok.
+اكتب ملخصاً مشوقاً ودقيقاً لغوياً من جملتين اثنتين فقط باللغة العربية الفصحى (بحد أقصى 35 كلمة) عن هذا المقطع:
+العنوان: "${title}"
+سياق المقطع: "${cleanRawScript.substring(0, 1000)}"
+
+الشروط الصارمة:
+- جملتان اثنتان فقط لا غير.
+- أسلوب مشوق وجذاب للمشاهد في TikTok.
+- بدون أي مقدمات (لا تكتب "إليك الملخص" أو ما شابه).
+- بدون هاشتاجات وبدون تكرار العنوان.`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.5, maxOutputTokens: 120 }
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (generatedText) {
+          summaryTwoSentences = generatedText;
+        }
+      }
+    } catch (err) {
+      console.warn('Gemini caption generation fallback:', err);
+    }
+  }
+
+  // 2. High quality fallback if AI is not configured or failed
+  if (!summaryTwoSentences) {
+    if (cleanRawScript && cleanRawScript.length > 20) {
+      const sentences = cleanRawScript.split(/[\.\n\?!،]+/).map(s => s.trim()).filter(s => s.length > 15);
+      if (sentences.length >= 2) {
+        summaryTwoSentences = `${sentences[0]}. ${sentences[1]}.`;
+      } else if (sentences.length === 1) {
+        summaryTwoSentences = `${sentences[0]}. تابع الفيديو لمعرفة باقي التفاصيل الممتعة!`;
+      }
+    }
+  }
+
+  if (!summaryTwoSentences || summaryTwoSentences.length > 250) {
+    summaryTwoSentences = `نظرة سريعة ومشوقة تكشف أهم التفاصيل والمعلومات غير المتوقعة حول ${title}. تابع المقطع للنهاية لمعرفة القصة كاملة!`;
+  }
+
+  return `${title}\n\n${summaryTwoSentences}\n\nجزء من حلقة: ${ytTitle}\n\n${hashtags}`;
+}
+
+async function uploadToCloudinary(fileOrBlobOrUrl, cloudName, uploadPreset, onProgress) {
+  if (!cloudName || !uploadPreset) {
+    throw new Error('يرجى إدخال Cloud Name و Upload Preset لحساب Cloudinary في إعدادات تابة TikTok.');
+  }
+
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/video/upload`;
+  const formData = new FormData();
+  formData.append('upload_preset', uploadPreset.trim());
+
+  if (fileOrBlobOrUrl instanceof Blob || fileOrBlobOrUrl instanceof File) {
+    formData.append('file', fileOrBlobOrUrl, 'rekaption_tiktok.mp4');
+  } else if (typeof fileOrBlobOrUrl === 'string' && fileOrBlobOrUrl.startsWith('http')) {
+    formData.append('file', fileOrBlobOrUrl);
+  } else {
+    throw new Error('صيغة الفيديو غير صالحة للرفع إلى Cloudinary.');
+  }
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadUrl);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        onProgress(percent);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const resp = JSON.parse(xhr.responseText);
+          if (resp.secure_url) {
+            resolve(resp.secure_url);
+          } else {
+            reject(new Error(resp.error ? resp.error.message : 'فشل الحصول على رابط الفيديو من Cloudinary'));
+          }
+        } catch(e) {
+          reject(new Error('خطأ في استجابة Cloudinary: ' + e.message));
+        }
+      } else {
+        try {
+          const errResp = JSON.parse(xhr.responseText);
+          reject(new Error(errResp.error ? errResp.error.message : `خطأ Cloudinary (كود ${xhr.status})`));
+        } catch(_) {
+          reject(new Error(`خطأ في رفع الفيديو إلى Cloudinary (كود ${xhr.status})`));
+        }
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('فشل الاتصال بخدمة Cloudinary. تأكد من صحة الـ Cloud Name والـ Upload Preset.'));
+    };
+
+    xhr.send(formData);
+  });
+}
+
+async function publishToBuffer({ bufferToken, channelId, text, videoUrl, scheduledAt, isNow }) {
+  if (!bufferToken) throw new Error('مفتاح Buffer API غير موجود.');
+  if (!channelId) throw new Error('يرجى اختيار حساب TikTok.');
+  if (!videoUrl) throw new Error('رابط الفيديو مفقود.');
+
+  const mutation = `
+    mutation CreatePost($input: CreatePostInput!) {
+      createPost(input: $input) {
+        ... on PostActionSuccess {
+          post {
+            id
+            dueAt
+            status
+            text
+          }
+        }
+        ... on MutationError {
+          message
+        }
+      }
+    }
+  `;
+
+  const input = {
+    channelId: channelId.trim(),
+    text: text || '',
+    schedulingType: 'automatic',
+    mode: isNow ? 'shareNow' : 'customScheduled',
+    assets: [
+      {
+        video: {
+          url: videoUrl
+        }
+      }
+    ]
+  };
+
+  if (!isNow && scheduledAt) {
+    input.dueAt = new Date(scheduledAt).toISOString();
+  }
+
+  const resData = await requestBufferGraphQL(mutation, { input }, bufferToken);
+  if (resData.errors && resData.errors.length > 0) {
+    throw new Error(resData.errors[0].message || 'فشل إرسال المنشور إلى Buffer');
+  }
+
+  const postAction = resData.data?.createPost;
+  if (postAction?.message) {
+    throw new Error(postAction.message);
+  }
+  if (postAction?.post) {
+    return postAction.post;
+  }
+  return { id: 'success', status: isNow ? 'published' : 'scheduled' };
+}
+
+// Modal Controllers
+window.openPublishModalForSuggestedShort = async function(idx) {
+  if (typeof idx !== 'number' || !currentSuggestedShorts || !currentSuggestedShorts[idx]) {
+    alert('المقطع المقترح غير موجود.');
+    return;
+  }
+
+  const short = currentSuggestedShorts[idx];
+  const ytUrl = window.lastGeminiYtUrl || document.getElementById('gemini-yt-url')?.value.trim() || '';
+  const clean = cleanTikTokTitle(short.title);
+
+  currentModalPublishShort = {
+    ...short,
+    idx: idx,
+    cleanTitle: clean,
+    ytUrl: ytUrl,
+    videoBlob: null
+  };
+
+  const modal = document.getElementById('tiktok-publish-modal');
+  if (!modal) return;
+
+  // Set Info
+  const titleEl = document.getElementById('modal-tiktok-short-title');
+  const timeEl = document.getElementById('modal-tiktok-short-time');
+  const hookEl = document.getElementById('modal-tiktok-short-hook');
+  const captionInput = document.getElementById('modal-tiktok-caption-input');
+  const schedBox = document.getElementById('modal-tiktok-schedule-time-box');
+  const progBox = document.getElementById('modal-tiktok-progress-box');
+  const succBox = document.getElementById('modal-tiktok-success-box');
+  const errBox = document.getElementById('modal-tiktok-error-box');
+  const schedTimeInput = document.getElementById('modal-tiktok-schedule-time');
+
+  if (titleEl) titleEl.textContent = `🎥 ${clean || short.title}`;
+  if (timeEl) timeEl.textContent = `${short.start_time} ➔ ${short.end_time}`;
+  if (hookEl) hookEl.textContent = short.hook ? `⚡ الخطاف: ${short.hook}` : '';
+
+  if (progBox) progBox.style.display = 'none';
+  if (succBox) succBox.style.display = 'none';
+  if (errBox) errBox.style.display = 'none';
+  if (schedBox) schedBox.style.display = 'none';
+
+  // Default mode: Share Now
+  const nowRadio = document.querySelector('input[name="modal-tiktok-publish-mode"][value="now"]');
+  if (nowRadio) nowRadio.checked = true;
+  toggleModalPublishMode('now');
+
+  // Default schedule time: 1 hour later
+  if (schedTimeInput) {
+    const d = new Date();
+    d.setHours(d.getHours() + 1);
+    d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5);
+    const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    schedTimeInput.value = localIso;
+    schedTimeInput.min = new Date(Date.now() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+  }
+
+  // Pre-generate Draft Caption
+  if (captionInput) {
+    captionInput.value = '⏳ جاري صياغة الكابشن والملخص الذكي...';
+    generateSmartTikTokCaption({
+      cleanTitle: clean,
+      originalYoutubeTitle: window.currentYoutubeTitle || '',
+      scriptText: short.script || '',
+      geminiApiKey: localStorage.getItem('gemini_api_key') || '',
+      defaultHashtags: '#fyp #viral #shorts #rekaption #تيك_توك'
+    }).then(cap => {
+      captionInput.value = cap;
+      updateModalCharCount();
+    }).catch(() => {
+      captionInput.value = `${clean}\n\n${stripTimestampsAndNoise(short.script || '')}\n\n#fyp #viral #shorts #rekaption #تيك_توك`;
+      updateModalCharCount();
+    });
+  }
+
+  // Load Channels
+  loadChannelsForModal();
+
+  modal.style.display = 'flex';
+};
+
+window.closeTikTokPublishModal = function() {
+  const modal = document.getElementById('tiktok-publish-modal');
+  if (modal) modal.style.display = 'none';
+  currentModalPublishShort = null;
+};
+
+window.toggleModalPublishMode = function(mode) {
+  const schedBox = document.getElementById('modal-tiktok-schedule-time-box');
+  const submitText = document.getElementById('modal-tiktok-submit-text');
+  if (mode === 'schedule') {
+    if (schedBox) schedBox.style.display = 'block';
+    if (submitText) submitText.textContent = '📅 جدولة المقطع على TikTok';
+  } else {
+    if (schedBox) schedBox.style.display = 'none';
+    if (submitText) submitText.textContent = '⚡ تأكيد ونشر الآن على TikTok';
+  }
+};
+
+window.updateModalCharCount = function() {
+  const input = document.getElementById('modal-tiktok-caption-input');
+  const countEl = document.getElementById('modal-tiktok-char-count');
+  if (input && countEl) {
+    countEl.textContent = `${input.value.length} حرف`;
+  }
+};
+
+window.regenerateModalAICaption = async function() {
+  if (!currentModalPublishShort) return;
+  const captionInput = document.getElementById('modal-tiktok-caption-input');
+  if (!captionInput) return;
+  const orig = captionInput.value;
+  captionInput.value = '⏳ جاري إعادة الصياغة بالذكاء الاصطناعي...';
+  try {
+    const cap = await generateSmartTikTokCaption({
+      cleanTitle: currentModalPublishShort.cleanTitle || currentModalPublishShort.title,
+      originalYoutubeTitle: window.currentYoutubeTitle || '',
+      scriptText: currentModalPublishShort.script || '',
+      geminiApiKey: localStorage.getItem('gemini_api_key') || '',
+      defaultHashtags: '#fyp #viral #shorts #rekaption #تيك_توك'
+    });
+    captionInput.value = cap;
+    updateModalCharCount();
+  } catch(e) {
+    captionInput.value = orig;
+  }
+};
+
+window.loadChannelsForModal = async function() {
+  const select = document.getElementById('modal-tiktok-channel-select');
+  if (!select) return;
+
+  const token = (document.getElementById('buffer-token-input')?.value || localStorage.getItem('rekaption_buffer_token') || '').trim();
+  if (!token) {
+    select.innerHTML = '<option value="">⚠️ أدخل مفتاح Buffer API أولاً في تابة TikTok</option>';
+    return;
+  }
+
+  select.innerHTML = '<option value="">⏳ جاري جلب القنوات من Buffer...</option>';
+
+  try {
+    let channels = [];
+    const orgQuery = `query { account { organizations { id name } } }`;
+    const orgRes = await requestBufferGraphQL(orgQuery, {}, token);
+    const orgs = orgRes?.data?.account?.organizations || [];
+
+    const chanQuery = `query GetChannels($input: ChannelsInput!) { channels(input: $input) { id name displayName service avatar } }`;
+    for (const org of orgs) {
+      if (!org.id) continue;
+      const cRes = await requestBufferGraphQL(chanQuery, { input: { organizationId: org.id } }, token);
+      const chList = cRes?.data?.channels || [];
+      chList.forEach(ch => {
+        channels.push({
+          id: ch.id,
+          name: ch.name || ch.displayName,
+          service: ch.service || 'tiktok'
+        });
+      });
+    }
+
+    if (!channels || channels.length === 0) {
+      select.innerHTML = '<option value="">❌ لم يتم العثور على قنوات متصلة</option>';
+      return;
+    }
+
+    select.innerHTML = '';
+    let hasTikTok = false;
+    channels.forEach(ch => {
+      const isTikTok = (ch.service || '').toLowerCase().includes('tiktok');
+      const opt = document.createElement('option');
+      opt.value = ch.id;
+      opt.textContent = `${isTikTok ? '🎵 [TikTok]' : `[${ch.service}]`} ${ch.name}`;
+      if (isTikTok && !hasTikTok) {
+        opt.selected = true;
+        hasTikTok = true;
+      }
+      select.appendChild(opt);
+    });
+
+    if (!hasTikTok && channels.length > 0) {
+      select.selectedIndex = 0;
+    }
+  } catch(e) {
+    select.innerHTML = `<option value="">⚠️ خطأ: ${e.message || 'فشل جلب القنوات'}</option>`;
+  }
+};
+
+window.executeModalTikTokPublish = async function() {
+  if (!currentModalPublishShort) {
+    alert('لم يتم تحديد أي مقطع للنشر.');
+    return;
+  }
+
+  const token = (document.getElementById('buffer-token-input')?.value || localStorage.getItem('rekaption_buffer_token') || '').trim();
+  const cloudName = (document.getElementById('cloudinary-cloud-name-input')?.value || localStorage.getItem('rekaption_cloudinary_cloud_name') || '').trim();
+  const uploadPreset = (document.getElementById('cloudinary-upload-preset-input')?.value || localStorage.getItem('rekaption_cloudinary_upload_preset') || '').trim();
+
+  if (!token) {
+    alert('يرجى إدخال مفتاح Buffer API Key في إعدادات تابة TikTok أولاً.');
+    switchMainTab('tiktok');
+    closeTikTokPublishModal();
+    return;
+  }
+  if (!cloudName || !uploadPreset) {
+    alert('يرجى إدخال Cloud Name و Upload Preset لحساب Cloudinary في تابة TikTok لتمكين رفع واستضافة الفيديوهات.');
+    switchMainTab('tiktok');
+    closeTikTokPublishModal();
+    return;
+  }
+
+  const channelSelect = document.getElementById('modal-tiktok-channel-select');
+  const channelId = channelSelect ? channelSelect.value : '';
+  if (!channelId) {
+    alert('يرجى اختيار قناة TikTok المستهدفة من القائمة.');
+    return;
+  }
+
+  const isSchedule = document.querySelector('input[name="modal-tiktok-publish-mode"]:checked')?.value === 'schedule';
+  const scheduleInput = document.getElementById('modal-tiktok-schedule-time');
+  const scheduledAt = isSchedule && scheduleInput ? scheduleInput.value : null;
+
+  if (isSchedule && !scheduledAt) {
+    alert('يرجى تحديد تاريخ ووقت الجدولة.');
+    return;
+  }
+
+  const captionText = document.getElementById('modal-tiktok-caption-input')?.value || '';
+
+  // UI Elements
+  const submitBtn = document.getElementById('modal-tiktok-submit-btn');
+  const progBox = document.getElementById('modal-tiktok-progress-box');
+  const progStatus = document.getElementById('modal-tiktok-progress-status');
+  const progBar = document.getElementById('modal-tiktok-progress-bar');
+  const succBox = document.getElementById('modal-tiktok-success-box');
+  const succTitle = document.getElementById('modal-tiktok-success-title');
+  const succDesc = document.getElementById('modal-tiktok-success-desc');
+  const errBox = document.getElementById('modal-tiktok-error-box');
+  const errDesc = document.getElementById('modal-tiktok-error-desc');
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.6';
+  }
+  if (progBox) progBox.style.display = 'block';
+  if (succBox) succBox.style.display = 'none';
+  if (errBox) errBox.style.display = 'none';
+
+  try {
+    let videoBlob = currentModalPublishShort.videoBlob;
+
+    // Step 1: Cut video from YouTube if not yet cut
+    if (!videoBlob) {
+      if (progStatus) progStatus.textContent = '1/3 ✂️ جاري قص وتجهيز مقطع الفيديو بجودة عالية...';
+      if (progBar) progBar.style.width = '25%';
+
+      const ytUrl = currentModalPublishShort.ytUrl || window.lastGeminiYtUrl || document.getElementById('gemini-yt-url')?.value.trim();
+      if (!ytUrl) {
+        throw new Error('رابط يوتيوب غير متوفر لقص المقطع.');
+      }
+
+      videoBlob = await performAsyncCut(ytUrl, currentModalPublishShort.start_time, currentModalPublishShort.end_time, 1080, (pct) => {
+        if (progStatus) progStatus.textContent = `1/3 ✂️ جاري قص الفيديو (${pct}%)...`;
+      });
+      currentModalPublishShort.videoBlob = videoBlob;
+    }
+
+    // Step 2: Upload to Cloudinary
+    if (progStatus) progStatus.textContent = '2/3 ☁️ جاري استضافة الفيديو على Cloudinary...';
+    if (progBar) progBar.style.width = '55%';
+
+    const cloudinaryUrl = await uploadToCloudinary(videoBlob, cloudName, uploadPreset, (pct) => {
+      if (progStatus) progStatus.textContent = `2/3 ☁️ جاري رفع الفيديو لـ Cloudinary (${pct}%)...`;
+      if (progBar) progBar.style.width = `${55 + Math.round(pct * 0.3)}%`;
+    });
+
+    // Step 3: Publish / Schedule via Buffer API
+    if (progStatus) progStatus.textContent = '3/3 📱 جاري إرسال المنشور إلى Buffer API...';
+    if (progBar) progBar.style.width = '90%';
+
+    const postResult = await publishToBuffer({
+      bufferToken: token,
+      channelId: channelId,
+      text: captionText,
+      videoUrl: cloudinaryUrl,
+      scheduledAt: scheduledAt,
+      isNow: !isSchedule
+    });
+
+    // Success!
+    if (progBar) progBar.style.width = '100%';
+    if (progBox) progBox.style.display = 'none';
+    if (succBox) {
+      succBox.style.display = 'block';
+      if (succTitle) succTitle.textContent = isSchedule ? '🎉 تمت جدولة المقطع بنجاح!' : '🎉 تم النشر بنجاح على TikTok!';
+      if (succDesc) {
+        succDesc.innerHTML = isSchedule
+          ? `تمت جدولة المقطع للنشر في موعده: <strong>${new Date(scheduledAt).toLocaleString('ar-EG')}</strong>.<br/>رابط الفيديو المستضاف: <a href="${cloudinaryUrl}" target="_blank" style="color:#25f4ee; text-decoration:underline;">معاينة الفيديو</a>`
+          : `تم إرسال المقطع فورياً إلى حسابك في TikTok عبر Buffer.<br/>رابط الفيديو المستضاف: <a href="${cloudinaryUrl}" target="_blank" style="color:#25f4ee; text-decoration:underline;">معاينة الفيديو</a>`;
+      }
+    }
+
+    // Save Publish History
+    try {
+      const historyStr = localStorage.getItem('rekaption_tiktok_publish_history');
+      const history = historyStr ? JSON.parse(historyStr) : [];
+      history.unshift({
+        id: 'pub_' + Date.now(),
+        title: currentModalPublishShort.cleanTitle || currentModalPublishShort.title,
+        videoUrl: cloudinaryUrl,
+        isNow: !isSchedule,
+        scheduledAt: scheduledAt,
+        timestamp: Date.now()
+      });
+      if (history.length > 20) history.pop();
+      localStorage.setItem('rekaption_tiktok_publish_history', JSON.stringify(history));
+    } catch(e) {}
+
+  } catch(err) {
+    console.error('TikTok publish error:', err);
+    if (progBox) progBox.style.display = 'none';
+    if (errBox) {
+      errBox.style.display = 'block';
+      if (errDesc) errDesc.textContent = err.message || 'حدث خطأ غير متوقع أثناء معالجة النشر.';
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+    }
+  }
+};
+
+window.renderTikTokTabSuggestedShorts = function() {
+  const grid = document.getElementById('tab-suggested-shorts-grid');
+  const empty = document.getElementById('tab-suggested-shorts-empty');
+  if (!grid || !empty) return;
+
+  if (!currentSuggestedShorts || currentSuggestedShorts.length === 0) {
+    grid.style.display = 'none';
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.style.display = 'grid';
+  grid.innerHTML = '';
+
+  currentSuggestedShorts.forEach((short, idx) => {
+    const clean = cleanTikTokTitle(short.title);
+    const card = document.createElement('div');
+    card.style.cssText = `
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(254, 44, 85, 0.3);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: all 0.2s ease;
+      position: relative;
+    `;
+
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="background: linear-gradient(135deg, #fe2c55, #25f4ee); color: #000; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px;">مقطع #${idx + 1}</span>
+        <span style="font-family: monospace; font-size: 12px; color: #c084fc; font-weight: 700; direction: ltr;">${short.start_time} ➔ ${short.end_time}</span>
+      </div>
+
+      <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #fff; line-height: 1.4;">
+        🎥 ${clean || short.title}
+      </h4>
+
+      ${short.hook ? `
+        <div style="font-size: 12px; color: #f472b6; line-height: 1.4; background: rgba(236, 72, 153, 0.08); padding: 6px 10px; border-radius: 6px; border-right: 2px solid #ec4899;">
+          ⚡ ${short.hook}
+        </div>
+      ` : ''}
+
+      <button type="button" onclick="openPublishModalForSuggestedShort(${idx})" class="btn-primary" style="margin-top: auto; padding: 10px 14px; font-size: 12px; font-weight: 800; justify-content: center; background: linear-gradient(135deg, #000000, #25F4EE 50%, #FE2C55); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(254,44,85,0.3); cursor: pointer; display: flex; align-items: center; gap: 6px;">
+        <span>📱</span> اختيار للنشر والجدولة
+      </button>
+    `;
+
+    grid.appendChild(card);
+  });
+};
+
