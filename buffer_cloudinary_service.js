@@ -227,89 +227,139 @@
     });
   }
 
-  // 5. Buffer Channel & Publish Engine (With Multi-Tier Proxy & Direct Fallback)
+  // 5. Buffer GraphQL Multi-Tier Requester (Direct + Backend Proxy + CORS Proxy)
+  async function executeBufferGraphQL(query, variables, bufferToken) {
+    const payload = JSON.stringify({ query, variables: variables || {} });
+    const authHeader = `Bearer ${bufferToken.trim()}`;
+
+    // Target 1: Local Backend GraphQL proxy if available
+    try {
+      const pRes = await fetch('/api/buffer/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: bufferToken.trim(), query, variables })
+      });
+      if (pRes.ok) {
+        const data = await pRes.json();
+        if (data && (data.data || data.errors)) return data;
+      }
+    } catch (_) {}
+
+    // Target 2: Direct request to api.buffer.com
+    try {
+      const res = await fetch('https://api.buffer.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: payload
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.data || data.errors)) return data;
+      }
+    } catch (_) {}
+
+    // Target 3: Fast CORS Proxy (corsproxy.io)
+    try {
+      const cRes = await fetch('https://corsproxy.io/?url=https://api.buffer.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: payload
+      });
+      if (cRes.ok) {
+        const data = await cRes.json();
+        if (data && (data.data || data.errors)) return data;
+      }
+    } catch (_) {}
+
+    // Target 4: AllOrigins proxy
+    try {
+      const aoRes = await fetch('https://api.allorigins.win/raw?url=https://api.buffer.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: payload
+      });
+      if (aoRes.ok) {
+        const data = await aoRes.json();
+        if (data && (data.data || data.errors)) return data;
+      }
+    } catch (_) {}
+
+    throw new Error('فشل الاتصال بـ Buffer API. تحقق من اتصال الإنترنت وصلاحية المفتاح.');
+  }
+
   async function fetchBufferChannels(bufferToken) {
     if (!bufferToken) {
       throw new Error('يرجى إدخال مفتاح Buffer API Token في الإعدادات.');
     }
 
-    const endpointsToTry = [
-      '/api/buffer/channels', // Current server proxy
-      `${(window.apiUrl || '').replace(/\/$/, '')}/api/buffer/channels` // Remote API proxy if configured
-    ];
+    // Step 1: Query Organizations
+    const orgQuery = `
+      query {
+        account {
+          id
+          organizations {
+            id
+            name
+          }
+        }
+      }
+    `;
 
-    for (const ep of endpointsToTry) {
-      if (!ep || ep === '/api/buffer/channels' && window.location.protocol === 'file:') continue;
+    const orgData = await executeBufferGraphQL(orgQuery, {}, bufferToken);
+    if (orgData.errors && orgData.errors.length > 0) {
+      throw new Error(orgData.errors[0].message || 'خطأ في استعلام الحساب من Buffer');
+    }
+
+    const orgs = orgData?.data?.account?.organizations || [];
+    if (!orgs || orgs.length === 0) {
+      throw new Error('لم يتم العثور على أي منظمة/مساحة عمل في حساب Buffer.');
+    }
+
+    // Step 2: Query Channels for each organization
+    const chanQuery = `
+      query GetChannels($input: ChannelsInput!) {
+        channels(input: $input) {
+          id
+          name
+          displayName
+          service
+          avatar
+        }
+      }
+    `;
+
+    const allChannels = [];
+    for (const org of orgs) {
+      if (!org.id) continue;
       try {
-        const proxyRes = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: bufferToken.trim() })
-        });
-        if (proxyRes.ok) {
-          const data = await proxyRes.json();
-          if (data && data.channels && data.channels.length > 0) {
-            return data.channels;
-          }
-          if (data && data.error) {
-            console.warn(`Buffer Proxy error on ${ep}:`, data.error);
-          }
-        }
-      } catch (err) {
-        console.warn(`Proxy attempt failed on ${ep}:`, err);
-      }
-    }
-
-    // Direct Browser GraphQL Fallback (2-step query: Organizations -> Channels)
-    try {
-      const orgQuery = `query { account { id organizations { id name } } }`;
-      const orgRes = await fetch('https://api.buffer.com', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bufferToken.trim()}`
-        },
-        body: JSON.stringify({ query: orgQuery })
-      });
-
-      if (orgRes.ok) {
-        const orgData = await orgRes.json();
-        const orgs = orgData?.data?.account?.organizations || [];
-        const allChannels = [];
-
-        const chanQuery = `query GetChannels($input: ChannelsInput!) { channels(input: $input) { id name displayName service avatar } }`;
-        for (const org of orgs) {
-          if (!org.id) continue;
-          const cRes = await fetch('https://api.buffer.com', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${bufferToken.trim()}`
-            },
-            body: JSON.stringify({ query: chanQuery, variables: { input: { organizationId: org.id } } })
+        const cData = await executeBufferGraphQL(chanQuery, { input: { organizationId: org.id } }, bufferToken);
+        const chList = cData?.data?.channels || [];
+        chList.forEach(ch => {
+          allChannels.push({
+            id: ch.id,
+            name: ch.name || ch.displayName || 'TikTok Channel',
+            displayName: ch.displayName || ch.name,
+            service: ch.service || 'tiktok',
+            avatar: ch.avatar || '',
+            organizationName: org.name
           });
-          if (cRes.ok) {
-            const cData = await cRes.json();
-            const chList = cData?.data?.channels || [];
-            chList.forEach(ch => {
-              allChannels.push({
-                id: ch.id,
-                name: ch.name || ch.displayName || 'TikTok Channel',
-                displayName: ch.displayName || ch.name,
-                service: ch.service || 'tiktok',
-                avatar: ch.avatar || '',
-                organizationName: org.name
-              });
-            });
-          }
-        }
-        if (allChannels.length > 0) return allChannels;
+        });
+      } catch (err) {
+        console.warn(`Failed fetching channels for org ${org.id}:`, err);
       }
-    } catch(directErr) {
-      console.warn('Direct GraphQL fetch failed:', directErr);
     }
 
-    throw new Error('تعذر جلب قنوات Buffer. يرجى التحقق من صحة مفتاح الـ API والتأكد من ربط حساب TikTok في Buffer.');
+    if (allChannels.length > 0) return allChannels;
+    throw new Error('لم يتم العثور على أي قنوات متصلة في حسابك في Buffer.');
   }
 
   async function publishToBuffer({ bufferToken, channelId, text, videoUrl, scheduledAt, isNow }) {
@@ -317,39 +367,6 @@
     if (!channelId) throw new Error('يرجى اختيار حساب TikTok.');
     if (!videoUrl) throw new Error('رابط الفيديو مفقود.');
 
-    const endpointsToTry = [
-      '/api/buffer/publish',
-      `${(window.apiUrl || '').replace(/\/$/, '')}/api/buffer/publish`
-    ];
-
-    const payload = {
-      token: bufferToken.trim(),
-      channel_id: channelId.trim(),
-      text: text || '',
-      video_url: videoUrl,
-      scheduled_at: scheduledAt || null,
-      is_now: !!isNow
-    };
-
-    for (const ep of endpointsToTry) {
-      if (!ep || ep === '/api/buffer/publish' && window.location.protocol === 'file:') continue;
-      try {
-        const proxyRes = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (proxyRes.ok) {
-          const resJson = await proxyRes.json();
-          if (resJson.status === 'success') return resJson;
-          if (resJson.error) throw new Error(resJson.error);
-        }
-      } catch (proxyErr) {
-        console.warn(`Proxy publish attempt failed on ${ep}:`, proxyErr);
-      }
-    }
-
-    // Direct Browser Mutation Fallback
     const mutation = `
       mutation CreatePost($input: CreatePostInput!) {
         createPost(input: $input) {
@@ -386,27 +403,19 @@
       input.dueAt = new Date(scheduledAt).toISOString();
     }
 
-    const res = await fetch('https://api.buffer.com', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${bufferToken.trim()}`
-      },
-      body: JSON.stringify({ query: mutation, variables: { input } })
-    });
-
-    if (!res.ok) {
-      throw new Error(`خطأ في استجابة Buffer API (كود ${res.status})`);
+    const resData = await executeBufferGraphQL(mutation, { input }, bufferToken);
+    if (resData.errors && resData.errors.length > 0) {
+      throw new Error(resData.errors[0].message || 'فشل إرسال المنشور إلى Buffer');
     }
 
-    const json = await res.json();
-    if (json.errors && json.errors.length > 0) {
-      throw new Error(json.errors[0].message || 'فشل إرسال المنشور إلى Buffer');
+    const postAction = resData.data?.createPost;
+    if (postAction?.message) {
+      throw new Error(postAction.message);
     }
-
-    const result = json.data?.createPost;
-    if (result?.message) throw new Error(result.message);
-    return result?.post || { id: 'success', status: isNow ? 'published' : 'scheduled' };
+    if (postAction?.post) {
+      return postAction.post;
+    }
+    return { id: 'success', status: isNow ? 'published' : 'scheduled' };
   }
 
   // 6. Simplified UI Controller
