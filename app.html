@@ -962,7 +962,12 @@
 
             <!-- Source B: History Selector Box -->
             <div id="buf-source-history-box" class="hidden" style="display: flex; flex-direction: column; gap: 6px;">
-              <span style="font-size: 12px; color: var(--text-muted);">اختر فيديو من الفيديوهات المحفوظة في الأرشيف:</span>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: var(--text-muted);">اختر فيديو من الفيديوهات المحفوظة في الأرشيف:</span>
+                <button type="button" onclick="refreshBufferHistoryList()" class="btn-secondary" style="font-size: 10px; padding: 2px 8px; gap: 4px; color: #38bdf8; border-color: rgba(56,189,248,0.3);">
+                  <span>🔄</span> تحديث الأرشيف
+                </button>
+              </div>
               <select id="buf-history-select" onchange="handleBufferHistorySelect(this.value)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 12px;">
                 <option value="">-- اختر فيديو من الأرشيف --</option>
               </select>
@@ -1082,23 +1087,33 @@
               <span>⚙️</span> إعدادات التوزيع والجدولة الآلية
             </h4>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
               
               <!-- Frequency -->
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">معدل وتكرار النشر:</label>
-                <select id="buf-bulk-freq" onchange="updateBulkScheduleTimelinePreview()" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px;">
-                  <option value="daily_1" selected>📅 مقطع واحد كل يوم (1 Post / Day)</option>
+                <select id="buf-bulk-freq" onchange="handleBulkFrequencyChange(this.value)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px;">
+                  <option value="daily_1">📅 مقطع واحد كل يوم (1 Post / Day)</option>
                   <option value="daily_2">📅 مقطعان يومياً (2 Posts / Day)</option>
+                  <option value="daily_3">📅 3 مقاطع يومياً (3 Posts / Day)</option>
+                  <option value="daily_4">📅 4 مقاطع يومياً (4 Posts / Day)</option>
+                  <option value="daily_5" selected>📅 5 مقاطع يومياً (5 Posts / Day)</option>
+                  <option value="daily_custom">🎛️ تخصيص عدد المنشورات اليومية (Custom)</option>
                   <option value="every_other_day">📅 مقطع يوم بعد يوم (Every Other Day)</option>
                   <option value="weekly_3">📅 3 مقاطع أسبوعياً (Mon, Wed, Fri)</option>
                 </select>
               </div>
 
+              <!-- Custom Daily Posts Count (Hidden by default unless custom is picked) -->
+              <div id="buf-bulk-custom-count-wrapper" class="hidden">
+                <label style="font-size: 12px; color: #c084fc; display: block; margin-bottom: 4px; font-weight: 700;">عدد المقاطع يومياً:</label>
+                <input type="number" id="buf-bulk-custom-count" min="1" max="24" value="5" onchange="updateBulkScheduleTimelinePreview()" oninput="updateBulkScheduleTimelinePreview()" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid rgba(168,85,247,0.4); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px; box-sizing: border-box;" />
+              </div>
+
               <!-- Preferred Peak Time -->
               <div>
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">ساعة النشر المفضلة (وقت الذروة):</label>
-                <input type="time" id="buf-bulk-time" value="20:00" onchange="updateBulkScheduleTimelinePreview()" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px; box-sizing: border-box;" />
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">ساعة بدء النشر (أول مقطع):</label>
+                <input type="time" id="buf-bulk-time" value="14:00" onchange="updateBulkScheduleTimelinePreview()" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px; box-sizing: border-box;" />
               </div>
 
               <!-- Start Date -->
@@ -1120,11 +1135,14 @@
 
           <!-- Clips Selection List -->
           <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
               <span style="font-size: 13px; font-weight: 700; color: #fff;">
                 📋 اختر المقاطع المراد جدولتها من الأرشيف والـ Shorts:
               </span>
-              <div style="display: flex; gap: 8px;">
+              <div style="display: flex; gap: 6px;">
+                <button type="button" onclick="populateBulkClipsList(true)" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; gap: 4px; color: #38bdf8; border-color: rgba(56,189,248,0.4);">
+                  <span>🔄</span> تحديث الأرشيف
+                </button>
                 <button type="button" onclick="selectAllBulkClips(true)" class="btn-secondary" style="font-size: 11px; padding: 3px 8px;">☑️ تحديد الكل</button>
                 <button type="button" onclick="selectAllBulkClips(false)" class="btn-secondary" style="font-size: 11px; padding: 3px 8px;">⬜ إلغاء التحديد</button>
               </div>

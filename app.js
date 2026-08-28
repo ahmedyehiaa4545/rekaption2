@@ -2445,19 +2445,33 @@ window.fetchBufferChannels = async function() {
 let currentSelectedVideoTitle = '';
 let uploadedVideoCloudinaryUrl = null;
 
+window.cleanClipTitle = function(rawTitle) {
+  if (!rawTitle) return '';
+  let clean = rawTitle.trim();
+  // Strip prefixes like "مقطع Shorts #4:", "مقطع Shorts #1", "Shorts #4:", "مقطع #4:", "مقطع 4:", "فيديو قصير #4:", "فيديو كابشن نهائي"
+  clean = clean.replace(/^(?:مقطع\s*(?:Shorts|شورتس|قصير)?\s*(?:#|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
+  clean = clean.replace(/^(?:Shorts\s*(?:#|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
+  clean = clean.replace(/^(?:شورتس\s*(?:#|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
+  clean = clean.replace(/^(?:فيديو\s*(?:كابشن\s*نهائي|معدل|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
+  clean = clean.replace(/^(?:Clip\s*#?\s*\d*\s*[:\-–—]?\s*)/gi, '');
+  clean = clean.replace(/^(?:Video\s*#?\s*\d*\s*[:\-–—]?\s*)/gi, '');
+  // Clean timestamps like (00:15 - 00:45), parentheses, brackets, quotes, extensions
+  clean = clean.replace(/\(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\)/g, '');
+  clean = clean.replace(/\(\d+.*?\)/g, '');
+  clean = clean.replace(/[\[\]{}|«»""'']/g, '');
+  clean = clean.replace(/\.(mp4|mov|avi|mkv|webm)$/i, '');
+  clean = clean.trim();
+  return clean || rawTitle.replace(/\.(mp4|mov|avi|mkv|webm)$/i, '').trim();
+};
+
 window.generateSmartCaptionAndHashtags = function(rawTitle, rawText = '') {
   if (!rawTitle && !rawText) return { title: '', caption: '', hashtags: ['#fyp', '#viral', '#shorts', '#tiktok'] };
   
-  // 1. Clean rawTitle (strip prefixes like "مقطع Shorts #1:", "فيديو كابشن نهائي", date stamps)
-  let cleanTitle = (rawTitle || '')
-    .replace(/مقطع\s*Shorts\s*#?\d+:?\s*/gi, '')
-    .replace(/فيديو\s*كابشن\s*نهائي\s*/gi, '')
-    .replace(/\(\d+.*?\)/g, '')
-    .replace(/[\[\]{}|]/g, '')
-    .trim();
+  // 1. Clean rawTitle using robust regex cleaner
+  let cleanTitle = cleanClipTitle(rawTitle);
   
   if (!cleanTitle && rawText) {
-    cleanTitle = rawText.split('\n')[0].slice(0, 60);
+    cleanTitle = cleanClipTitle(rawText.split('\n')[0].slice(0, 60));
   }
   
   // 2. Extract keywords from cleanTitle & rawText
@@ -2525,7 +2539,7 @@ window.applySmartCaptionToBufferUI = function(rawTitle, rawText = '') {
   }
   
   renderDynamicHashtagPills(hashtags);
-  logBufferAction('info', `تم توليد العنوان والهاشتاجات الذكية تلقائياً: ${title || 'مقطع'}`);
+  logBufferAction('info', `تم توليد العنوان النقي والهاشتاجات الذكية تلقائياً: ${title || 'مقطع'}`);
 };
 
 function renderDynamicHashtagPills(tags) {
@@ -2541,6 +2555,11 @@ function renderDynamicHashtagPills(tags) {
 
 window.regenerateSmartCaptionForCurrentVideo = function() {
   applySmartCaptionToBufferUI(currentSelectedVideoTitle || 'مقطع فيديو');
+};
+
+window.refreshBufferHistoryList = function() {
+  populateBufferHistorySelect();
+  logBufferAction('info', '🔄 تم تحديث قائمة فيديوهات الأرشيف.');
 };
 
 // ==================== Buffer Video Source & Upload Workflow ====================
@@ -3389,6 +3408,7 @@ window.deleteScheduledBufferPost = async function(postId) {
   
   try {
     let deleteSuccess = false;
+    let errorDetail = '';
     
     // Direct GraphQL
     try {
@@ -3402,8 +3422,11 @@ window.deleteScheduledBufferPost = async function(postId) {
           query: `
             mutation DeletePost($input: DeletePostInput!) {
               deletePost(input: $input) {
-                ... on PostActionSuccess {
-                  post { id }
+                ... on DeletePostSuccess {
+                  id
+                }
+                ... on VoidMutationError {
+                  message
                 }
                 ... on MutationError {
                   message
@@ -3416,11 +3439,17 @@ window.deleteScheduledBufferPost = async function(postId) {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data?.data?.deletePost?.post?.id) {
+        logBufferAction('buffer', 'استجابة Buffer المباشرة للحذف:', data);
+        const delRes = data?.data?.deletePost;
+        if (delRes?.id || delRes?.__typename === 'DeletePostSuccess') {
           deleteSuccess = true;
+        } else if (delRes?.message) {
+          errorDetail = delRes.message;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      logBufferAction('info', 'جاري إرسال طلب الحذف عبر السيرفر الوسيط...');
+    }
 
     // Fallback Proxy
     if (!deleteSuccess) {
@@ -3431,8 +3460,11 @@ window.deleteScheduledBufferPost = async function(postId) {
         body: JSON.stringify({ token: token, post_id: postId })
       });
       const pdata = await proxyRes.json();
+      logBufferAction('buffer', 'استجابة السيرفر الوسيط لحذف المنشور:', pdata);
       if (proxyRes.ok && pdata.status === 'success') {
         deleteSuccess = true;
+      } else if (pdata.error || pdata.detail) {
+        errorDetail = pdata.error || pdata.detail;
       }
     }
 
@@ -3441,7 +3473,7 @@ window.deleteScheduledBufferPost = async function(postId) {
       alert('✅ تم حذف وإلغاء جدولة المنشور بنجاح!');
       fetchScheduledBufferPosts();
     } else {
-      throw new Error('تعذر حذف المنشور من Buffer.');
+      throw new Error(errorDetail || 'تعذر حذف المنشور من Buffer.');
     }
   } catch (err) {
     console.error('Delete post error:', err);
@@ -3471,14 +3503,27 @@ window.initBulkScheduler = function() {
   populateBulkClipsList();
 };
 
-window.populateBulkClipsList = function() {
+window.handleBulkFrequencyChange = function(val) {
+  const customWrapper = document.getElementById('buf-bulk-custom-count-wrapper');
+  if (customWrapper) {
+    if (val === 'daily_custom') {
+      customWrapper.classList.remove('hidden');
+    } else {
+      customWrapper.classList.add('hidden');
+    }
+  }
+  updateBulkScheduleTimelinePreview();
+};
+
+window.populateBulkClipsList = function(showNotification = false) {
   const container = document.getElementById('buf-bulk-clips-container');
   if (!container) return;
 
   const historyEntries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
   availableBulkClips = historyEntries.map(e => ({
     id: e.id,
-    title: e.title || 'فيديو مقطع',
+    title: cleanClipTitle(e.title || 'فيديو مقطع'),
+    rawTitle: e.title || 'فيديو مقطع',
     serverUrl: e.serverUrl || '',
     timestamp: e.timestamp
   }));
@@ -3511,6 +3556,9 @@ window.populateBulkClipsList = function() {
 
   container.innerHTML = html;
   updateBulkScheduleTimelinePreview();
+  if (showNotification) {
+    logBufferAction('info', `🔄 تم تحديث قائمة المقاطع المتاحة للجدولة (${availableBulkClips.length} مقطع).`);
+  }
 };
 
 window.selectAllBulkClips = function(checked) {
@@ -3521,15 +3569,38 @@ window.selectAllBulkClips = function(checked) {
 
 window.updateBulkScheduleTimelinePreview = function() {
   const checkboxes = Array.from(document.querySelectorAll('.buf-bulk-clip-checkbox:checked'));
-  const freq = document.getElementById('buf-bulk-freq')?.value || 'daily_1';
-  const timeStr = document.getElementById('buf-bulk-time')?.value || '20:00';
+  const freq = document.getElementById('buf-bulk-freq')?.value || 'daily_5';
+  const timeStr = document.getElementById('buf-bulk-time')?.value || '14:00';
   const startDateStr = document.getElementById('buf-bulk-start-date')?.value;
 
   if (!startDateStr) return;
 
-  const [hours, minutes] = timeStr.split(':').map(Number);
+  const [startH, startM] = timeStr.split(':').map(Number);
   let baseDate = new Date(startDateStr);
-  baseDate.setHours(hours, minutes, 0, 0);
+  baseDate.setHours(startH, startM, 0, 0);
+
+  let postsPerDay = 1;
+  let isDailyMode = false;
+
+  if (freq === 'daily_1') {
+    postsPerDay = 1;
+    isDailyMode = true;
+  } else if (freq === 'daily_2') {
+    postsPerDay = 2;
+    isDailyMode = true;
+  } else if (freq === 'daily_3') {
+    postsPerDay = 3;
+    isDailyMode = true;
+  } else if (freq === 'daily_4') {
+    postsPerDay = 4;
+    isDailyMode = true;
+  } else if (freq === 'daily_5') {
+    postsPerDay = 5;
+    isDailyMode = true;
+  } else if (freq === 'daily_custom') {
+    postsPerDay = Math.max(1, parseInt(document.getElementById('buf-bulk-custom-count')?.value || '5', 10));
+    isDailyMode = true;
+  }
 
   checkboxes.forEach((cb, idx) => {
     const clipId = cb.value;
@@ -3538,15 +3609,19 @@ window.updateBulkScheduleTimelinePreview = function() {
 
     let targetDate = new Date(baseDate);
 
-    if (freq === 'daily_1') {
-      targetDate.setDate(baseDate.getDate() + idx);
-    } else if (freq === 'daily_2') {
-      const dayOffset = Math.floor(idx / 2);
-      const isSecondSlot = idx % 2 === 1;
+    if (isDailyMode) {
+      const dayOffset = Math.floor(idx / postsPerDay);
+      const slotInDay = idx % postsPerDay;
+      
       targetDate.setDate(baseDate.getDate() + dayOffset);
-      if (isSecondSlot) {
-        targetDate.setHours(targetDate.getHours() + 6); // 6 hours later
-      }
+      
+      // Calculate interval in minutes between posts on the same day (across ~10 active hours)
+      const minutesInterval = postsPerDay <= 1 ? 0 : Math.round((10 * 60) / Math.max(1, postsPerDay - 1));
+      const totalSlotMinutes = (startH * 60 + startM) + (slotInDay * minutesInterval);
+      
+      const finalH = Math.floor(totalSlotMinutes / 60) % 24;
+      const finalM = totalSlotMinutes % 60;
+      targetDate.setHours(finalH, finalM, 0, 0);
     } else if (freq === 'every_other_day') {
       targetDate.setDate(baseDate.getDate() + (idx * 2));
     } else if (freq === 'weekly_3') {
@@ -3605,37 +3680,51 @@ window.executeBulkScheduleQueue = async function() {
     const cb = checkboxes[i];
     const clipId = cb.value;
     const clip = historyEntries.find(e => e.id === clipId) || { id: clipId, title: 'مقطع' };
+    const cleanTitle = cleanClipTitle(clip.title || 'مقطع Shorts');
     const previewEl = document.getElementById(`buf-bulk-time-preview-${clipId}`);
     const scheduledAtIso = previewEl?.dataset?.isoDate || new Date(Date.now() + (i + 1) * 24 * 3600 * 1000).toISOString();
 
     const percent = Math.round(((i) / checkboxes.length) * 100);
     if (progressBar) progressBar.style.width = percent + '%';
     if (progressPercent) progressPercent.textContent = percent + '%';
-    if (progressStatus) progressStatus.textContent = `جاري تجهيز ورفع مقطع (${i + 1} من ${checkboxes.length}): ${clip.title}...`;
+    if (progressStatus) progressStatus.textContent = `جاري تجهيز ورفع مقطع (${i + 1} من ${checkboxes.length}): ${cleanTitle}...`;
 
-    logBufferAction('info', `[دُفعة ${i + 1}/${checkboxes.length}] بدء معالجة: ${clip.title}`);
+    logBufferAction('info', `[دُفعة ${i + 1}/${checkboxes.length}] بدء معالجة: ${cleanTitle}`);
 
     try {
-      // Step 1: Get Video Blob
-      let blob = null;
-      if (typeof getVideoBlobFromIDB === 'function') {
-        blob = await getVideoBlobFromIDB(clip.id);
-      }
-      if (!blob && clip.serverUrl) {
-        const res = await fetch(clip.serverUrl);
-        blob = await res.blob();
-      }
-      if (!blob) {
-        throw new Error('تعذر العثور على ملف الفيديو في الذاكرة.');
+      // Check Cloudinary Cache First (0 seconds upload if already uploaded!)
+      let videoUrl = localStorage.getItem('cld_cache_' + clip.id) || localStorage.getItem('cld_cache_' + (clip.title || ''));
+      
+      if (videoUrl) {
+        logBufferAction('cloudinary', `[دُفعة ${i + 1}/${checkboxes.length}] ⚡ تم استخدام رابط Cloudinary المخزن مسبقاً (0 ثانية)!`);
+      } else {
+        // Step 1: Get Video Blob
+        let blob = null;
+        if (typeof getVideoBlobFromIDB === 'function') {
+          blob = await getVideoBlobFromIDB(clip.id);
+        }
+        if (!blob && clip.serverUrl) {
+          const res = await fetch(clip.serverUrl);
+          blob = await res.blob();
+        }
+        if (!blob) {
+          throw new Error('تعذر العثور على ملف الفيديو في الذاكرة.');
+        }
+
+        // Step 2: Fast Upload to Cloudinary
+        logBufferAction('cloudinary', `[دُفعة ${i + 1}/${checkboxes.length}] رفع الفيديو إلى Cloudinary...`);
+        const fileToUpload = new File([blob], `${cleanTitle}.mp4`, { type: 'video/mp4' });
+        videoUrl = await uploadToCloudinaryDirect(fileToUpload);
+        
+        // Save to cache
+        try {
+          localStorage.setItem('cld_cache_' + clip.id, videoUrl);
+          if (clip.title) localStorage.setItem('cld_cache_' + clip.title, videoUrl);
+        } catch (ce) {}
       }
 
-      // Step 2: Upload to Cloudinary
-      logBufferAction('cloudinary', `[دُفعة ${i + 1}/${checkboxes.length}] رفع الفيديو إلى Cloudinary...`);
-      const fileToUpload = new File([blob], `${clip.title || 'video'}.mp4`, { type: 'video/mp4' });
-      const videoUrl = await uploadToCloudinaryDirect(fileToUpload);
-
-      // Step 3: Generate Smart Caption & Contextual Hashtags
-      const { caption } = generateSmartCaptionAndHashtags(clip.title || 'مقطع Shorts');
+      // Step 3: Generate Clean Caption & Contextual Hashtags
+      const { caption } = generateSmartCaptionAndHashtags(cleanTitle);
 
       // Step 4: Schedule Post via Buffer Proxy/Direct
       logBufferAction('buffer', `[دُفعة ${i + 1}/${checkboxes.length}] إرسال الجدولة إلى Buffer لموعد: ${scheduledAtIso}`);
@@ -3662,7 +3751,7 @@ window.executeBulkScheduleQueue = async function() {
       logBufferAction('success', `✅ تم جدولة مقطع (${i + 1}/${checkboxes.length}) بنجاح! ID: ${proxyData.post?.id || ''}`);
     } catch (clipErr) {
       failCount++;
-      logBufferAction('error', `❌ فشلت جدولة مقطع (${clip.title}): ${clipErr.message}`);
+      logBufferAction('error', `❌ فشلت جدولة مقطع (${cleanTitle}): ${clipErr.message}`);
     }
   }
 
