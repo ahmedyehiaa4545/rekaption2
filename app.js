@@ -3084,6 +3084,13 @@ window.submitPostToBuffer = async function() {
     if (typeof playSuccessSound === 'function') {
       playSuccessSound();
     }
+
+    // Auto-refresh scheduled posts list if in schedule mode
+    if (isScheduleMode) {
+      setTimeout(() => {
+        fetchScheduledBufferPosts();
+      }, 1500);
+    }
   } catch (err) {
     console.error('Buffer publish error:', err);
     logBufferAction('error', `❌ خطأ في عملية النشر: ${err.message}`, err);
@@ -3099,6 +3106,591 @@ window.submitPostToBuffer = async function() {
       btn.innerHTML = '<span>🚀</span> نشر / جدولة المنشور على TikTok';
     }
   }
+};
+
+// ==================== Sub-Tab Switcher (Single vs Bulk) ====================
+let currentBufferSubTab = 'single';
+
+window.switchBufferSubTab = function(tab) {
+  currentBufferSubTab = tab;
+  const singleBtn = document.getElementById('buf-subtab-single');
+  const bulkBtn = document.getElementById('buf-subtab-bulk');
+  const singleView = document.getElementById('buf-subview-single');
+  const bulkView = document.getElementById('buf-subview-bulk');
+
+  if (tab === 'single') {
+    if (singleBtn) {
+      singleBtn.style.background = 'rgba(139, 92, 246, 0.25)';
+      singleBtn.style.borderColor = 'var(--purple-accent)';
+      singleBtn.style.color = '#fff';
+      singleBtn.style.fontWeight = '700';
+    }
+    if (bulkBtn) {
+      bulkBtn.style.background = 'transparent';
+      bulkBtn.style.borderColor = 'transparent';
+      bulkBtn.style.color = 'rgba(255,255,255,0.7)';
+      bulkBtn.style.fontWeight = 'normal';
+    }
+    if (singleView) singleView.classList.remove('hidden');
+    if (bulkView) bulkView.classList.add('hidden');
+  } else {
+    if (bulkBtn) {
+      bulkBtn.style.background = 'rgba(139, 92, 246, 0.25)';
+      bulkBtn.style.borderColor = 'var(--purple-accent)';
+      bulkBtn.style.color = '#fff';
+      bulkBtn.style.fontWeight = '700';
+    }
+    if (singleBtn) {
+      singleBtn.style.background = 'transparent';
+      singleBtn.style.borderColor = 'transparent';
+      singleBtn.style.color = 'rgba(255,255,255,0.7)';
+      singleBtn.style.fontWeight = 'normal';
+    }
+    if (bulkView) bulkView.classList.remove('hidden');
+    if (singleView) singleView.classList.add('hidden');
+    
+    initBulkScheduler();
+  }
+};
+
+// ==================== Scheduled Posts Manager ====================
+let cachedScheduledPosts = [];
+
+window.fetchScheduledBufferPosts = async function() {
+  const token = (localStorage.getItem('buffer_api_key') || '').trim();
+  const btn = document.getElementById('btn-refresh-scheduled-posts');
+  const badge = document.getElementById('buf-scheduled-count-badge');
+  
+  if (!token) {
+    renderScheduledPostsList([]);
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> جاري التحديث...';
+  }
+  logBufferAction('buffer', 'جاري جلب قائمة المنشورات المجدولة من Buffer...');
+
+  try {
+    let posts = [];
+    let fetchSuccess = false;
+
+    // Direct GraphQL
+    try {
+      const orgRes = await fetch('https://api.buffer.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          query: `query { account { organizations { id } } }`
+        })
+      });
+      if (orgRes.ok) {
+        const orgData = await orgRes.json();
+        const orgs = orgData?.data?.account?.organizations || [];
+        for (const org of orgs) {
+          const postsRes = await fetch('https://api.buffer.com', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              query: `
+                query GetScheduledPosts {
+                  posts(input: {
+                    organizationId: "${org.id}"
+                    filter: { status: [scheduled] }
+                  }, first: 50) {
+                    edges {
+                      node {
+                        id
+                        text
+                        dueAt
+                        status
+                        channelId
+                        assets {
+                          id
+                          mimeType
+                          source
+                        }
+                      }
+                    }
+                  }
+                }
+              `
+            })
+          });
+          if (postsRes.ok) {
+            const pdata = await postsRes.json();
+            const edges = pdata?.data?.posts?.edges || [];
+            edges.forEach(e => { if (e.node) posts.push(e.node); });
+          }
+        }
+        fetchSuccess = true;
+      }
+    } catch (directErr) {
+      logBufferAction('info', 'جاري جلب المنشورات المجدولة عبر السيرفر الوسيط...');
+    }
+
+    // Proxy Fallback
+    if (!fetchSuccess) {
+      const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
+      const proxyRes = await fetch(backendBase + '/api/buffer/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token })
+      });
+      const proxyData = await proxyRes.json();
+      if (proxyRes.ok && Array.isArray(proxyData.posts)) {
+        posts = proxyData.posts;
+        fetchSuccess = true;
+      }
+    }
+
+    cachedScheduledPosts = posts;
+    renderScheduledPostsList(posts);
+    logBufferAction('success', `تم جلب ${posts.length} منشور مجدول بنجاح!`);
+  } catch (err) {
+    console.error('Error fetching scheduled posts:', err);
+    logBufferAction('error', 'فشل جلب المنشورات المجدولة:', err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>🔄</span> تحديث القائمة';
+    }
+  }
+};
+
+function formatArabicRelativeTime(dateStr) {
+  if (!dateStr) return '';
+  const target = new Date(dateStr);
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+  
+  if (diffMs <= 0) return 'موعد النشر الآن أو في الماضي القريب';
+  
+  const diffMins = Math.round(diffMs / (1000 * 60));
+  const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffMins < 60) return `بعد ${diffMins} دقيقة`;
+  if (diffHours < 24) return `بعد ${diffHours} ساعة`;
+  if (diffDays === 1) return 'غداً';
+  if (diffDays === 2) return 'بعد يومين';
+  return `بعد ${diffDays} أيام`;
+}
+
+function renderScheduledPostsList(posts) {
+  const container = document.getElementById('buffer-scheduled-posts-container');
+  const badge = document.getElementById('buf-scheduled-count-badge');
+  if (!container) return;
+  
+  if (badge) badge.textContent = `${posts.length} منشورات`;
+  
+  if (!posts || posts.length === 0) {
+    container.innerHTML = `
+      <div id="buffer-scheduled-empty" style="grid-column: 1 / -1; text-align: center; padding: 30px 20px; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px dashed rgba(255,255,255,0.1); color: var(--text-muted); font-size: 13px;">
+        <span>⏳ لا توجد منشورات مجدولة حالياً.</span>
+      </div>
+    `;
+    return;
+  }
+  
+  let channels = window.bufferChannels || [];
+  if (channels.length === 0) {
+    try {
+      channels = JSON.parse(localStorage.getItem('buffer_cached_channels') || '[]');
+    } catch (e) {}
+  }
+  
+  // Sort posts by dueAt ascending
+  posts.sort((a, b) => new Date(a.dueAt || 0) - new Date(b.dueAt || 0));
+  
+  let html = '';
+  posts.forEach((post, idx) => {
+    const channel = channels.find(c => c.id === post.channelId) || {};
+    const channelName = channel.displayName || channel.name || 'قناة TikTok';
+    const isTikTok = (channel.service || '').toLowerCase() === 'tiktok';
+    const serviceTag = isTikTok ? '🎵 TikTok' : (channel.service ? `🌐 ${channel.service.toUpperCase()}` : 'Buffer Channel');
+    
+    const dueDate = post.dueAt ? new Date(post.dueAt) : null;
+    const dateFormatted = dueDate ? dueDate.toLocaleDateString('ar-EG', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'غير محدد';
+    const relativeTime = post.dueAt ? formatArabicRelativeTime(post.dueAt) : '';
+    
+    const videoAsset = (post.assets || []).find(a => (a.mimeType || '').includes('video') || (a.source || '').includes('cloudinary') || (a.source || '').includes('mp4'));
+    const videoUrl = videoAsset ? videoAsset.source : '';
+    
+    const snippetText = post.text ? (post.text.length > 90 ? post.text.slice(0, 90) + '...' : post.text) : 'بدون وصف نصي';
+    
+    html += `
+      <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(168,85,247,0.3); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; transition: all 0.3s;">
+        
+        <div>
+          <!-- Header: Channel & Relative Time -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: 700; color: #c084fc; background: rgba(168,85,247,0.15); padding: 2px 8px; border-radius: 6px;">
+              ${serviceTag}: ${channelName}
+            </span>
+            <span style="font-size: 10px; font-weight: 800; color: #10b981; background: rgba(16,185,129,0.15); padding: 2px 6px; border-radius: 6px;">
+              ⏳ ${relativeTime}
+            </span>
+          </div>
+
+          <!-- Video Preview if available -->
+          ${videoUrl ? `
+            <div style="border-radius: 6px; overflow: hidden; background: #000; margin-bottom: 8px; text-align: center;">
+              <video src="${videoUrl}" controls playsinline style="max-height: 120px; width: 100%; object-fit: contain;"></video>
+            </div>
+          ` : ''}
+
+          <!-- Text Preview -->
+          <div style="font-size: 12px; color: #f1f5f9; line-height: 1.4; white-space: pre-wrap; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">${snippetText}</div>
+        </div>
+
+        <div>
+          <!-- Schedule Timing Details -->
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #94a3b8; margin-bottom: 10px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+            <span>📅 الموعد:</span>
+            <span style="color: #fff; font-weight: 600;">${dateFormatted}</span>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 6px;">
+            <button type="button" onclick="deleteScheduledBufferPost('${post.id}')" class="btn-secondary" style="width: 100%; justify-content: center; font-size: 11px; padding: 6px 10px; color: #fca5a5; border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.1);">
+              <span>🗑️</span> إلغاء وحذف الجدولة
+            </button>
+          </div>
+        </div>
+
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+window.deleteScheduledBufferPost = async function(postId) {
+  if (!postId) return;
+  const token = (localStorage.getItem('buffer_api_key') || '').trim();
+  if (!token) {
+    alert('Buffer API Key غير موجود!');
+    return;
+  }
+  
+  if (!confirm('هل أنت متأكد من رغبتك في إلغاء وحذف هذا المنشور المجدول من Buffer؟')) {
+    return;
+  }
+  
+  logBufferAction('buffer', `جاري حذف المنشور المجدول: ID ${postId}...`);
+  
+  try {
+    let deleteSuccess = false;
+    
+    // Direct GraphQL
+    try {
+      const res = await fetch('https://api.buffer.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          query: `
+            mutation DeletePost($input: DeletePostInput!) {
+              deletePost(input: $input) {
+                ... on PostActionSuccess {
+                  post { id }
+                }
+                ... on MutationError {
+                  message
+                }
+              }
+            }
+          `,
+          variables: { input: { id: postId } }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.data?.deletePost?.post?.id) {
+          deleteSuccess = true;
+        }
+      }
+    } catch (e) {}
+
+    // Fallback Proxy
+    if (!deleteSuccess) {
+      const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
+      const proxyRes = await fetch(backendBase + '/api/buffer/delete-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token, post_id: postId })
+      });
+      const pdata = await proxyRes.json();
+      if (proxyRes.ok && pdata.status === 'success') {
+        deleteSuccess = true;
+      }
+    }
+
+    if (deleteSuccess) {
+      logBufferAction('success', `تم حذف وإلغاء جدولة المنشور ${postId} بنجاح!`);
+      alert('✅ تم حذف وإلغاء جدولة المنشور بنجاح!');
+      fetchScheduledBufferPosts();
+    } else {
+      throw new Error('تعذر حذف المنشور من Buffer.');
+    }
+  } catch (err) {
+    console.error('Delete post error:', err);
+    logBufferAction('error', `فشل حذف المنشور: ${err.message}`);
+    alert('❌ خطأ أثناء حذف المنشور: ' + err.message);
+  }
+};
+
+// ==================== Bulk Auto-Scheduler Logic ====================
+let availableBulkClips = [];
+
+window.initBulkScheduler = function() {
+  // Sync channels to bulk channel select
+  const mainSelect = document.getElementById('buffer-post-channel-select');
+  const bulkSelect = document.getElementById('buf-bulk-channel-select');
+  if (mainSelect && bulkSelect) {
+    bulkSelect.innerHTML = mainSelect.innerHTML;
+  }
+  
+  // Set default start date (Tomorrow)
+  const dateInput = document.getElementById('buf-bulk-start-date');
+  if (dateInput && !dateInput.value) {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    dateInput.value = d.toISOString().slice(0, 10);
+  }
+
+  populateBulkClipsList();
+};
+
+window.populateBulkClipsList = function() {
+  const container = document.getElementById('buf-bulk-clips-container');
+  if (!container) return;
+
+  const historyEntries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
+  availableBulkClips = historyEntries.map(e => ({
+    id: e.id,
+    title: e.title || 'فيديو مقطع',
+    serverUrl: e.serverUrl || '',
+    timestamp: e.timestamp
+  }));
+
+  if (availableBulkClips.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+        ⚠️ لا توجد مقاطع في الأرشيف حالياً. قم بإنشاء أو قص مقاطع Shorts في المحرر لتظهر هنا للجدولة الجماعية.
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  availableBulkClips.forEach((clip, idx) => {
+    html += `
+      <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; gap: 10px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0;">
+          <input type="checkbox" class="buf-bulk-clip-checkbox" value="${clip.id}" checked onchange="updateBulkScheduleTimelinePreview()" style="width: 16px; height: 16px; accent-color: var(--purple-accent); cursor: pointer;" />
+          <span style="font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            🎬 ${clip.title}
+          </span>
+        </label>
+        <span id="buf-bulk-time-preview-${clip.id}" style="font-size: 11px; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 3px 8px; border-radius: 6px; white-space: nowrap;">
+          📅 جاري الحساب...
+        </span>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  updateBulkScheduleTimelinePreview();
+};
+
+window.selectAllBulkClips = function(checked) {
+  const checkboxes = document.querySelectorAll('.buf-bulk-clip-checkbox');
+  checkboxes.forEach(cb => { cb.checked = checked; });
+  updateBulkScheduleTimelinePreview();
+};
+
+window.updateBulkScheduleTimelinePreview = function() {
+  const checkboxes = Array.from(document.querySelectorAll('.buf-bulk-clip-checkbox:checked'));
+  const freq = document.getElementById('buf-bulk-freq')?.value || 'daily_1';
+  const timeStr = document.getElementById('buf-bulk-time')?.value || '20:00';
+  const startDateStr = document.getElementById('buf-bulk-start-date')?.value;
+
+  if (!startDateStr) return;
+
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  let baseDate = new Date(startDateStr);
+  baseDate.setHours(hours, minutes, 0, 0);
+
+  checkboxes.forEach((cb, idx) => {
+    const clipId = cb.value;
+    const previewEl = document.getElementById(`buf-bulk-time-preview-${clipId}`);
+    if (!previewEl) return;
+
+    let targetDate = new Date(baseDate);
+
+    if (freq === 'daily_1') {
+      targetDate.setDate(baseDate.getDate() + idx);
+    } else if (freq === 'daily_2') {
+      const dayOffset = Math.floor(idx / 2);
+      const isSecondSlot = idx % 2 === 1;
+      targetDate.setDate(baseDate.getDate() + dayOffset);
+      if (isSecondSlot) {
+        targetDate.setHours(targetDate.getHours() + 6); // 6 hours later
+      }
+    } else if (freq === 'every_other_day') {
+      targetDate.setDate(baseDate.getDate() + (idx * 2));
+    } else if (freq === 'weekly_3') {
+      // 3 times a week (Mon, Wed, Fri pattern roughly every 2-3 days)
+      const dayJumps = [0, 2, 4, 7, 9, 11, 14, 16, 18];
+      const jump = dayJumps[idx] !== undefined ? dayJumps[idx] : idx * 2;
+      targetDate.setDate(baseDate.getDate() + jump);
+    }
+
+    const formatted = targetDate.toLocaleDateString('ar-EG', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    previewEl.textContent = `📅 ${formatted}`;
+    previewEl.dataset.isoDate = targetDate.toISOString();
+  });
+};
+
+window.executeBulkScheduleQueue = async function() {
+  const token = (localStorage.getItem('buffer_api_key') || '').trim();
+  const channelSelect = document.getElementById('buf-bulk-channel-select');
+  const channelId = channelSelect ? channelSelect.value.trim() : '';
+  const checkboxes = Array.from(document.querySelectorAll('.buf-bulk-clip-checkbox:checked'));
+  const btn = document.getElementById('btn-execute-bulk-schedule');
+  const progressContainer = document.getElementById('buf-bulk-progress-container');
+  const progressBar = document.getElementById('buf-bulk-progress-bar');
+  const progressStatus = document.getElementById('buf-bulk-progress-status');
+  const progressPercent = document.getElementById('buf-bulk-progress-percent');
+  const resultMsg = document.getElementById('buf-bulk-result-msg');
+
+  if (!token) {
+    alert('يرجى إدخال مفتاح Buffer API Key في الأعلى أولاً.');
+    return;
+  }
+  if (!channelId) {
+    alert('يرجى اختيار القناة المستهدفة للنشر من قائمة إعدادات الدفعة!');
+    return;
+  }
+  if (checkboxes.length === 0) {
+    alert('يرجى تحديد مقطع واحد على الأقل للجدولة!');
+    return;
+  }
+
+  if (!confirm(`هل أنت متأكد من رغبتك في جدولة (${checkboxes.length}) مقاطع تلقائياً على Buffer؟`)) {
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (progressContainer) progressContainer.classList.remove('hidden');
+  if (resultMsg) resultMsg.style.display = 'none';
+
+  logBufferAction('buffer', `بدء المعالجة والجدولة التلقائية لحزمة من (${checkboxes.length}) مقاطع...`);
+
+  let successCount = 0;
+  let failCount = 0;
+  const historyEntries = typeof getHistoryEntries === 'function' ? getHistoryEntries() : [];
+
+  for (let i = 0; i < checkboxes.length; i++) {
+    const cb = checkboxes[i];
+    const clipId = cb.value;
+    const clip = historyEntries.find(e => e.id === clipId) || { id: clipId, title: 'مقطع' };
+    const previewEl = document.getElementById(`buf-bulk-time-preview-${clipId}`);
+    const scheduledAtIso = previewEl?.dataset?.isoDate || new Date(Date.now() + (i + 1) * 24 * 3600 * 1000).toISOString();
+
+    const percent = Math.round(((i) / checkboxes.length) * 100);
+    if (progressBar) progressBar.style.width = percent + '%';
+    if (progressPercent) progressPercent.textContent = percent + '%';
+    if (progressStatus) progressStatus.textContent = `جاري تجهيز ورفع مقطع (${i + 1} من ${checkboxes.length}): ${clip.title}...`;
+
+    logBufferAction('info', `[دُفعة ${i + 1}/${checkboxes.length}] بدء معالجة: ${clip.title}`);
+
+    try {
+      // Step 1: Get Video Blob
+      let blob = null;
+      if (typeof getVideoBlobFromIDB === 'function') {
+        blob = await getVideoBlobFromIDB(clip.id);
+      }
+      if (!blob && clip.serverUrl) {
+        const res = await fetch(clip.serverUrl);
+        blob = await res.blob();
+      }
+      if (!blob) {
+        throw new Error('تعذر العثور على ملف الفيديو في الذاكرة.');
+      }
+
+      // Step 2: Upload to Cloudinary
+      logBufferAction('cloudinary', `[دُفعة ${i + 1}/${checkboxes.length}] رفع الفيديو إلى Cloudinary...`);
+      const fileToUpload = new File([blob], `${clip.title || 'video'}.mp4`, { type: 'video/mp4' });
+      const videoUrl = await uploadToCloudinaryDirect(fileToUpload);
+
+      // Step 3: Generate Smart Caption & Contextual Hashtags
+      const { caption } = generateSmartCaptionAndHashtags(clip.title || 'مقطع Shorts');
+
+      // Step 4: Schedule Post via Buffer Proxy/Direct
+      logBufferAction('buffer', `[دُفعة ${i + 1}/${checkboxes.length}] إرسال الجدولة إلى Buffer لموعد: ${scheduledAtIso}`);
+      
+      const backendBase = (typeof apiUrl !== 'undefined' && apiUrl ? apiUrl : '').replace(/\/$/, '');
+      const proxyRes = await fetch(backendBase + '/api/buffer/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          channel_id: channelId,
+          text: caption,
+          video_url: videoUrl,
+          scheduled_at: scheduledAtIso,
+          is_now: false
+        })
+      });
+      const proxyData = await proxyRes.json();
+      if (!proxyRes.ok || proxyData.error || proxyData.status === 'error') {
+        throw new Error(proxyData.error || proxyData.detail || 'فشل الجدولة عبر Buffer');
+      }
+
+      successCount++;
+      logBufferAction('success', `✅ تم جدولة مقطع (${i + 1}/${checkboxes.length}) بنجاح! ID: ${proxyData.post?.id || ''}`);
+    } catch (clipErr) {
+      failCount++;
+      logBufferAction('error', `❌ فشلت جدولة مقطع (${clip.title}): ${clipErr.message}`);
+    }
+  }
+
+  if (progressBar) progressBar.style.width = '100%';
+  if (progressPercent) progressPercent.textContent = '100% مكتمل!';
+  if (progressStatus) progressStatus.textContent = 'اكتملت معالجة الدفعة!';
+
+  if (resultMsg) {
+    resultMsg.style.display = 'block';
+    resultMsg.style.background = successCount > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+    resultMsg.style.border = successCount > 0 ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)';
+    resultMsg.style.color = successCount > 0 ? '#6ee7b7' : '#fca5a5';
+    resultMsg.textContent = `🎉 اكتملت العملية: تم جدولة (${successCount}) مقاطع بنجاح${failCount > 0 ? `، وفشل (${failCount})` : ''}!`;
+  }
+
+  if (typeof playSuccessSound === 'function') {
+    playSuccessSound();
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<span>🚀</span> بدء الجدولة التلقائية لجميع المقاطع المحددة';
+  }
+
+  // Refresh scheduled posts list
+  setTimeout(() => {
+    fetchScheduledBufferPosts();
+  }, 1500);
 };
 
 window.initBufferTab = function() {
@@ -3132,6 +3724,11 @@ window.initBufferTab = function() {
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     picker.value = d.toISOString().slice(0, 16);
+  }
+
+  // Fetch scheduled posts
+  if (savedToken) {
+    fetchScheduledBufferPosts();
   }
 };
 

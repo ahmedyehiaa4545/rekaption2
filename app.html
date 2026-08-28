@@ -913,20 +913,33 @@
 
       </div>
 
-      <!-- SECTION 2: CREATE & PUBLISH / SCHEDULE POST -->
-      <div style="margin-top: 25px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 24px;">
-        <h3 style="font-size: 16px; color: #fff; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-          <span>🎬</span> تجهيز ونشر الفيديو إلى TikTok / Buffer
-        </h3>
+      <!-- SECTION 2: PUBLISHING & SCHEDULING (SINGLE & BULK) -->
+      <div style="background: rgba(15,23,42,0.7); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px; margin-top: 15px;">
+        
+        <!-- Sub Mode Switch: Single Video vs Bulk Scheduler -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="font-size: 15px; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span>🚀</span> تجهيز ونشر الفيديوهات على TikTok
+          </h3>
+          <div style="display: flex; gap: 6px; background: rgba(0,0,0,0.4); padding: 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+            <button type="button" id="buf-subtab-single" onclick="switchBufferSubTab('single')" class="btn-secondary" style="font-size: 12px; padding: 5px 14px; background: rgba(139, 92, 246, 0.25); border-color: var(--purple-accent); color: #fff; font-weight: 700;">
+              ⚡ نشر / جدولة مقطع واحد
+            </button>
+            <button type="button" id="buf-subtab-bulk" onclick="switchBufferSubTab('bulk')" class="btn-secondary" style="font-size: 12px; padding: 5px 14px; background: transparent; border-color: transparent; color: rgba(255,255,255,0.7);">
+              📦 جدولة تلقائية لدُفعة مقاطع (Bulk)
+            </button>
+          </div>
+        </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <!-- VIEW A: SINGLE VIDEO PUBLISH -->
+        <div id="buf-subview-single" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
           
-          <!-- Column 1: Video Source & Cloudinary Upload -->
-          <div style="display: flex; flex-direction: column; gap: 14px;">
-            <label style="font-size: 13px; font-weight: 700; color: #c084fc; display: block;">
+          <!-- Column 1: Video Selection & Cloudinary -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <label style="font-size: 13px; font-weight: 700; color: #38bdf8; display: block;">
               1️⃣ اختيار الفيديو ورفعه إلى Cloudinary
             </label>
-
+            
             <!-- Video Source Selector Tabs -->
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <button type="button" id="buf-src-btn-local" onclick="switchBufferVideoSource('local')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border-color: var(--purple-accent); color: #fff;">
@@ -1060,9 +1073,119 @@
           </div>
 
         </div>
+
+        <!-- VIEW B: BULK AUTO-SCHEDULER -->
+        <div id="buf-subview-bulk" class="hidden" style="display: flex; flex-direction: column; gap: 16px;">
+          
+          <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 16px;">
+            <h4 style="color: #c084fc; margin-top: 0; margin-bottom: 12px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+              <span>⚙️</span> إعدادات التوزيع والجدولة الآلية
+            </h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+              
+              <!-- Frequency -->
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">معدل وتكرار النشر:</label>
+                <select id="buf-bulk-freq" onchange="updateBulkScheduleTimelinePreview()" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px;">
+                  <option value="daily_1" selected>📅 مقطع واحد كل يوم (1 Post / Day)</option>
+                  <option value="daily_2">📅 مقطعان يومياً (2 Posts / Day)</option>
+                  <option value="every_other_day">📅 مقطع يوم بعد يوم (Every Other Day)</option>
+                  <option value="weekly_3">📅 3 مقاطع أسبوعياً (Mon, Wed, Fri)</option>
+                </select>
+              </div>
+
+              <!-- Preferred Peak Time -->
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">ساعة النشر المفضلة (وقت الذروة):</label>
+                <input type="time" id="buf-bulk-time" value="20:00" onchange="updateBulkScheduleTimelinePreview()" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px; box-sizing: border-box;" />
+              </div>
+
+              <!-- Start Date -->
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">تاريخ بدء أول مقطع:</label>
+                <input type="date" id="buf-bulk-start-date" onchange="updateBulkScheduleTimelinePreview()" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px; box-sizing: border-box;" />
+              </div>
+
+              <!-- Target Channel for Bulk -->
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">القناة المستهدفة للنشر:</label>
+                <select id="buf-bulk-channel-select" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-subtle); background-color: #161224; color: #fff; padding: 0 10px; font-size: 13px; font-weight: 700;">
+                  <option value="">-- اضغط فحص وجلب القنوات أولاً --</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Clips Selection List -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 700; color: #fff;">
+                📋 اختر المقاطع المراد جدولتها من الأرشيف والـ Shorts:
+              </span>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" onclick="selectAllBulkClips(true)" class="btn-secondary" style="font-size: 11px; padding: 3px 8px;">☑️ تحديد الكل</button>
+                <button type="button" onclick="selectAllBulkClips(false)" class="btn-secondary" style="font-size: 11px; padding: 3px 8px;">⬜ إلغاء التحديد</button>
+              </div>
+            </div>
+
+            <!-- List container -->
+            <div id="buf-bulk-clips-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 4px;">
+              <div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px;">
+                ⏳ جاري تحميل المقاطع المتاحة للجدولة...
+              </div>
+            </div>
+          </div>
+
+          <!-- Bulk Execution Progress & Trigger Button -->
+          <div style="margin-top: 10px;">
+            <div id="buf-bulk-progress-container" class="hidden" style="margin-bottom: 12px; background: rgba(0,0,0,0.5); padding: 12px; border-radius: 10px; border: 1px solid rgba(168,85,247,0.3);">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: #c084fc; margin-bottom: 6px; font-weight: 700;">
+                <span id="buf-bulk-progress-status">جاري جدولة المقاطع تلقائياً...</span>
+                <span id="buf-bulk-progress-percent">0%</span>
+              </div>
+              <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                <div id="buf-bulk-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #a855f7, #38bdf8); transition: width 0.3s;"></div>
+              </div>
+            </div>
+
+            <button type="button" id="btn-execute-bulk-schedule" onclick="executeBulkScheduleQueue()" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px; font-weight: 700; font-size: 14px; gap: 8px; background: linear-gradient(135deg, #a855f7 0%, #38bdf8 100%);">
+              <span>🚀</span> بدء الجدولة التلقائية لجميع المقاطع المحددة
+            </button>
+            <div id="buf-bulk-result-msg" style="display: none; margin-top: 10px; padding: 10px 14px; border-radius: 8px; font-size: 13px; text-align: center;"></div>
+          </div>
+
+        </div>
+
       </div>
 
-      <!-- SECTION 3: LIVE OPERATION LOGS CONSOLE -->
+      <!-- SECTION 3: SCHEDULED POSTS MANAGER (لوحة متابعة وإدارة المنشورات المجدولة) -->
+      <div id="buffer-scheduled-posts-section" style="background: rgba(15,23,42,0.7); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px; margin-top: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h3 style="font-size: 15px; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>📋</span> المنشورات المجدولة حالياً في Buffer (Scheduled Posts)
+            </h3>
+            <span id="buf-scheduled-count-badge" style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 20px; background: rgba(168,85,247,0.2); color: #c084fc; border: 1px solid rgba(168,85,247,0.3);">
+              0 منشورات
+            </span>
+          </div>
+          <button type="button" id="btn-refresh-scheduled-posts" onclick="fetchScheduledBufferPosts()" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; gap: 6px;">
+            <span>🔄</span> تحديث القائمة
+          </button>
+        </div>
+
+        <!-- Scheduled Posts Cards Container -->
+        <div id="buffer-scheduled-posts-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px;">
+          <!-- Empty State -->
+          <div id="buffer-scheduled-empty" style="grid-column: 1 / -1; text-align: center; padding: 30px 20px; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px dashed rgba(255,255,255,0.1); color: var(--text-muted); font-size: 13px;">
+            <span>⏳ لا توجد منشورات مجدولة حالياً أو اضغط "تحديث القائمة" لجلب المنشورات من حسابك.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 4: LIVE OPERATION LOGS CONSOLE -->
       <div style="margin-top: 20px; background: rgba(10, 8, 18, 0.95); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 14px; overflow: hidden;">
         <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(22, 19, 38, 0.9); padding: 10px 16px; border-bottom: 1px solid var(--border-subtle);">
           <div style="display: flex; align-items: center; gap: 8px;">
