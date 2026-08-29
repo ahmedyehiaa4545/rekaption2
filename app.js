@@ -2447,20 +2447,23 @@ let uploadedVideoCloudinaryUrl = null;
 
 window.cleanClipTitle = function(rawTitle) {
   if (!rawTitle) return '';
-  let clean = rawTitle.trim();
-  // Strip prefixes like "مقطع Shorts #4:", "مقطع Shorts #1", "Shorts #4:", "مقطع #4:", "مقطع 4:", "فيديو قصير #4:", "فيديو كابشن نهائي"
-  clean = clean.replace(/^(?:مقطع\s*(?:Shorts|شورتس|قصير)?\s*(?:#|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
-  clean = clean.replace(/^(?:Shorts\s*(?:#|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
-  clean = clean.replace(/^(?:شورتس\s*(?:#|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
-  clean = clean.replace(/^(?:فيديو\s*(?:كابشن\s*نهائي|معدل|رقم)?\s*\d*\s*[:\-–—]?\s*)/gi, '');
-  clean = clean.replace(/^(?:Clip\s*#?\s*\d*\s*[:\-–—]?\s*)/gi, '');
-  clean = clean.replace(/^(?:Video\s*#?\s*\d*\s*[:\-–—]?\s*)/gi, '');
-  // Clean timestamps like (00:15 - 00:45), parentheses, brackets, quotes, extensions
-  clean = clean.replace(/\(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\)/g, '');
-  clean = clean.replace(/\(\d+.*?\)/g, '');
-  clean = clean.replace(/[\[\]{}|«»""'']/g, '');
+  // 1. Strip leading invisible control chars, bidirectional marks (\u200E, \u200F, \u202A-\u202E, \uFEFF), emojis and spaces
+  let clean = rawTitle.replace(/^[\u2000-\u206F\uFEFF\s\p{Emoji}\u200d]+/gu, '').trim();
+  
+  // 2. Specific pattern for "مقطع Shorts #12:", "مقطع شورتس #3:", "Shorts #4:", "مقطع رقم 5:", "فيديو كابشن نهائي:"
+  clean = clean.replace(/^(?:مقطع|فيديو|شورتس|Shorts|Clip|Video)?\s*(?:Shorts|شورتس|قصير|نهائي|معدل)?\s*(?:#|رقم|No\.?)\s*\d+\s*[:\-–—|]?\s*/gi, '');
+  clean = clean.replace(/^(?:مقطع\s*(?:Shorts|شورتس|قصير)?\s*\d+\s*[:\-–—|]\s*)/gi, '');
+  clean = clean.replace(/^(?:Shorts|شورتس|Clip|Video)\s*\d+\s*[:\-–—|]\s*/gi, '');
+  clean = clean.replace(/^(?:فيديو\s*كابشن\s*نهائي|كابشن\s*نهائي)\s*[:\-–—|]?\s*/gi, '');
+  clean = clean.replace(/^(?:مقطع|فيديو|Shorts|شورتس|كابشن نهائي)\s*[:\-–—|]\s*/gi, '').trim();
+
+  // 3. Strip timestamps like (00:15 - 00:45) or (1:30)
+  clean = clean.replace(/\(\d{1,2}:\d{2}\s*(?:-\s*\d{1,2}:\d{2})?\)/g, '');
+  // 4. Strip trailing extensions
   clean = clean.replace(/\.(mp4|mov|avi|mkv|webm)$/i, '');
-  clean = clean.trim();
+  // 5. Strip enclosing quotes or brackets
+  clean = clean.replace(/^[\[\("'\s«»]+|[\]\)"'\s«»]+$/g, '').trim();
+  
   return clean || rawTitle.replace(/\.(mp4|mov|avi|mkv|webm)$/i, '').trim();
 };
 
@@ -2632,7 +2635,8 @@ function populateBufferHistorySelect() {
   entries.forEach((item, idx) => {
     const d = new Date(item.timestamp);
     const dateStr = d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    html += `<option value="${item.id}">🎬 ${item.title || ('فيديو ' + (idx + 1))} (${dateStr})</option>`;
+    const cleanT = cleanClipTitle(item.title) || ('فيديو ' + (idx + 1));
+    html += `<option value="${item.id}">🎬 ${cleanT} (${dateStr})</option>`;
   });
   select.innerHTML = html;
 }
@@ -5856,8 +5860,9 @@ async function executeBatchCaptionProcess(youtubeUrlOverride, shortChoice) {
       // 5. Save CAPTIONED video clip to 48-hour history archive IMMEDIATELY!
       if (typeof window.saveHistoryEntry === 'function') {
         try {
+          const cleanItemTitle = (typeof cleanClipTitle === 'function' ? cleanClipTitle(shortItem.title) : shortItem.title) || `مقطع ${idx+1}`;
           await window.saveHistoryEntry({
-            title: `🎬 مقطع Shorts #${idx+1}: ${shortItem.title}`,
+            title: cleanItemTitle,
             videoUrl: clipUrl,
             serverUrl: `${apiUrl.replace(/\/$/, '')}/${renderTaskStatus.videoUrl}`,
             blob: finalCaptionedBlob,
