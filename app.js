@@ -1118,7 +1118,7 @@ function updateLiveCaptionOverlay(time) {
   const overlayContainer = document.getElementById('live-caption-overlay');
   if (!overlayContainer) return;
   
-  if (activeSegmentIndex === -1 || !transcribeData) {
+  if ((typeof selectedAnimation !== 'undefined' && selectedAnimation === 'none') || activeSegmentIndex === -1 || !transcribeData) {
     overlayContainer.classList.add('hidden');
     overlayContainer.removeAttribute('data-rendered-key');
     return;
@@ -1504,6 +1504,9 @@ formControls.addEventListener('submit', async function(e) {
   const titleTextInput = document.getElementById('title-text-input');
   if (titleTextInput && titleTextInput.value.trim()) fd.append('titleText', titleTextInput.value.trim());
 
+  const titleSubtextInput = document.getElementById('title-subtext-input');
+  if (titleSubtextInput && titleSubtextInput.value.trim()) fd.append('titleSubtext', titleSubtextInput.value.trim());
+
   const titleColorInput = document.getElementById('title-color-input');
   if (titleColorInput) fd.append('titleColor', titleColorInput.value);
 
@@ -1741,7 +1744,7 @@ window.renderVideo = async function() {
     shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
     showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
     titleText: document.getElementById('title-text-input') ? document.getElementById('title-text-input').value.trim() : '',
-    titleSubtext: '',
+    titleSubtext: document.getElementById('title-subtext-input') ? document.getElementById('title-subtext-input').value.trim() : '',
     titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
     titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
     titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 6.5,
@@ -4018,6 +4021,7 @@ window.transferConvertedToEditor = function() {
 let lastGeminiYtUrl = null;
 let lastGeminiTranscription = null;
 let lastGeminiAudioUrl = null;
+let currentYoutubeVideoTitle = '';
 
 window.startAudioDownloadOnly = async function() {
   const urlInput = document.getElementById('gemini-yt-url');
@@ -4219,6 +4223,7 @@ window.startAudioDownloadOnly = async function() {
       lastGeminiYtUrl = youtubeUrl;
       lastGeminiTranscription = resData.transcription;
       lastGeminiAudioUrl = fullAudioUrl;
+      if (resData.videoTitle) currentYoutubeVideoTitle = resData.videoTitle;
     } else {
       transcriptionContainer.style.display = 'none';
     }
@@ -4852,10 +4857,16 @@ window.cutAndSendToCaptions = function(youtubeUrl, startTime, endTime, idx, btn)
 
   // Prefill title input with THIS short's exact title and toggle title ON
   const shortItem = currentSuggestedShorts[arrayIdx];
-  const suggestedTitle = shortItem ? shortItem.title : '';
+  const suggestedTitle = shortItem ? cleanClipTitle(shortItem.title) : '';
   const titleTextInput = document.getElementById('title-text-input');
   if (titleTextInput) {
     titleTextInput.value = suggestedTitle;
+  }
+  const titleSubtextInput = document.getElementById('title-subtext-input');
+  if (titleSubtextInput && (!titleSubtextInput.value.trim() || titleSubtextInput.value.startsWith('جزء من حلقة:'))) {
+    if (currentYoutubeVideoTitle) {
+      titleSubtextInput.value = `جزء من حلقة: ${currentYoutubeVideoTitle}`;
+    }
   }
   const showTitleToggle = document.getElementById('show-title-toggle');
   if (showTitleToggle) {
@@ -5000,7 +5011,11 @@ async function executeCutAndSendToCaptions(youtubeUrl, startTime, endTime, idx, 
     const currentShort = currentSuggestedShorts[arrayIdx];
     if (currentShort && currentShort.title) {
       const titleTextInput = document.getElementById('title-text-input');
-      if (titleTextInput) titleTextInput.value = currentShort.title;
+      if (titleTextInput) titleTextInput.value = cleanClipTitle(currentShort.title);
+      const titleSubtextInput = document.getElementById('title-subtext-input');
+      if (titleSubtextInput && (!titleSubtextInput.value.trim() || titleSubtextInput.value.startsWith('جزء من حلقة:'))) {
+        if (currentYoutubeVideoTitle) titleSubtextInput.value = `جزء من حلقة: ${currentYoutubeVideoTitle}`;
+      }
     }
 
     // Enable submitBtn explicitly and trigger form submission
@@ -5126,7 +5141,9 @@ window.processBatchCaption = async function() {
       fd.append('inactiveColor', document.getElementById('inactive-color') ? document.getElementById('inactive-color').value : '#FFFFFF');
 
       fd.append('showTitle', 'true');
-      if (short.title) fd.append('titleText', short.title);
+      if (short.title) fd.append('titleText', cleanClipTitle(short.title));
+      const batchSubtext = (document.getElementById('title-subtext-input') && document.getElementById('title-subtext-input').value.trim()) ? document.getElementById('title-subtext-input').value.trim() : (currentYoutubeVideoTitle ? `جزء من حلقة: ${currentYoutubeVideoTitle}` : '');
+      if (batchSubtext) fd.append('titleSubtext', batchSubtext);
       fd.append('titleColor', document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF');
       fd.append('titleBgColor', document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000');
       fd.append('titleDuration', document.getElementById('title-duration-input') ? document.getElementById('title-duration-input').value : '6.5');
@@ -5184,8 +5201,10 @@ window.processBatchCaption = async function() {
         shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
         shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
         showTitle: true,
-        titleText: short.title ? short.title.trim() : '',
-        titleSubtext: '',
+        titleText: short.title ? cleanClipTitle(short.title) : '',
+        titleSubtext: (document.getElementById('title-subtext-input') && document.getElementById('title-subtext-input').value.trim())
+          ? document.getElementById('title-subtext-input').value.trim()
+          : (currentYoutubeVideoTitle ? `جزء من حلقة: ${currentYoutubeVideoTitle}` : ''),
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: 0, // Force 0 (infinite) for Batch mode so sentences don't disappear
@@ -5820,7 +5839,8 @@ async function executeBatchCaptionProcess(youtubeUrlOverride, shortChoice) {
         shadowColor: document.getElementById('shadow-color') ? document.getElementById('shadow-color').value : '#000000',
         shadowBlur: document.getElementById('shadow-blur') ? parseInt(document.getElementById('shadow-blur').value) : 0,
         showTitle: document.getElementById('show-title-toggle') ? document.getElementById('show-title-toggle').checked : false,
-        titleText: shortItem.title,
+        titleText: cleanClipTitle(shortItem.title),
+        titleSubtext: (document.getElementById('title-subtext-input') && document.getElementById('title-subtext-input').value.trim()) ? document.getElementById('title-subtext-input').value.trim() : (currentYoutubeVideoTitle ? `جزء من حلقة: ${currentYoutubeVideoTitle}` : ''),
         titleColor: document.getElementById('title-color-input') ? document.getElementById('title-color-input').value : '#FFFFFF',
         titleBgColor: document.getElementById('title-bg-color-input') ? document.getElementById('title-bg-color-input').value : '#000000',
         titleDuration: document.getElementById('title-duration-input') ? parseFloat(document.getElementById('title-duration-input').value) : 6.5,

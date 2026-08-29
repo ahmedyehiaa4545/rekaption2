@@ -215,7 +215,7 @@
           <!-- Animation Selector -->
           <div class="control-field" style="margin-bottom: 15px;">
             <span class="control-label" style="font-size: 11px;">حركة الكابشن</span>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px;">
               <div class="upload-anim-card selected" data-anim="classic" onclick="selectUploadAnimation(this)" style="padding: 8px; font-size: 11px; text-align: center; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); cursor: pointer;">
                 <span style="font-size: 14px;">📝</span>
                 <span style="display:block; font-weight:600; margin-top:4px;">بدون حركة</span>
@@ -227,6 +227,10 @@
               <div class="upload-anim-card" data-anim="slide" onclick="selectUploadAnimation(this)" style="padding: 8px; font-size: 11px; text-align: center; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); cursor: pointer;">
                 <span style="font-size: 14px;">🚀</span>
                 <span style="display:block; font-weight:600; margin-top:4px;">حركة كاملة</span>
+              </div>
+              <div class="upload-anim-card" data-anim="none" onclick="selectUploadAnimation(this)" style="padding: 8px; font-size: 11px; text-align: center; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); cursor: pointer;" title="إلغاء الكابشن وإظهار العنوان والمصدر فقط">
+                <span style="font-size: 14px;">🚫</span>
+                <span style="display:block; font-weight:600; margin-top:4px;">بدون كابشن</span>
               </div>
             </div>
           </div>
@@ -346,8 +350,13 @@
             
             <div id="title-settings-wrapper" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
               <div class="control-field">
-                <span class="control-label" style="font-size: 11px;">نص العنوان المقترح 📝</span>
+                <span class="control-label" style="font-size: 11px;">نص العنوان الرئيسي 📝</span>
                 <input type="text" id="title-text-input" placeholder="اكتب عنواناً جذاباً للفيديو..." style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: #fff; font-size: 12px; box-sizing: border-box;" />
+              </div>
+
+              <div class="control-field">
+                <span class="control-label" style="font-size: 11px;">السطر الفرعي / المصدر (حقوق الملكية) 🏷️</span>
+                <input type="text" id="title-subtext-input" placeholder="مثال: جزء من حلقة: بودكاست فنجان..." style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid rgba(56,189,248,0.3); background: rgba(0,0,0,0.25); color: #38bdf8; font-size: 12px; box-sizing: border-box;" />
               </div>
 
               <div class="control-field">
@@ -1311,7 +1320,7 @@
             <!-- Animation Selector inside Editor! -->
             <div class="control-field" style="margin-bottom: 15px;">
               <span class="control-label" style="font-size: 11px;">حركة الكابشن</span>
-              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px;">
                 <div class="anim-card selected" data-anim="classic" onclick="selectAnimation(this)" style="padding: 8px; font-size: 11px;">
                   <span style="font-size: 14px;">📝</span>
                   <span style="display:block; font-weight:600; margin-top:4px;">بدون حركة</span>
@@ -1323,6 +1332,10 @@
                 <div class="anim-card" data-anim="slide" onclick="selectAnimation(this)" style="padding: 8px; font-size: 11px;">
                   <span style="font-size: 14px;">🚀</span>
                   <span style="display:block; font-weight:600; margin-top:4px;">حركة كاملة</span>
+                </div>
+                <div class="anim-card" data-anim="none" onclick="selectAnimation(this)" style="padding: 8px; font-size: 11px;" title="إلغاء الكابشن وإظهار العنوان والمصدر فقط">
+                  <span style="font-size: 14px;">🚫</span>
+                  <span style="display:block; font-weight:600; margin-top:4px;">بدون كابشن</span>
                 </div>
               </div>
             </div>
